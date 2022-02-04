@@ -142,6 +142,8 @@ for (f in 1:nloci){
   write(paste(paste0("\tp_", df$loci[f]), 1, paste0("output_", df$loci[f])),
         file=outfile, append = T)
 }
-# make and cd into alignments1 dir
+cmd0 <- "mkdir alignments1"
+system(cmd0)
+
 # cmd <- "~/tools/INDELibleV1.03/src/indelible"
 # system(cmd)
