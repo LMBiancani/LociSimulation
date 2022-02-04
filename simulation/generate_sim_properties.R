@@ -18,11 +18,11 @@ df <- data.frame(loci=paste0("loc_",as.character(1:nloci)))
 set.seed(12345)
 
 #average branch length - rate
-abl <- runif(nloci,min=-17,max=-13)
+abl <- round(runif(nloci,min=-17,max=-13),3)
 df <- cbind(df, abl)
 
 #variance in branch length - variance in rate - heterotachy
-vbl <- runif(nloci,min=0.5,max=5.5)
+vbl <- round(runif(nloci,min=0.5,max=5.5),3)
 df <- cbind(df, vbl)
 
 #CDS or NOT
@@ -34,15 +34,15 @@ for (f in 1:nloci) {
 	if (proteinCoding[f] == TRUE) {
 		modelType <- "M2"
 		basefreqs <- NA #rep(0.015625, 64)
-		kappa <- rlnormTrunc(1,log(4), log(2.5),max=16)
-		pInv <- runif(1,min=0,max=0.5)
-		pNeutral <- runif(1,min=0,max=0.5)
+		kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
+		pInv <- round(runif(1,min=0,max=0.5),3)
+		pNeutral <- round(runif(1,min=0,max=0.5),3)
 		omegaInv <- 0 #no change
 		omegaNeut <- 1 #syn=nonsyn
-		omegaSelect <- runif(1,min=0,max=3)
+		omegaSelect <- round(runif(1,min=0,max=3),3)
 		paramvector <- c(kappa, pInv, pNeutral, omegaInv, omegaNeut, omegaSelect)
-		paramvector[7] <- runif(1,min=1.5,max=2) #indel model
-		paramvector[8] <- runif(1,min=0.001,max=0.002) #indel rate
+		paramvector[7] <- round(runif(1,min=1.5,max=2),3) #indel model
+		paramvector[8] <- round(runif(1,min=0.001,max=0.002),5) #indel rate
 	} else {
 		#substitution model
 		modelType <- sample(c("GTR", "SYM", "TVM", "TVMef", "TIM",
@@ -51,7 +51,8 @@ for (f in 1:nloci) {
 
 		#substitution model base freqs
 		if (modelType %in% c("GTR", "TVM", "TIM", "K81uf", "TrN", "HKY", "F81")) {
-			basefreqs <- draw.dirichlet(1,4,c(10,10,10,10),1)[1,]
+			basefreqs <- round(draw.dirichlet(1,4,c(10,10,10,10),1)[1,],3)
+			basefreqs[4] <- 1-sum(basefreqs[1:3])
 		} else {
 			basefreqs = NA
 		}
@@ -66,39 +67,39 @@ for (f in 1:nloci) {
 		if (modelType == "K80" | modelType == "HKY" | modelType == "TrN" | modelType == "TrNef" |
 			modelType == "TIM" | modelType == "TIMef" | modelType == "GTR" | modelType == "SYM") {
 			# paramvector[1] = runif(1,min=0.1,max=2.0)
-			paramvector[1] = rlnormTrunc(1,log(4), log(2.5),max=16)
+			paramvector[1] = round(rlnormTrunc(1,log(4), log(2.5),max=16),3)
 		}
 		#set exB and exC - TA and TG
 		if (modelType == "K81" | modelType == "K81uf" | modelType == "TIM" | modelType == "TIMef" | 
 			modelType == "TVM" | modelType == "TVMef" | modelType == "GTR" | modelType == "SYM") {
 			# paramvector[2] = runif(1,min=0.1,max=2.0)
 			# paramvector[3] = runif(1,min=0.1,max=2.0)
-			paramvector[2] = rlnormTrunc(1,log(1.25), log(2.5),max=3.5)
-			paramvector[3] = rlnormTrunc(1,log(3), log(2.5),max=9)
+			paramvector[2] = round(rlnormTrunc(1,log(1.25), log(2.5),max=3.5),3)
+			paramvector[3] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
 		}
 		#set exD and exE - CA and CG
 		if (modelType == "TVM" | modelType == "TVMef" | modelType == "GTR" | modelType == "SYM") {
 			# paramvector[4] = runif(1,min=0.1,max=2.0)
 			# paramvector[5] = runif(1,min=0.1,max=2.0)
-			paramvector[4] = rlnormTrunc(1,log(1), log(2.5),max=2.5)
-			paramvector[5] = rlnormTrunc(1,log(0.8), log(2.5),max=2)
+			paramvector[4] = round(rlnormTrunc(1,log(1), log(2.5),max=2.5),3)
+			paramvector[5] = round(rlnormTrunc(1,log(0.8), log(2.5),max=2),3)
 		}
 		#set exF - AG
 		if (modelType == "TrN" | modelType == "TrNef") {
 			# paramvector[6] = runif(1,min=0.1,max=2.0)
-			paramvector[6] = rlnormTrunc(1,log(3), log(2.5),max=9)
+			paramvector[6] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
 		}
 		#pinv
-		paramvector[7] <- runif(1,min=0,max=0.25)
+		paramvector[7] <- round(runif(1,min=0,max=0.25),5)
 		#alpha
 		# paramvector[8] <- runif(1,min=0.1,max=0.9)
-		paramvector[8] = rlnormTrunc(1,log(0.3), log(2.5),max=1.4)
+		paramvector[8] = round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5)
 		#ngamcat
 		paramvector[9] <- sample(2:10,1)
 		#indel model
-		paramvector[10] <- runif(1,min=1.5,max=2)
+		paramvector[10] <- round(runif(1,min=1.5,max=2),3)
 		#indel rate
-		paramvector[11] <- runif(1,min=0.001,max=0.002)
+		paramvector[11] <- round(runif(1,min=0.001,max=0.002),5)
 	}
 	rowdf <- data.frame(modelType=modelType,baseFreq=I(list(basefreqs)),paramVector=I(list(paramvector)))
 	# print(rowdf)
@@ -111,7 +112,7 @@ loclen <- sample(200:1000,nloci, replace=T)
 df <- cbind(df, loclen)
 
 #proportion of phylogenetic signal on internal branches
-lambdaPS <- runif(nloci,min=0.8,max=1.0)
+lambdaPS <- round(runif(nloci,min=0.8,max=1.0),5)
 df <- cbind(df, lambdaPS)
 
 #amount of ILS - proportional to Ne
@@ -144,27 +145,9 @@ nremaining_taxa <- lapply(remaining_taxa, length )
 taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x,round(length(x)/2)))
 df$taxa_missing_segments <- taxa_missing_segments
 
-#coordinates of missing data per missing data taxon
-missing_segments <- lapply(taxa_missing_segments, function(x) runif(length(x),min=0.4,max=0.8))
-# df$missing_segments <- missing_segments
-# print(df$missing_segments)
-missing_segments_start <- list()
-missing_segments_end <- list()
-for (f in 1:nloci) {
-	missing_segments_startV <- c()
-	missing_segments_endV <- c()
-	for (x in 1:length(missing_segments[[f]])){
-		gapLen <- round(df$loclen[f]*missing_segments[[f]][x])
-		lastPos <- df$loclen[f] - gapLen
-		startPos <- sample(1:lastPos, 1)
-		missing_segments_startV <- c(missing_segments_startV, startPos)
-		missing_segments_endV <- c(missing_segments_endV, startPos+gapLen)
-	}
-	missing_segments_start <- c(missing_segments_start, list(missing_segments_startV))
-	missing_segments_end <- c(missing_segments_end, list(missing_segments_endV))
-}
-df$missing_segments_start <- missing_segments_start
-df$missing_segments_end <- missing_segments_end
+#proportions of missing data per missing data taxon
+missing_segments <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0.4,max=0.8),3))
+df$missing_segments <- missing_segments
 
 #number of paralogs per gene
 # paralog_cont <- rpois(nloci,0.5)
