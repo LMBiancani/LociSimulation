@@ -146,8 +146,10 @@ taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x,round(lengt
 df$taxa_missing_segments <- taxa_missing_segments
 
 #proportions of missing data per missing data taxon
-missing_segments <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0.4,max=0.8),3))
-df$missing_segments <- missing_segments
+missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0.4,max=0.8),3))
+df$missing_segments_prop <- missing_segments_prop
+missing_segments_bias <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0,max=1),2))
+df$missing_segments_bias <- missing_segments_bias
 
 #number of paralogs per gene
 # paralog_cont <- rpois(nloci,0.5)
