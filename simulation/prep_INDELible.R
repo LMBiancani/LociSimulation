@@ -7,7 +7,7 @@ gene_trees <- read.tree(gene_trees_path)
 df_path <- args[2]
 df <- read.csv(df_path)
 
-nloci <- 2000
+nloci <- length(df[,1])
 
 source("/home/alex/tools/PML/simulation/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")

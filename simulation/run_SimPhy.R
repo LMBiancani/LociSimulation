@@ -3,7 +3,7 @@ species_tree_path <- args[1]
 df_path <- args[2]
 df <- read.csv(df_path)
 
-nloci <- 2000
+nloci <- length(df[,1])
 
 cmd0 <- paste0("> gene_trees.tre")
 system(cmd0)
