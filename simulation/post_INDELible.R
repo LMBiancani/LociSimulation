@@ -5,7 +5,7 @@ alignment_folder_path <- args[1]
 df_path <- args[2]
 df <- read.csv(df_path)
 
-nloci <- 2000
+nloci <- length(df[,1])
 
 cmd0 <- "mkdir alignments2"
 system(cmd0)
@@ -44,11 +44,14 @@ for (f in 1:nloci){
 	#complete gap position removal
 	badpos <- numeric()
 	for (pos in 1:loclen) {
-		if (unique(locus[,pos]) == "-") {
+		posset <- unique(locus[,pos])
+		if (length(posset) == 1 && posset == "-") {
 			badpos <- c(badpos, pos)
 		}
 	}
-	locus <- locus[,-badpos]
+	if (length(badpos) > 0) {
+		locus <- locus[,-badpos]
+	}
 	#
 	locus <- as.DNAbin(locus)
 	write.FASTA(locus, paste0("alignments2/", df$loci[f],".fas"))
