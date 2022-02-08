@@ -36,8 +36,8 @@ for (f in 1:nloci) {
 		modelType <- "M2"
 		basefreqs <- NA #rep(0.015625, 64)
 		kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
-		pInv <- round(runif(1,min=0,max=0.5),3)
-		pNeutral <- round(runif(1,min=0,max=0.5),3)
+		pInv <- round(runif(1,min=0,max=0.25),3)
+		pNeutral <- round(runif(1,min=0,max=0.75),3)
 		omegaInv <- 0 #no change
 		omegaNeut <- 1 #syn=nonsyn
 		omegaSelect <- round(runif(1,min=0,max=3),3)
@@ -94,10 +94,13 @@ for (f in 1:nloci) {
 		#pinv
 		paramvector[7] <- round(runif(1,min=0,max=0.25),5)
 		#alpha
-		# paramvector[8] <- runif(1,min=0.1,max=0.9)
-		paramvector[8] = round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5)
-		#ngamcat
-		paramvector[9] <- sample(2:10,1)
+		paramvector[8] <- round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5)
+		#ngamcat, continuous, none, or 2-10 discrete
+		paramvector[9] <- sample(0:10,1)
+		if (paramvector[9] == 1) {
+			# if 1 category, set alpha to 0 to turn off RVAS
+			paramvector[8] <- 0
+		}
 		#indel model
 		paramvector[10] <- round(runif(1,min=1.5,max=2),3)
 		#indel rate
