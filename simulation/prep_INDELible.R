@@ -43,14 +43,14 @@ write("[TYPE] NUCLEOTIDE 1",
       file="control.txt")
 write("[SETTINGS]",
       file="control.txt", append=T)
-write(paste0("\t[randomseed] ", df$seed2[1]),
+write(paste0("\t[randomseed] ", df$seed2[df$proteinCoding == F][1]),
       file="control.txt", append=T)
 #CDS
 write("[TYPE] CODON 1",
       file="controlCDS.txt")
 write("[SETTINGS]",
       file="controlCDS.txt", append=T)
-write(paste0("\t[randomseed] ", df$seed2[1]),
+write(paste0("\t[randomseed] ", df$seed2[df$proteinCoding == T][1]),
       file="controlCDS.txt", append=T)
 
 for (f in 1:nloci){
