@@ -37,7 +37,7 @@ for (f in 1:nloci) {
 		basefreqs <- NA #rep(0.015625, 64)
 		kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
 		pInv <- round(runif(1,min=0,max=0.25),3)
-		pNeutral <- round(runif(1,min=0,max=0.75),3)
+		pNeutral <- round(runif(1,min=0,max=1-pInv),3)
 		omegaInv <- 0 #no change
 		omegaNeut <- 1 #syn=nonsyn
 		omegaSelect <- round(runif(1,min=0,max=3),3)
@@ -95,8 +95,8 @@ for (f in 1:nloci) {
 		paramvector[7] <- round(runif(1,min=0,max=0.25),5)
 		#alpha
 		paramvector[8] <- round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5)
-		#ngamcat, continuous, none, or 2-10 discrete
-		paramvector[9] <- sample(0:10,1)
+		#ngamcat, continuous, none
+		paramvector[9] <- sample(c(0,1),1)
 		if (paramvector[9] == 1) {
 			# if 1 category, set alpha to 0 to turn off RVAS
 			paramvector[8] <- 0
@@ -113,7 +113,7 @@ for (f in 1:nloci) {
 df <- cbind(df, modeldf)
 
 #locus length
-loclen <- sample(200:1000,nloci, replace=T)
+loclen <- sample(200:2000,nloci, replace=T)
 df <- cbind(df, loclen)
 
 #proportion of phylogenetic signal on internal branches
@@ -129,7 +129,9 @@ seed1 <- sample(10000:99999,nloci, replace=F)
 df <- cbind(df, seed1)
 
 #indelible seeds
-seed2 <- sample(10000:99999,nloci, replace=F)
+# seed2 <- sample(10000:99999,nloci, replace=F)
+seed2 <- rep(12345, nloci)
+seed2[df$proteinCoding == T] <- 54321
 df <- cbind(df, seed2)
 
 #entirely missing taxa
@@ -150,7 +152,7 @@ taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x,round(lengt
 df$taxa_missing_segments <- taxa_missing_segments
 
 #proportions of missing data per missing data taxon
-missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0.4,max=0.8),3))
+missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0.2,max=0.6),3))
 df$missing_segments_prop <- missing_segments_prop
 missing_segments_bias <- lapply(taxa_missing_segments, function(x) round(runif(length(x),min=0,max=1),2))
 df$missing_segments_bias <- missing_segments_bias
