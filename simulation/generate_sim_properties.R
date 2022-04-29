@@ -5,119 +5,50 @@ library(EnvStats)
 library(extraDistr)
 #settings
 nloci <- 2000
-args <- commandArgs(trailingOnly=TRUE)
-sptree <- read.tree(args[1])
-Ne <- as.numeric(args[2])
-random_seed <- as.numeric(args[3])
+# args <- commandArgs(trailingOnly=TRUE)
+sptree <- read.tree("1/s_tree.trees")
+params <- unlist(strsplit(readLines("generate_params.txt"), " "))
+Ne <- as.numeric(params[2])
+print(Ne)
+random_seed <- as.numeric(params[1])
+print(random_seed)
 #write.nexus(sptree, file="sptree.nex", translate = F)
+source("/home/alex/tools/PML/simulation/modified.write.tree2.R")
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+# options(scipen = 999)
+
 write("#NEXUS", file="sptree.nex")
 write("begin trees;", file="sptree.nex", append=T)
-write(paste0("\ttree tree_1 = [&R] ", write.tree(sptree,file="")), file="sptree.nex", append=T)
+write(paste0("\ttree tree_1 = [&R] ", write.tree(sptree, digits=8, file="")), file="sptree.nex", append=T)
 write("end;", file="sptree.nex", append=T)
 ntaxa <- length(sptree$tip.label)
 df <- data.frame(loci=paste0("loc_",as.character(1:nloci)))
 set.seed(random_seed)
 
 #average branch length - rate
-abl <- round(runif(nloci,min=-17,max=-13),3)
+# abl <- round(runif(nloci,min=-17,max=-13),3)
+abl <- round(runif(nloci,min=-21.5,max=-18),3)
 df <- cbind(df, abl)
 
 #variance in branch length - variance in rate - heterotachy
-vbl <- round(runif(nloci,min=0.5,max=5.5),3)
+# vbl <- round(runif(nloci,min=0.5,max=5.5),3)
+vbl <- round(runif(nloci,min=0.5,max=2.5),3)
 df <- cbind(df, vbl)
 
 #CDS or NOT
 proteinCoding <- sample(c(TRUE,FALSE), nloci, TRUE)
 df <- cbind(df, proteinCoding)
 
-modeldf <- data.frame(modelType=character(),baseFreq=list(),paramVector=list())
-for (f in 1:nloci) {
-	if (proteinCoding[f] == TRUE) {
-		modelType <- "M2"
-		basefreqs <- NA #rep(0.015625, 64)
-		kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
-		pInv <- round(runif(1,min=0,max=0.25),3)
-		pNeutral <- round(runif(1,min=0,max=1-pInv),3)
-		omegaInv <- 0 #no change
-		omegaNeut <- 1 #syn=nonsyn
-		omegaSelect <- round(runif(1,min=0,max=3),3)
-		paramvector <- c(kappa, pInv, pNeutral, omegaInv, omegaNeut, omegaSelect)
-		paramvector[7] <- round(runif(1,min=1.5,max=2),3) #indel model
-		paramvector[8] <- round(runif(1,min=0.001,max=0.002),5) #indel rate
-	} else {
-		#substitution model
-		modelType <- sample(c("GTR", "SYM", "TVM", "TVMef", "TIM",
-							"TIMef", "K81uf", "K81", "TrN", "TrNef",
-							"HKY", "K80", "F81", "JC"),1)
-
-		#substitution model base freqs
-		if (modelType %in% c("GTR", "TVM", "TIM", "K81uf", "TrN", "HKY", "F81")) {
-			#T C A G
-			basefreqs <- round(draw.dirichlet(1,4,c(10,10,10,10),1)[1,],3)
-			basefreqs[4] <- 1-sum(basefreqs[1:3])
-		} else {
-			basefreqs = NA
-		}
-
-		#substitution model exchangeabilities (1-6) and RVAS (7-9)
-		paramvector <- rep(NA,9)
-		 #               a = TC;   b = TA;  c = TG;  
-			# a1 = CT;             d = CA;  e = CG;  
-			# b1 = AT;  d1 = AC;            f = AG;  
-			# c1 = GT;  e1 = GC;  f1 = GA; 
-		#set exA - TC
-		if (modelType == "K80" | modelType == "HKY" | modelType == "TrN" | modelType == "TrNef" |
-			modelType == "TIM" | modelType == "TIMef" | modelType == "GTR" | modelType == "SYM") {
-			# paramvector[1] = runif(1,min=0.1,max=2.0)
-			paramvector[1] = round(rlnormTrunc(1,log(4), log(2.5),max=16),3)
-		}
-		#set exB and exC - TA and TG
-		if (modelType == "K81" | modelType == "K81uf" | modelType == "TIM" | modelType == "TIMef" | 
-			modelType == "TVM" | modelType == "TVMef" | modelType == "GTR" | modelType == "SYM") {
-			# paramvector[2] = runif(1,min=0.1,max=2.0)
-			# paramvector[3] = runif(1,min=0.1,max=2.0)
-			paramvector[2] = round(rlnormTrunc(1,log(1.25), log(2.5),max=3.5),3)
-			paramvector[3] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
-		}
-		#set exD and exE - CA and CG
-		if (modelType == "TVM" | modelType == "TVMef" | modelType == "GTR" | modelType == "SYM") {
-			# paramvector[4] = runif(1,min=0.1,max=2.0)
-			# paramvector[5] = runif(1,min=0.1,max=2.0)
-			paramvector[4] = round(rlnormTrunc(1,log(1), log(2.5),max=2.5),3)
-			paramvector[5] = round(rlnormTrunc(1,log(0.8), log(2.5),max=2),3)
-		}
-		#set exF - AG
-		if (modelType == "TrN" | modelType == "TrNef") {
-			# paramvector[6] = runif(1,min=0.1,max=2.0)
-			paramvector[6] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
-		}
-		#pinv
-		paramvector[7] <- round(runif(1,min=0,max=0.25),5)
-		#alpha
-		paramvector[8] <- round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5)
-		#ngamcat, continuous, none
-		paramvector[9] <- sample(c(0,1),1)
-		if (paramvector[9] == 1) {
-			# if 1 category, set alpha to 0 to turn off RVAS
-			paramvector[8] <- 0
-		}
-		#indel model
-		paramvector[10] <- round(runif(1,min=1.5,max=2),3)
-		#indel rate
-		paramvector[11] <- round(runif(1,min=0.001,max=0.002),5)
-	}
-	rowdf <- data.frame(modelType=modelType,baseFreq=I(list(basefreqs)),paramVector=I(list(paramvector)))
-	# print(rowdf)
-	modeldf <- rbind(modeldf, rowdf)
-}
-df <- cbind(df, modeldf)
+#model seed
+modelseed <- sample(10000:99999,nloci, replace=F)
+df <- cbind(df, modelseed)
 
 #locus length
 loclen <- sample(200:2000,nloci, replace=T)
 df <- cbind(df, loclen)
 
 #proportion of phylogenetic signal on internal branches
-lambdaPS <- round(runif(nloci,min=0.8,max=1.0),5)
+lambdaPS <- round(runif(nloci,min=0.1,max=1.0),5)
 df <- cbind(df, lambdaPS)
 
 #amount of ILS - proportional to Ne
@@ -129,7 +60,6 @@ seed1 <- sample(10000:99999,nloci, replace=F)
 df <- cbind(df, seed1)
 
 #indelible seeds
-# seed2 <- sample(10000:99999,nloci, replace=F)
 seed2 <- rep(12345, nloci)
 seed2[df$proteinCoding == T] <- 54321
 df <- cbind(df, seed2)
