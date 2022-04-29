@@ -1,10 +1,10 @@
-.write.tree2 <- function(phy, digits = 10, tree.prefix = "", check_tips)
+.write.tree2 <- function(phy, digits = 6, tree.prefix = "", check_tips)
 {
     brl <- !is.null(phy$edge.length)
     nodelab <- !is.null(phy$node.label)
     if (check_tips) phy$tip.label <- checkLabel(phy$tip.label)
     if (nodelab) phy$node.label <- checkLabel(phy$node.label)
-    f.d <- paste("%f", sep = "")
+    f.d <- paste0("%.",digits,"f")
     cp <- function(x){
         STRING[k] <<- x
         k <<- k + 1
