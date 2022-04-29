@@ -15,11 +15,10 @@ gene_tree_file_path <- args[2]
 gene_name_file_path <- args[3]
 pruned_species_tree_file_path <- args[4]
 amas_table_path <- args[5]
-phylomad_table_path <- args[6]
-rate_folder_path <- args[7]
-output_name <- args[8]
-if (argsLen == 9) {
-	fastsp_table_path <- args[9]
+rate_folder_path <- args[6]
+output_name <- args[7]
+if (argsLen == 8) {
+	fastsp_table_path <- args[8]
 }
 
 gene_trees <- read.tree(gene_tree_file_path)
@@ -30,8 +29,6 @@ species_trees <- read.tree(pruned_species_tree_file_path)
 amas_table <- read.table(amas_table_path, header=T, check.names = F)
 
 taxon_list <- character()
-
-phylomad_table <- read.csv(phylomad_table_path, header=T, check.names = F)
 
 nloci <- length(gene_trees)
 
@@ -51,11 +48,10 @@ occupancy <- vector(length = nloci)
 alignment_length <- vector(length = nloci)
 percent_missing <- vector(length = nloci)
 percent_variable <- vector(length = nloci)
-phylomad_maha <- vector(length = nloci)
 phyloinf <- vector(length = nloci)
 sequence_rate_harmonic <- vector(length = nloci)
 sequence_rate_harmonic_noZero <- vector(length = nloci)
-if (argsLen == 9) {
+if (argsLen == 8) {
 	fastsp_table <- read.csv(fastsp_table_path, header=F)
 	alignmentSPscore <- vector(length = nloci)
 }
@@ -81,8 +77,30 @@ for (f in 1:nloci) {
 		ufboot <- sapply(strsplit(geneTree$node.label, "/"), function(x) x[2])
 		average_support[f] <- mean(as.numeric(ufboot), na.rm = T)
 		#RF <- this is actually only for simulated things - RF btw true tree and inferred tree - use as Y
-		if (argsLen == 9) {
-			robinson[f] <- 1 - suppressMessages(RF.dist(pruned_species_tree, geneTree, normalize = TRUE, check.labels = TRUE))
+		if (argsLen == 8) {
+			pruned_species_tree2 <- pruned_species_tree
+			pruned_species_tree_edge2 <- numeric()
+			for (row in 1:length(pruned_species_tree$edge[,1])){
+			  if (pruned_species_tree$edge[row,2] > length(pruned_species_tree$tip.label)) {
+			    pruned_species_tree_edge2[row] <- as.numeric(sapply(strsplit(pruned_species_tree$node.label,"/"), function(x) x[1])[pruned_species_tree$edge[row,2]-length(pruned_species_tree$tip.label)])
+			  } else {
+			    pruned_species_tree_edge2[row] <- 0
+			  }
+			}
+			pruned_species_tree2$edge.length <- pruned_species_tree_edge2
+
+			geneTree2 <- geneTree
+			geneTree_edge2 <- numeric()
+			for (row in 1:length(geneTree$edge[,1])){
+			  if (geneTree$edge[row,2] > length(geneTree$tip.label)) {
+			    geneTree_edge2[row] <- as.numeric(sapply(strsplit(geneTree$node.label,"/"), function(x) x[1])[geneTree$edge[row,2]-length(geneTree$tip.label)])
+			  } else {
+			    geneTree_edge2[row] <- 0
+			  }
+			}
+			geneTree2$edge.length <- geneTree_edge2
+
+			robinson[f] <- 1 - suppressMessages(wRF.dist(pruned_species_tree2, geneTree2, normalize = TRUE, check.labels = TRUE))
 			alignmentSPscore[f] <- fastsp_table$V2[fastsp_table$V1 == locname]
 		}
 	 
@@ -152,13 +170,6 @@ for (f in 1:nloci) {
 		# percent_variable
 		percent_variable[f] <- amas_entry$Proportion_variable_sites
 
-		# phylomad_maha
-		if (length(phylomad_table$maha[phylomad_table$loc == locname]) == 1) {
-			phylomad_maha[f] <- phylomad_table$maha[phylomad_table$loc == locname]
-		} else {
-			phylomad_maha[f] <- 0#NA
-		}
-
 		rates_fname <- paste0(rate_folder_path, "/", locname, ".LEISR.json")
 		if (file.exists(rates_fname)) {
 			rates <- fromJSON(file = rates_fname)
@@ -198,7 +209,7 @@ for (f in 1:nloci) {
 		}
 	} else {
 		average_support[f] <- NA
-		if (argsLen == 9) {
+		if (argsLen == 8) {
 			robinson[f] <- NA
 			alignmentSPscore[f] <- NA
 		}
@@ -216,7 +227,6 @@ for (f in 1:nloci) {
 		alignment_length[f] <- NA
 		percent_missing[f] <- NA
 		percent_variable[f] <- NA
-		phylomad_maha[f] <- NA
 		phyloinf[f] <- NA
 		sequence_rate_harmonic[f] <- NA
 		sequence_rate_harmonic_noZero[f] <- NA
@@ -229,19 +239,18 @@ for (f in 1:nloci) {
 occupancy <- occupancy / length(taxon_list)
 
 #gather gene properties
-if (argsLen == 9) {
+if (argsLen == 8) {
 	variables <- data.frame(locname=names(gene_trees),
-		robinson, alignmentSPscore, root_tip, average_support, average_patristic,
+		robinson, alignmentSPscore,
+		root_tip, average_patristic, average_support,
 		treeness, tree_length, tree_rate, tree_rate_var,
 		base_composition_variance, saturation_slope, saturation_rsq, average_raw_pairwise_distance,
-		occupancy, alignment_length, percent_missing, percent_variable,
-		phylomad_maha, phyloinf, sequence_rate_harmonic, sequence_rate_harmonic_noZero)
+		occupancy, alignment_length, percent_missing, percent_variable, phyloinf)
 } else {
 	variables <- data.frame(locname=names(gene_trees),
 		root_tip, average_support, average_patristic,
 		treeness, tree_length, tree_rate, tree_rate_var,
 		base_composition_variance, saturation_slope, saturation_rsq, average_raw_pairwise_distance,
-		occupancy, alignment_length, percent_missing, percent_variable,
-		phylomad_maha, phyloinf, sequence_rate_harmonic, sequence_rate_harmonic_noZero)
+		occupancy, alignment_length, percent_missing, percent_variable, phyloinf)
 }
 write.table(variables, output_name, row.names = F, sep = '\t')
