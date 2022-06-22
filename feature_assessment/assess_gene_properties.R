@@ -35,6 +35,7 @@ nloci <- length(gene_trees)
 root_tip <- vector(length = nloci)
 average_support <- vector(length = nloci)
 robinson <- vector(length = nloci)
+wrobinson <- vector(length = nloci)
 average_patristic <- vector(length = nloci)
 treeness <- vector(length = nloci)
 tree_length <- vector(length = nloci)
@@ -77,30 +78,15 @@ for (f in 1:nloci) {
 		ufboot <- sapply(strsplit(geneTree$node.label, "/"), function(x) x[2])
 		average_support[f] <- mean(as.numeric(ufboot), na.rm = T)
 		#RF <- this is actually only for simulated things - RF btw true tree and inferred tree - use as Y
+
+		#test empirical RF
 		if (argsLen == 8) {
-			pruned_species_tree2 <- pruned_species_tree
-			pruned_species_tree_edge2 <- numeric()
-			for (row in 1:length(pruned_species_tree$edge[,1])){
-			  if (pruned_species_tree$edge[row,2] > length(pruned_species_tree$tip.label)) {
-			    pruned_species_tree_edge2[row] <- as.numeric(sapply(strsplit(pruned_species_tree$node.label,"/"), function(x) x[1])[pruned_species_tree$edge[row,2]-length(pruned_species_tree$tip.label)])
-			  } else {
-			    pruned_species_tree_edge2[row] <- 0
-			  }
-			}
-			pruned_species_tree2$edge.length <- pruned_species_tree_edge2
 
-			geneTree2 <- geneTree
-			geneTree_edge2 <- numeric()
-			for (row in 1:length(geneTree$edge[,1])){
-			  if (geneTree$edge[row,2] > length(geneTree$tip.label)) {
-			    geneTree_edge2[row] <- as.numeric(sapply(strsplit(geneTree$node.label,"/"), function(x) x[1])[geneTree$edge[row,2]-length(geneTree$tip.label)])
-			  } else {
-			    geneTree_edge2[row] <- 0
-			  }
-			}
-			geneTree2$edge.length <- geneTree_edge2
+			robinson[f] <- 1 - suppressMessages(RF.dist(pruned_species_tree, geneTree, normalize = TRUE, check.labels = TRUE))
 
-			robinson[f] <- 1 - suppressMessages(wRF.dist(pruned_species_tree2, geneTree2, normalize = TRUE, check.labels = TRUE))
+			geneTree1 <- geneTree
+			geneTree1$edge.length <- geneTree1$edge.length/max(nodeHeights(geneTree1)[,2])*1.0
+			wrobinson[f] <- 1 - suppressMessages(wRF.dist(pruned_species_tree, geneTree1, normalize = TRUE, check.labels = TRUE))			
 			alignmentSPscore[f] <- fastsp_table$V2[fastsp_table$V1 == locname]
 		}
 	 
@@ -109,8 +95,11 @@ for (f in 1:nloci) {
 		patristic <- patristic[lower.tri(patristic)]
 	    average_patristic[f] <- mean(patristic)
 
+	    #tip branches
+	   	tip_branches <- which(geneTree$edge[,2] %in% c(1:length(geneTree$tip.label)))
+	    
 	    #treeness
-	    treeness[f] <- 1 - (sum(geneTree$edge.length[which(geneTree$edge[,2] %in% c(1:length(geneTree$tip.label)))])/sum(geneTree$edge.length))
+	    treeness[f] <- 1 - (sum(geneTree$edge.length[tip_branches])/sum(geneTree$edge.length))
 
 	    #tree length
 	    tree_length[f] <- sum(geneTree$edge.length)
@@ -211,6 +200,7 @@ for (f in 1:nloci) {
 		average_support[f] <- NA
 		if (argsLen == 8) {
 			robinson[f] <- NA
+			wrobinson[f] <- NA
 			alignmentSPscore[f] <- NA
 		}
 		root_tip[f] <- NA
@@ -241,7 +231,7 @@ occupancy <- occupancy / length(taxon_list)
 #gather gene properties
 if (argsLen == 8) {
 	variables <- data.frame(locname=names(gene_trees),
-		robinson, alignmentSPscore,
+		robinson, wrobinson, alignmentSPscore,
 		root_tip, average_patristic, average_support,
 		treeness, tree_length, tree_rate, tree_rate_var,
 		base_composition_variance, saturation_slope, saturation_rsq, average_raw_pairwise_distance,
