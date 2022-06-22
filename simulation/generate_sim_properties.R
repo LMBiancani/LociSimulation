@@ -26,8 +26,11 @@ df <- data.frame(loci=paste0("loc_",as.character(1:nloci)))
 set.seed(random_seed)
 
 #average branch length - rate
-# abl <- round(runif(nloci,min=-17,max=-13),3)
-abl <- round(runif(nloci,min=-21.5,max=-18),3)
+abl <- round(runif(nloci,min=-20,max=-18),3) #random trees 1-12
+# abl <- round(runif(nloci,min=-19,max=-17),3) #random trees 13-16
+# abl <- round(runif(nloci,min=-19,max=-18),3) #empir specific
+# abl <- round(runif(nloci,min=-20,max=-19),3) #wickett specific
+# abl <- round(runif(nloci,min=-19.5,max=-18.5),3) #fong specific
 df <- cbind(df, abl)
 
 #variance in branch length - variance in rate - heterotachy
@@ -48,7 +51,7 @@ loclen <- sample(200:2000,nloci, replace=T)
 df <- cbind(df, loclen)
 
 #proportion of phylogenetic signal on internal branches
-lambdaPS <- round(runif(nloci,min=0.1,max=1.0),5)
+lambdaPS <- round(runif(nloci,min=0.75,max=1.0),5)
 df <- cbind(df, lambdaPS)
 
 #amount of ILS - proportional to Ne
@@ -89,14 +92,17 @@ df$missing_segments_bias <- missing_segments_bias
 
 #number of paralogs per gene
 # zero-inflated poisson
-paralog_cont <- rzip(nloci, unlist(nremaining_taxa)/10, 0.5)
+paralog_cont <- rzip(nloci, unlist(nremaining_taxa)/(unlist(nremaining_taxa)/2), 0.5)
 df <- cbind(df, paralog_cont)
+#paralog clade branch length
+paralog_branch_mod <- round(runif(nloci,min=1.0,max=10.0),2)
+df <- cbind(df, paralog_branch_mod)
 #taxa selected to be deep paralogs in each gene
 paralog_taxa <- apply(df, 1, function(x) sample(x$remaining_taxa,x$paralog_cont) )
 df$paralog_taxa <- paralog_taxa
 
 #number of contaminant groups per gene
-cont_pair_cont <- rzip(nloci, unlist(nremaining_taxa)/50, 0.5)
+cont_pair_cont <- rzip(nloci, unlist(nremaining_taxa)/(unlist(nremaining_taxa)/2), 0.5)
 df <- cbind(df, cont_pair_cont)
 #taxa selected to be contaminants in each gene
 cont_pairs <- apply(df, 1, function(x) sample(x$remaining_taxa,x$cont_pair_cont*2) )
