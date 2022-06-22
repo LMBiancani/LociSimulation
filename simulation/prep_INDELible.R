@@ -17,7 +17,7 @@ nloci <- length(df[,1])
 source("/home/alex/tools/PML/simulation/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")
 options(scipen = 999)
-modify_tree <- function(oldTree, lambdaVal, ParalogTaxa) {
+modify_tree <- function(oldTree, lambdaVal, ParalogTaxa, ParalogBL) {
   #edit tip names
   oldTree[[1]]$tip.label <- sapply(strsplit(oldTree[[1]]$tip.label, "_"), function(x) x[1])
 
@@ -32,9 +32,9 @@ modify_tree <- function(oldTree, lambdaVal, ParalogTaxa) {
     newTree <- bind.tree(orthoTree, paraTree)
     newTree <- multi2di(newTree,random = F)
     if (length(paralog_tips) == 1) {
-      newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] <- newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] + max(newTree$edge.length)*10
+      newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] <- newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] + max(newTree$edge.length)*ParalogBL
     } else {
-      newTree$edge.length[which(newTree$edge[,2] == getMRCA(newTree,paralog_tips))] <- max(newTree$edge.length)*10
+      newTree$edge.length[which(newTree$edge[,2] == getMRCA(newTree,paralog_tips))] <- max(newTree$edge.length)*ParalogBL
     }
   }
   
@@ -62,11 +62,16 @@ treelist <- list()
 branchlist <- list()
 df2 <- data.frame(loci=paste0("loc_",as.character(1:nloci)))
 modelnum <- numeric()
+modelbfsd <- numeric()
+modelratesd <- numeric()
+modelkappasd <- numeric()
+modelselectionmean <- numeric()
+modelselectionsd <- numeric()
 
 for (f in 1:nloci){
   set.seed(df$modelseed[f])
   #modify the gene tree by lambda and get paralogs
-  new_tree <- modify_tree(gene_trees[f],df$lambdaPS[f], df$paralog_taxa[f])
+  new_tree <- modify_tree(gene_trees[f],df$lambdaPS[f], df$paralog_taxa[f], df$paralog_branch_mod[f])
   treelist[[f]] <- new_tree
   #clone the gene tree for model params
   new_tree2 <- new_tree
@@ -119,6 +124,7 @@ for (f in 1:nloci){
   }
   modelnames <- gsub('#','', modelnames)
   modelnum[f] <- length(modelnames)
+  modelbf <- numeric()
   new_tree2$edge.length <- NULL
   branchlist[[f]] <- new_tree2
 
@@ -130,13 +136,18 @@ for (f in 1:nloci){
     pNeutral <- round(runif(1,min=0,max=1-pInv),3)
     omegaInv <- 0 #no change
     omegaNeut <- 1 #syn=nonsyn
+    modelkappa <- numeric()
+    modelselection <- numeric()
     #iterate over models
     for (model1 in modelnames) {
       basefreqs <- draw.dirichlet(1,61,rep(10,61),1)[1,]
       # basefreqs[1] <- 1-sum(basefreqs[2:61]) 
       basefreqs <- c(basefreqs[1:10], 0, 0, basefreqs[11:12], 0, basefreqs[13:61])
+      modelbf <- rbind(modelbf, basefreqs)
       kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
+      modelkappa <- c(modelkappa, kappa)
       omegaSelect <- round(runif(1,min=0,max=3),3)
+      modelselection <- c(modelselection, omegaSelect)
       paramvector <- c(kappa, pInv, pNeutral, omegaInv, omegaNeut, omegaSelect)
       paramvector[7] <- round(runif(1,min=1.5,max=2),3) #indel model
       paramvector[8] <- round(runif(1,min=0.001,max=0.002),5) #indel rate
@@ -152,6 +163,10 @@ for (f in 1:nloci){
       write(paste("\t[indelrate]", paramvector[8]),
             file=outfile, append=T)
     }
+    modelratesd[f] <- NA
+    modelkappasd[f] <- sd(modelkappa)
+    modelselectionmean[f] <- mean(modelselection)
+    modelselectionsd[f] <- sd(modelselection)
     
   } else {
     outfile = "control.txt"
@@ -167,6 +182,7 @@ for (f in 1:nloci){
       # if 1 category, set alpha to 0 to turn off RVAS
       alpha <- 0
     }
+    modelrate <- numeric()
     #iterate over models
     for (model1 in modelnames) {
       modelType <- sample(c("GTR", "SYM", "TVM", "TVMef", "TIM",
@@ -177,9 +193,11 @@ for (f in 1:nloci){
       if (modelType %in% c("GTR", "TVM", "TIM", "K81uf", "TrN", "HKY", "F81")) {
         #T C A G
         basefreqs <- draw.dirichlet(1,4,c(10,10,10,10),1)[1,]
+        modelbf <- rbind(modelbf, basefreqs)
         # basefreqs[4] <- 1-sum(basefreqs[1:3])
       } else {
         basefreqs = NA
+        modelbf <- rbind(modelbf, rep(0.25,4))
       }
 
       #substitution model exchangeabilities (1-6)
@@ -211,24 +229,45 @@ for (f in 1:nloci){
       #produce model string
       if (modelType == "GTR" | modelType == "SYM") {
         modelstring <- paste(modelType, paste(paramvector[1:5], collapse=" "))
+        modelrate <- rbind(modelrate, c(a=paramvector[1],b=paramvector[2],
+                                        c=paramvector[3],d=paramvector[4],
+                                        e=paramvector[5],f=1))
       }
       if (modelType == "TVM" | modelType == "TVMef" ) {
         modelstring <- paste(modelType, paste(paramvector[2:5], collapse=" "))
+        modelrate <- rbind(modelrate, c(a=1,b=paramvector[2],
+                                        c=paramvector[3],d=paramvector[4],
+                                        e=paramvector[5],f=1))
       }
       if (modelType == "TIM" | modelType == "TIMef") {
         modelstring <- paste(modelType, paste(paramvector[1:3], collapse=" "))
+        modelrate <- rbind(modelrate, c(a=paramvector[1],b=paramvector[2],
+                                        c=paramvector[3],d=paramvector[3],
+                                        e=paramvector[2],f=1))
       }
       if (modelType == "K81uf" | modelType == "K81") {
         modelstring <- paste(modelType, paste(paramvector[2:3], collapse=" "))
+        modelrate <- rbind(modelrate, c(a=1,b=paramvector[2],
+                                        c=paramvector[3],d=paramvector[3],
+                                        e=paramvector[2],f=1))
       }
       if (modelType == "TrN" | modelType == "TrNef") {
         modelstring <- paste(modelType, paste(paramvector[c(1,6)], collapse=" "))
+        modelrate <- rbind(modelrate, c(a=paramvector[1],b=1,
+                                        c=1,d=1,
+                                        e=1,f=paramvector[6]))
       }
       if (modelType == "HKY" | modelType == "K80") {
         modelstring <- paste(modelType, paramvector[1])
+        modelrate <- rbind(modelrate, c(a=paramvector[1],b=1,
+                                        c=1,d=1,
+                                        e=1,f=paramvector[1]))
       }
       if (modelType == "F81" | modelType == "JC") {
         modelstring <- modelType
+        modelrate <- rbind(modelrate, c(a=1,b=1,
+                                        c=1,d=1,
+                                        e=1,f=1))
       }
       #indel model
       paramvector[7] <- round(runif(1,min=1.5,max=2),3)
@@ -249,7 +288,12 @@ for (f in 1:nloci){
       write(paste("\t[indelrate]", paramvector[8]),
           file=outfile, append=T)
     }
+    modelratesd[f] <- mean(apply(modelrate,2,sd))
+    modelkappasd[f] <- NA
+    modelselectionmean[f] <- NA
+    modelselectionsd[f] <- NA
   }
+  modelbfsd[f] <- mean(apply(modelbf,2,sd))
 }
 
 for (f in 1:nloci){
@@ -301,7 +345,7 @@ for (f in 1:nloci){
         file=outfile, append = T)
 }
 
-df2 <- cbind(df2, modelnum)
+df2 <- cbind(df2, modelnum, modelkappasd, modelselectionmean, modelselectionsd, modelratesd, modelbfsd)
 write.csv(df2,"df2.csv")
 
 cmd0 <- "mkdir alignments1"
