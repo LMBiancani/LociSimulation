@@ -32,26 +32,20 @@ taxon_list <- character()
 
 nloci <- length(gene_trees)
 
-root_tip <- vector(length = nloci)
 average_support <- vector(length = nloci)
 robinson <- vector(length = nloci)
 wrobinson <- vector(length = nloci)
-average_patristic <- vector(length = nloci)
 treeness <- vector(length = nloci)
-tree_length <- vector(length = nloci)
 tree_rate <- vector(length = nloci)
 tree_rate_var <- vector(length = nloci)
 base_composition_variance <- vector(length = nloci)
 saturation_slope <- vector(length = nloci)
 saturation_rsq <- vector(length = nloci)
-average_raw_pairwise_distance <- vector(length = nloci)
-occupancy <- vector(length = nloci)
+number_of_taxa <- vector(length = nloci)
 alignment_length <- vector(length = nloci)
 percent_missing <- vector(length = nloci)
 percent_variable <- vector(length = nloci)
 phyloinf <- vector(length = nloci)
-sequence_rate_harmonic <- vector(length = nloci)
-sequence_rate_harmonic_noZero <- vector(length = nloci)
 if (argsLen == 8) {
 	fastsp_table <- read.csv(fastsp_table_path, header=F)
 	alignmentSPscore <- vector(length = nloci)
@@ -69,32 +63,24 @@ for (f in 1:nloci) {
 	pruned_species_tree <- species_trees[[f]]
 	alignment <- read.dna(paste0(alignment_folder_path, "/", locname), "fasta")
 
-	if ("node.label" %in% names(geneTree)) {
-		#root to tip
-		root_tip[f] <- var(dist.nodes(midpoint.root(geneTree))[(length(midpoint.root(geneTree)$tip.label)+1),(1:length(midpoint.root(geneTree)$tip.label))])
-		# root_tip[f] = sd(dist.nodes(midpoint.root(reroot(geneTree, (length(geneTree$tip.label)+5))))[(length(geneTree$tip.label)+1),(1:length(geneTree$tip.label))])
-		
+	if ("node.label" %in% names(geneTree)) {		
 		#average bs
 		ufboot <- sapply(strsplit(geneTree$node.label, "/"), function(x) x[2])
 		average_support[f] <- mean(as.numeric(ufboot), na.rm = T)
-		#RF <- this is actually only for simulated things - RF btw true tree and inferred tree - use as Y
 
-		#test empirical RF
+		#RF/wRF
 		if (argsLen == 8) {
-
+			#Compute RF similarity
 			robinson[f] <- 1 - suppressMessages(RF.dist(pruned_species_tree, geneTree, normalize = TRUE, check.labels = TRUE))
-
+			#Rescale tree to length of 1
 			geneTree1 <- geneTree
 			geneTree1$edge.length <- geneTree1$edge.length/max(nodeHeights(geneTree1)[,2])*1.0
+			#Compute wRF similarity on the rescaled tree
 			wrobinson[f] <- 1 - suppressMessages(wRF.dist(pruned_species_tree, geneTree1, normalize = TRUE, check.labels = TRUE))			
+			#Compute alignment similarity
 			alignmentSPscore[f] <- fastsp_table$V2[fastsp_table$V1 == locname]
 		}
 	 
-	    #patristic tree based
-		patristic <- as.matrix(distTips(geneTree, tips = 'all', method = 'patristic', useC = T))
-		patristic <- patristic[lower.tri(patristic)]
-	    average_patristic[f] <- mean(patristic)
-
 	    #tip branches
 	   	tip_branches <- which(geneTree$edge[,2] %in% c(1:length(geneTree$tip.label)))
 	    
@@ -102,10 +88,10 @@ for (f in 1:nloci) {
 	    treeness[f] <- 1 - (sum(geneTree$edge.length[tip_branches])/sum(geneTree$edge.length))
 
 	    #tree length
-	    tree_length[f] <- sum(geneTree$edge.length)
+	    tree_length <- sum(geneTree$edge.length)
 
 	    #tree based rate
-	    tree_rate[f] <- tree_length[f]/length(geneTree$tip.label)
+	    tree_rate[f] <- tree_length/length(geneTree$tip.label)
 
 	    #tree based rate variation
 	    tree_rate_var[f] <- var(geneTree$edge.length)
@@ -140,12 +126,9 @@ for (f in 1:nloci) {
 		saturation_slope[f] <- coef(regress)[2]
 		# get r-squared
 		saturation_rsq[f] <- summary(regress)$r.squared
-		# mean p-dist
-		average_raw_pairwise_distance[f] <- mean(p_dist, na.rm=T)
 
-		#occupancy
-		# occupancy[f] <- length(geneTree$tip.label) / length(species_tree$tip.label)
-		occupancy[f] <- length(geneTree$tip.label)# / max_no_taxa
+		#number of taxa - for occupancy computation
+		number_of_taxa[f] <- length(geneTree$tip.label)
 
 		#amas subset
 		amas_entry <- amas_table[amas_table$Alignment_name == locname,]
@@ -185,16 +168,8 @@ for (f in 1:nloci) {
 			}
 			#auc
 			phyloinf[f] <- auc(fit1$x1, inform_pen,type = "spline")
-
-
-
-			#site rates
-			sequence_rate_harmonic[f] <- harmonic.mean(rates_per_site)
-			sequence_rate_harmonic_noZero[f] <- harmonic.mean(rates_per_site,zero = F)		
 		} else {
 			phyloinf[f] <- NA
-			sequence_rate_harmonic[f] <- NA
-			sequence_rate_harmonic_noZero[f] <- NA
 		}
 	} else {
 		average_support[f] <- NA
@@ -203,44 +178,35 @@ for (f in 1:nloci) {
 			wrobinson[f] <- NA
 			alignmentSPscore[f] <- NA
 		}
-		root_tip[f] <- NA
-		average_patristic[f] <- NA
 		treeness[f] <- NA
-		tree_length[f]<- NA
 		tree_rate[f] <- NA
 		tree_rate_var[f] <- NA
 		base_composition_variance[f] <- NA
-		average_raw_pairwise_distance[f] <- NA
 		saturation_slope[f] <- NA
 		saturation_rsq[f] <- NA
-		occupancy[f] <- NA
+		number_of_taxa[f] <- NA
 		alignment_length[f] <- NA
 		percent_missing[f] <- NA
 		percent_variable[f] <- NA
 		phyloinf[f] <- NA
-		sequence_rate_harmonic[f] <- NA
-		sequence_rate_harmonic_noZero[f] <- NA
 	}
-
-	
-
 }
 
-occupancy <- occupancy / length(taxon_list)
+#rescale taxon number by the total number of taxa
+#to obtain occupancy
+occupancy <- number_of_taxa / length(taxon_list)
 
 #gather gene properties
 if (argsLen == 8) {
 	variables <- data.frame(locname=names(gene_trees),
 		robinson, wrobinson, alignmentSPscore,
-		root_tip, average_patristic, average_support,
-		treeness, tree_length, tree_rate, tree_rate_var,
-		base_composition_variance, saturation_slope, saturation_rsq, average_raw_pairwise_distance,
+		average_support, treeness, tree_rate, tree_rate_var,
+		base_composition_variance, saturation_slope, saturation_rsq,
 		occupancy, alignment_length, percent_missing, percent_variable, phyloinf)
 } else {
 	variables <- data.frame(locname=names(gene_trees),
-		root_tip, average_support, average_patristic,
-		treeness, tree_length, tree_rate, tree_rate_var,
-		base_composition_variance, saturation_slope, saturation_rsq, average_raw_pairwise_distance,
+		average_support, treeness, tree_rate, tree_rate_var,
+		base_composition_variance, saturation_slope, saturation_rsq,
 		occupancy, alignment_length, percent_missing, percent_variable, phyloinf)
 }
 write.table(variables, output_name, row.names = F, sep = '\t')
