@@ -1,26 +1,34 @@
+# A script to generate random simulation parameters
+#
+# Working dir is expected to be a specific 
+# species tree dataset folder
+#
+# Adjust the path to modified.write.tree2.R func
+#
+# Comment/uncomment the rate params! (lines 37-41)
+#
 library(ape)
 library(geiger)
 library(MultiRNG)
 library(EnvStats)
 library(extraDistr)
+
+sptree <- read.tree("1/s_tree.trees")
+#convert species tree to an appropriate nexus format species tree file
+source("/home/alex/tools/PML/simulation/modified.write.tree2.R")
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+write("#NEXUS", file="sptree.nex")
+write("begin trees;", file="sptree.nex", append=T)
+write(paste0("\ttree tree_1 = [&R] ", write.tree(sptree, digits=8, file="")), file="sptree.nex", append=T)
+write("end;", file="sptree.nex", append=T)
+
 #settings
 nloci <- 2000
-# args <- commandArgs(trailingOnly=TRUE)
-sptree <- read.tree("1/s_tree.trees")
 params <- unlist(strsplit(readLines("generate_params.txt"), " "))
 Ne <- as.numeric(params[2])
 print(Ne)
 random_seed <- as.numeric(params[1])
 print(random_seed)
-#write.nexus(sptree, file="sptree.nex", translate = F)
-source("/home/alex/tools/PML/simulation/modified.write.tree2.R")
-assignInNamespace(".write.tree2", .write.tree2, "ape")
-# options(scipen = 999)
-
-write("#NEXUS", file="sptree.nex")
-write("begin trees;", file="sptree.nex", append=T)
-write(paste0("\ttree tree_1 = [&R] ", write.tree(sptree, digits=8, file="")), file="sptree.nex", append=T)
-write("end;", file="sptree.nex", append=T)
 ntaxa <- length(sptree$tip.label)
 df <- data.frame(loci=paste0("loc_",as.character(1:nloci)))
 set.seed(random_seed)
@@ -34,7 +42,6 @@ abl <- round(runif(nloci,min=-20,max=-18),3) #random trees 1-12
 df <- cbind(df, abl)
 
 #variance in branch length - variance in rate - heterotachy
-# vbl <- round(runif(nloci,min=0.5,max=5.5),3)
 vbl <- round(runif(nloci,min=0.5,max=2.5),3)
 df <- cbind(df, vbl)
 
@@ -58,11 +65,11 @@ df <- cbind(df, lambdaPS)
 Ne <- rep(Ne, nloci)
 df <- cbind(df, Ne)
 
-#simphy seeds
+#SimPhy seeds
 seed1 <- sample(10000:99999,nloci, replace=F)
 df <- cbind(df, seed1)
 
-#indelible seeds
+#INDELible seeds
 seed2 <- rep(12345, nloci)
 seed2[df$proteinCoding == T] <- 54321
 df <- cbind(df, seed2)
@@ -108,6 +115,6 @@ df <- cbind(df, cont_pair_cont)
 cont_pairs <- apply(df, 1, function(x) sample(x$remaining_taxa,x$cont_pair_cont*2) )
 df$cont_pairs <- cont_pairs
 
-# print (df)
+#write output
 df <- apply(df,2,as.character)
 write.csv(df,"df.csv")
