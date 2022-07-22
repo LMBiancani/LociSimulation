@@ -1,3 +1,14 @@
+# A script to generate control files for INDELible
+# and a parameter log file
+# (model params are simulated at this step)
+#
+# Working dir is expected to be a specific 
+# species tree dataset folder
+#
+# Adjust the path to modified.write.tree2.R func
+#
+# Comment/uncomment the rate params! (lines 37-41)
+#
 library(ape)
 library(geiger)
 library(extraDistr)
@@ -68,6 +79,7 @@ modelkappasd <- numeric()
 modelselectionmean <- numeric()
 modelselectionsd <- numeric()
 
+# writing out MODEL block
 for (f in 1:nloci){
   set.seed(df$modelseed[f])
   #modify the gene tree by lambda and get paralogs
@@ -129,6 +141,9 @@ for (f in 1:nloci){
   branchlist[[f]] <- new_tree2
 
   if (df$proteinCoding[f] == "TRUE") {
+
+    #protein coding locus processing
+
     outfile = "controlCDS.txt"
     modelType <- "M2"
     #rate heterogeneity has to be same all over the tree
@@ -141,7 +156,6 @@ for (f in 1:nloci){
     #iterate over models
     for (model1 in modelnames) {
       basefreqs <- draw.dirichlet(1,61,rep(10,61),1)[1,]
-      # basefreqs[1] <- 1-sum(basefreqs[2:61]) 
       basefreqs <- c(basefreqs[1:10], 0, 0, basefreqs[11:12], 0, basefreqs[13:61])
       modelbf <- rbind(modelbf, basefreqs)
       kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
@@ -152,6 +166,8 @@ for (f in 1:nloci){
       paramvector[7] <- round(runif(1,min=1.5,max=2),3) #indel model
       paramvector[8] <- round(runif(1,min=0.001,max=0.002),5) #indel rate
       modelstring <- paste(paramvector[1:6], collapse=" ")
+
+      #write out model params
       write(paste("[MODEL]", model1),
             file=outfile, append=T)
       write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")),
@@ -169,6 +185,9 @@ for (f in 1:nloci){
     modelselectionsd[f] <- sd(modelselection)
     
   } else {
+
+    #nucleotide (NON-protein coding) locus processing
+
     outfile = "control.txt"
     #rate heterogeneity has to be same all over the tree
     #pinv
@@ -194,7 +213,6 @@ for (f in 1:nloci){
         #T C A G
         basefreqs <- draw.dirichlet(1,4,c(10,10,10,10),1)[1,]
         modelbf <- rbind(modelbf, basefreqs)
-        # basefreqs[4] <- 1-sum(basefreqs[1:3])
       } else {
         basefreqs = NA
         modelbf <- rbind(modelbf, rep(0.25,4))
@@ -226,6 +244,7 @@ for (f in 1:nloci){
       if (modelType == "TrN" | modelType == "TrNef") {
         paramvector[6] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
       }
+
       #produce model string
       if (modelType == "GTR" | modelType == "SYM") {
         modelstring <- paste(modelType, paste(paramvector[1:5], collapse=" "))
@@ -269,20 +288,26 @@ for (f in 1:nloci){
                                         c=1,d=1,
                                         e=1,f=1))
       }
+
       #indel model
       paramvector[7] <- round(runif(1,min=1.5,max=2),3)
       #indel rate
       paramvector[8] <- round(runif(1,min=0.001,max=0.002),5)
+
+      #write out model params
       write(paste("[MODEL]", model1),
             file=outfile, append=T)
       write(paste("\t[submodel]", modelstring),
             file=outfile, append=T)
+      #write out basefreqs
       if (!is.na(basefreqs[1])){
         write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")),
                 file=outfile, append=T)
       }
+      #write out RVAS rates
       write(paste("\t[rates]", pInv, alpha, ngamcat),
           file=outfile, append=T)
+      #write out indel model
       write(paste("\t[indelmodel] POW", paramvector[7], "10"),
           file=outfile, append=T)
       write(paste("\t[indelrate]", paramvector[8]),
@@ -296,6 +321,7 @@ for (f in 1:nloci){
   modelbfsd[f] <- mean(apply(modelbf,2,sd))
 }
 
+# writing out TREE block
 for (f in 1:nloci){
   if (df$proteinCoding[f] == "TRUE") {
     outfile = "controlCDS.txt"
@@ -306,7 +332,8 @@ for (f in 1:nloci){
   write(paste0("[TREE] t_", df$loci[f], " ", write.tree(treelist[[f]],file="")),
         file=outfile, append=T)
 }
-# add [BRANCHES] data
+
+# writing out BRANCHES block
 for (f in 1:nloci){
   if (df$proteinCoding[f] == "TRUE") {
     outfile = "controlCDS.txt"
@@ -317,7 +344,8 @@ for (f in 1:nloci){
   write(paste0("[BRANCHES] b_", df$loci[f], " ", write.tree(branchlist[[f]],file="")),
         file=outfile, append=T)
 }
-# add branches to the partitions
+
+# writing out PARTITIONS block
 for (f in 1:nloci){
   if (df$proteinCoding[f] == "TRUE") {
     outfile = "controlCDS.txt"
@@ -333,6 +361,7 @@ for (f in 1:nloci){
 
 }
 
+# writing out EVOLVE block
 write("[EVOLVE]", file="control.txt", append = T)
 write("[EVOLVE]", file="controlCDS.txt", append = T)
 for (f in 1:nloci){
@@ -345,8 +374,10 @@ for (f in 1:nloci){
         file=outfile, append = T)
 }
 
+#logging simulated model params
 df2 <- cbind(df2, modelnum, modelkappasd, modelselectionmean, modelselectionsd, modelratesd, modelbfsd)
 write.csv(df2,"df2.csv")
 
+#make dir for INDELible simulations
 cmd0 <- "mkdir alignments1"
 system(cmd0)
