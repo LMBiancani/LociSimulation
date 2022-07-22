@@ -1,3 +1,12 @@
+# A script to write the tree with correct branch length values
+# avoiding exponential form
+#
+# Reimplementation of APE 5.6-2 .write.tree2 function
+# Thanks to François Michonneau for providing the advice:
+# https://www.mail-archive.com/r-sig-phylo@r-project.org/msg03045.html
+#
+# The key is line 16, 'g' changed to 'f'
+#
 .write.tree2 <- function(phy, digits = 6, tree.prefix = "", check_tips)
 {
     brl <- !is.null(phy$edge.length)
