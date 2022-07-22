@@ -1,3 +1,7 @@
+# A script to modify INDELible alignments
+# introducing the crosscontamination and
+# missing data
+#
 library(ape)
 
 args = commandArgs(trailingOnly=TRUE)
@@ -52,7 +56,7 @@ for (f in 1:nloci){
 	if (length(badpos) > 0) {
 		locus <- locus[,-badpos]
 	}
-	#
+	#write out resulting alignment
 	locus <- as.DNAbin(locus)
 	write.FASTA(locus, paste0("alignments2/", df$loci[f],".fas"))
 }
