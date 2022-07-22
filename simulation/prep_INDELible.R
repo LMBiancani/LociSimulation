@@ -7,7 +7,6 @@
 #
 # Adjust the path to modified.write.tree2.R func
 #
-# Comment/uncomment the rate params! (lines 37-41)
 #
 library(ape)
 library(geiger)
