@@ -27,20 +27,28 @@ nloci <- length(df[,1])
 source("/home/alex/tools/PML/simulation/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")
 options(scipen = 999)
+
 modify_tree <- function(oldTree, lambdaVal, ParalogTaxa, ParalogBL) {
+  
+  #a function to add paralogy and phylogenetic signal modification
+
   #edit tip names
   oldTree[[1]]$tip.label <- sapply(strsplit(oldTree[[1]]$tip.label, "_"), function(x) x[1])
 
-  #drop out paralogs
+  #transform orthologs into paralogs
   paralog_tips <- eval(parse(text=ParalogTaxa))
   if (length (paralog_tips) == 0) {
     newTree <- oldTree[[1]]
   } else {
     paralog_tips <- as.character(paralog_tips)
+    #split tree
+    #pull out taxa selected to be paralogs as a subtree
     orthoTree <- drop.tip(oldTree[[1]],paralog_tips)
     paraTree <- drop.tip(oldTree[[1]],oldTree[[1]]$tip.label[!(oldTree[[1]]$tip.label %in% paralog_tips)])
+    #regraft the paralog subtree
     newTree <- bind.tree(orthoTree, paraTree)
     newTree <- multi2di(newTree,random = F)
+    #modify paralog clade branch length
     if (length(paralog_tips) == 1) {
       newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] <- newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] + max(newTree$edge.length)*ParalogBL
     } else {
@@ -53,6 +61,7 @@ modify_tree <- function(oldTree, lambdaVal, ParalogTaxa, ParalogBL) {
   
   return(newTree)
 }
+
 #non CDS
 write("[TYPE] NUCLEOTIDE 1",
       file="control.txt")
