@@ -24,5 +24,6 @@ mkdir iqtree_genetrees3
 mkdir phylomad_assessment
 mkdir rate_assessment
 mkdir iqtree_concattree
+mkdir astral_tree
 
 date
