@@ -208,7 +208,7 @@ def main():
                             columns =['features', 'h_vals'])
         df1.to_csv("first_order_H_vals.csv", index=False, encoding='utf-8')
 
-        #compute top 10 second order H-values
+        #compute second order H-values
         subsets = []
         h_vals = []
         for n in [2,3]:
@@ -226,17 +226,15 @@ def main():
                 subsets1 = np.array(subsets)
                 h_vals1 = np.array(h_vals)
                 k1 = 4
-                for subset1 in subsets1[h_vals.argsort()[::-1][:k1]]:
+                for subset1 in subsets1[h_vals1.argsort()[::-1][:k1]]:
                     print (subset1)
-                    split_feats = subsets1.split(' x ')
-                    feats = [(split_feats[0], split_feats[1])]
-                    PartialDependenceDisplay.from_estimator(rfr_tt, df, feats, kind='average', n_jobs=n_jobs)
+                    split_feats = [tuple(subset1.split(' x '))]
+                    PartialDependenceDisplay.from_estimator(rfr_tt, df, split_feats, kind='average', n_jobs=n_jobs)
                     plt.tight_layout(pad=0.5)
                     plt.savefig(subset1+".svg")
         subsets = np.array(subsets)
         h_vals = np.array(h_vals)
-        k = 10
-        df2 = ps.DataFrame({'features':subsets[h_vals.argsort()[::-1][:k]], 'h_vals':h_vals[h_vals.argsort()[::-1][:k]]})
+        df2 = ps.DataFrame({'features':subsets[h_vals.argsort()[::-1]], 'h_vals':h_vals[h_vals.argsort()[::-1]]})
         df2.to_csv("second_order_H_vals.csv", index=False, encoding='utf-8')
 
 
