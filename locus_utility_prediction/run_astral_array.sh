@@ -14,7 +14,7 @@ date
 gene_tree_path="../inferred_gene_trees_Test.tre"
 gene_tree_names="../inferred_gene_trees_Test.txt"
 astral_path="/home/aknyshov/alex_data/andromeda_tools/ASTRAL/Astral/astral.5.7.8.jar"
-collapser_path="/home/aknyshov/alex_data/ML/init_tests/collapse_by.R"
+collapser_path="/home/aknyshov/alex_data/andromeda_tools/PML/feature_assessment/collapse_by.R"
 
 single_sample=$(sed -n ${SLURM_ARRAY_TASK_ID}p array_list.txt)
 sed_exp=$(cut -f1 -d, ${single_sample} | grep -wnf - ${gene_tree_names} | awk -F: '{print $1"p"}' | paste -sd";")
