@@ -197,10 +197,10 @@ def main():
         f_vals = compute_f_vals_manual(rfr_tt, df, feats=feats)
 
         #compute first order H-values
+        print ("compute first order H-values")
         subsets = []
         h_vals = []
         for subset in feats:
-            print (subset)
             h_val = compute_h_val_any(f_vals, feats, subset)
             subsets.append(subset)
             h_vals.append(h_val)
@@ -209,13 +209,13 @@ def main():
         df1.to_csv("first_order_H_vals.csv", index=False, encoding='utf-8')
 
         #compute second order H-values
+        print ("compute second order H-values")
         subsets = []
         h_vals = []
         for n in [2,3]:
             combs = itertools.combinations(feats, n)
-            print ("level:", n, "combinations:", combs)
+            print ("level:", n)
             for subset in combs:
-                print (subset)
                 h_val = compute_h_val(f_vals, subset)
                 subsets.append(' x '.join(subset))
                 h_vals.append(h_val)
