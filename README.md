@@ -908,6 +908,96 @@ grid.arrange(p3_1, p3_2, p3_3, p3_4,
 #400x800
 ```
 
+Additionally, for the supplements, marginalize over the extremes of one of the properties (high and low rate, high or 0 paralogy) and plot importances depending on the model. This provides insight into how differently trained models detect same locus properties.
+```
+#predicted importance vs features - top abl, bottom abl, top paralog, 0 paralog
+#rate
+colnames(combo_simul_eval_df_predRF)
+length(combo_simul_eval_df_predRF$abl[combo_simul_eval_df_predRF$abl<(-19.7) & combo_simul_eval_df_predRF$paralog_cont==0 & combo_simul_eval_df_predRF$cont_pair_cont==0])
+length(combo_simul_eval_df_predRF$abl[combo_simul_eval_df_predRF$abl>(-18) & combo_simul_eval_df_predRF$paralog_cont==0 & combo_simul_eval_df_predRF$cont_pair_cont==0])
+highlowrateRFdf <- melt(combo_simul_eval_df_predRF[(combo_simul_eval_df_predRF$abl<(-19.7) |
+                                                   combo_simul_eval_df_predRF$abl>(-18)) & 
+                                                     combo_simul_eval_df_predRF$paralog_cont==0 & 
+                                                     combo_simul_eval_df_predRF$cont_pair_cont==0,
+                                                 c(1:2,55:66)],
+                      id=c("loci", "abl"))
+levels(highlowrateRFdf$variable) <- gsub("\\.y","", levels(highlowrateRFdf$variable))
+highlowrateRFdf$rate <- "high (>ln(-18))"
+highlowrateRFdf$rate[highlowrateRFdf$abl<(-19.7)] <- "low (<ln(-19.7))"
+p6_1 <- ggplot(highlowrateRFdf) +
+  geom_boxploth(aes(x=value, y=variable,fill= rate),outlier.shape = NA) +
+  theme_bw() +
+  ylab("features") +
+  xlab("importances") +
+  ggtitle("RF model: high vs low rate")
+
+hist(combo_simul_eval_df_predRF$prop_paralogy)
+
+highlowratewRFdf <- melt(combo_simul_eval_df_predwRF[(combo_simul_eval_df_predwRF$abl<(-19.7) |
+                                                      combo_simul_eval_df_predwRF$abl>(-18)) & 
+                                                     combo_simul_eval_df_predwRF$paralog_cont==0 & 
+                                                     combo_simul_eval_df_predwRF$cont_pair_cont==0,
+                                                   c(1:2,55:66)],
+                        id=c("loci", "abl"))
+levels(highlowratewRFdf$variable) <- gsub("\\.y","", levels(highlowratewRFdf$variable))
+highlowratewRFdf$rate <- "high (>ln(-18))"
+highlowratewRFdf$rate[highlowratewRFdf$abl<(-19.7)] <- "low (<ln(-19.7))"
+p6_3 <- ggplot(highlowratewRFdf) +
+  geom_boxploth(aes(x=value, y=variable,fill= rate),outlier.shape = NA) +
+  theme_bw() +
+  ylab("features") +
+  xlab("importances") +
+  ggtitle("wRF model: high vs low rate")
+
+
+# highlowparalogRFdf <- melt(rbind(combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$paralog_cont>4,c(1,16,53:64)],
+#                                  combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$paralog_cont==0,c(1,16,53:64)][1:1000,]),
+#                            id=c("loci", "paralog_cont"))
+length(which(combo_simul_eval_df_predRF$prop_paralogy>0.04 &
+               (combo_simul_eval_df_predRF$abl >19 | combo_simul_eval_df_predRF$abl <18) &
+               combo_simul_eval_df_predRF$cont_pair_cont==0))
+highlowparalogRFdf <- melt(rbind(combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$prop_paralogy>0.04 &
+                                                              (combo_simul_eval_df_predRF$abl >19 | combo_simul_eval_df_predRF$abl <18) &
+                                                              combo_simul_eval_df_predRF$cont_pair_cont==0,c(1,28,55:66)],
+                                 combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$paralog_cont==0 &
+                                                              (combo_simul_eval_df_predRF$abl >19 | combo_simul_eval_df_predRF$abl <18) &
+                                                              combo_simul_eval_df_predRF$cont_pair_cont==0,c(1,28,55:66)][1:1000,]),
+                           id=c("loci", "prop_paralogy"))
+length(combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$prop_paralogy>0.04,1])
+levels(highlowparalogRFdf$variable) <- gsub("\\.y","", levels(highlowparalogRFdf$variable))
+highlowparalogRFdf$paralogy <- "low (0%)"
+highlowparalogRFdf$paralogy[highlowparalogRFdf$prop_paralogy>0] <- "high (>4%)"
+
+p6_2 <- ggplot(highlowparalogRFdf) +
+  geom_boxploth(aes(x=value, y=variable,fill= paralogy),outlier.shape = NA) +
+  theme_bw() +
+  theme(axis.title.y = element_blank()) +
+  xlab("importances") +
+  ggtitle("RF model: high vs low paralogy")
+
+highlowparalogwRFdf <- melt(rbind(combo_simul_eval_df_predwRF[combo_simul_eval_df_predwRF$prop_paralogy>0.04 &
+                                                              (combo_simul_eval_df_predwRF$abl >19 | combo_simul_eval_df_predwRF$abl <18) &
+                                                              combo_simul_eval_df_predwRF$cont_pair_cont==0,c(1,28,55:66)],
+                                 combo_simul_eval_df_predwRF[combo_simul_eval_df_predwRF$paralog_cont==0 &
+                                                              (combo_simul_eval_df_predwRF$abl >19 | combo_simul_eval_df_predwRF$abl <18) &
+                                                              combo_simul_eval_df_predwRF$cont_pair_cont==0,c(1,28,55:66)][1:1000,]),
+                           id=c("loci", "prop_paralogy"))
+
+levels(highlowparalogwRFdf$variable) <- gsub("\\.y","", levels(highlowparalogwRFdf$variable))
+highlowparalogwRFdf$paralogy <- "low (0%)"
+highlowparalogwRFdf$paralogy[highlowparalogwRFdf$prop_paralogy>0] <- "high (>4%)"
+
+p6_4 <- ggplot(highlowparalogwRFdf) +
+  geom_boxploth(aes(x=value, y=variable,fill= paralogy),outlier.shape = NA) +
+  theme_bw() +
+  theme(axis.title.y = element_blank()) +
+  xlab("importances") +
+  ggtitle("wRF model: high vs low paralogy")
+
+grid.arrange(p6_1, p6_2, p6_3, p6_4, ncol=2, nrow =2, widths=c(0.52,0.48))
+#945x647
+```
+
 ### Interaction btw features
 
 First, assess the interactions in each model. Navigate to the folder with the model, create a folder for interaction results and change into it:
@@ -1017,95 +1107,6 @@ grid.arrange(p5_1, p5_2, p5_3, p5_4, p5_5, p5_6,
 
 ```
 
-Additionally, for the supplements, marginalize over the extremes of one of the properties (high and low rate, high or 0 paralogy) and plot importances depending on the model. This provides insight into how differently trained models detect same locus properties.
-```
-#predicted importance vs features - top abl, bottom abl, top paralog, 0 paralog
-#rate
-colnames(combo_simul_eval_df_predRF)
-length(combo_simul_eval_df_predRF$abl[combo_simul_eval_df_predRF$abl<(-19.7) & combo_simul_eval_df_predRF$paralog_cont==0 & combo_simul_eval_df_predRF$cont_pair_cont==0])
-length(combo_simul_eval_df_predRF$abl[combo_simul_eval_df_predRF$abl>(-18) & combo_simul_eval_df_predRF$paralog_cont==0 & combo_simul_eval_df_predRF$cont_pair_cont==0])
-highlowrateRFdf <- melt(combo_simul_eval_df_predRF[(combo_simul_eval_df_predRF$abl<(-19.7) |
-                                                   combo_simul_eval_df_predRF$abl>(-18)) & 
-                                                     combo_simul_eval_df_predRF$paralog_cont==0 & 
-                                                     combo_simul_eval_df_predRF$cont_pair_cont==0,
-                                                 c(1:2,55:66)],
-                      id=c("loci", "abl"))
-levels(highlowrateRFdf$variable) <- gsub("\\.y","", levels(highlowrateRFdf$variable))
-highlowrateRFdf$rate <- "high (>ln(-18))"
-highlowrateRFdf$rate[highlowrateRFdf$abl<(-19.7)] <- "low (<ln(-19.7))"
-p6_1 <- ggplot(highlowrateRFdf) +
-  geom_boxploth(aes(x=value, y=variable,fill= rate),outlier.shape = NA) +
-  theme_bw() +
-  ylab("features") +
-  xlab("importances") +
-  ggtitle("RF model: high vs low rate")
-
-hist(combo_simul_eval_df_predRF$prop_paralogy)
-
-highlowratewRFdf <- melt(combo_simul_eval_df_predwRF[(combo_simul_eval_df_predwRF$abl<(-19.7) |
-                                                      combo_simul_eval_df_predwRF$abl>(-18)) & 
-                                                     combo_simul_eval_df_predwRF$paralog_cont==0 & 
-                                                     combo_simul_eval_df_predwRF$cont_pair_cont==0,
-                                                   c(1:2,55:66)],
-                        id=c("loci", "abl"))
-levels(highlowratewRFdf$variable) <- gsub("\\.y","", levels(highlowratewRFdf$variable))
-highlowratewRFdf$rate <- "high (>ln(-18))"
-highlowratewRFdf$rate[highlowratewRFdf$abl<(-19.7)] <- "low (<ln(-19.7))"
-p6_3 <- ggplot(highlowratewRFdf) +
-  geom_boxploth(aes(x=value, y=variable,fill= rate),outlier.shape = NA) +
-  theme_bw() +
-  ylab("features") +
-  xlab("importances") +
-  ggtitle("wRF model: high vs low rate")
-
-
-# highlowparalogRFdf <- melt(rbind(combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$paralog_cont>4,c(1,16,53:64)],
-#                                  combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$paralog_cont==0,c(1,16,53:64)][1:1000,]),
-#                            id=c("loci", "paralog_cont"))
-length(which(combo_simul_eval_df_predRF$prop_paralogy>0.04 &
-               (combo_simul_eval_df_predRF$abl >19 | combo_simul_eval_df_predRF$abl <18) &
-               combo_simul_eval_df_predRF$cont_pair_cont==0))
-highlowparalogRFdf <- melt(rbind(combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$prop_paralogy>0.04 &
-                                                              (combo_simul_eval_df_predRF$abl >19 | combo_simul_eval_df_predRF$abl <18) &
-                                                              combo_simul_eval_df_predRF$cont_pair_cont==0,c(1,28,55:66)],
-                                 combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$paralog_cont==0 &
-                                                              (combo_simul_eval_df_predRF$abl >19 | combo_simul_eval_df_predRF$abl <18) &
-                                                              combo_simul_eval_df_predRF$cont_pair_cont==0,c(1,28,55:66)][1:1000,]),
-                           id=c("loci", "prop_paralogy"))
-length(combo_simul_eval_df_predRF[combo_simul_eval_df_predRF$prop_paralogy>0.04,1])
-levels(highlowparalogRFdf$variable) <- gsub("\\.y","", levels(highlowparalogRFdf$variable))
-highlowparalogRFdf$paralogy <- "low (0%)"
-highlowparalogRFdf$paralogy[highlowparalogRFdf$prop_paralogy>0] <- "high (>4%)"
-
-p6_2 <- ggplot(highlowparalogRFdf) +
-  geom_boxploth(aes(x=value, y=variable,fill= paralogy),outlier.shape = NA) +
-  theme_bw() +
-  theme(axis.title.y = element_blank()) +
-  xlab("importances") +
-  ggtitle("RF model: high vs low paralogy")
-
-highlowparalogwRFdf <- melt(rbind(combo_simul_eval_df_predwRF[combo_simul_eval_df_predwRF$prop_paralogy>0.04 &
-                                                              (combo_simul_eval_df_predwRF$abl >19 | combo_simul_eval_df_predwRF$abl <18) &
-                                                              combo_simul_eval_df_predwRF$cont_pair_cont==0,c(1,28,55:66)],
-                                 combo_simul_eval_df_predwRF[combo_simul_eval_df_predwRF$paralog_cont==0 &
-                                                              (combo_simul_eval_df_predwRF$abl >19 | combo_simul_eval_df_predwRF$abl <18) &
-                                                              combo_simul_eval_df_predwRF$cont_pair_cont==0,c(1,28,55:66)][1:1000,]),
-                           id=c("loci", "prop_paralogy"))
-
-levels(highlowparalogwRFdf$variable) <- gsub("\\.y","", levels(highlowparalogwRFdf$variable))
-highlowparalogwRFdf$paralogy <- "low (0%)"
-highlowparalogwRFdf$paralogy[highlowparalogwRFdf$prop_paralogy>0] <- "high (>4%)"
-
-p6_4 <- ggplot(highlowparalogwRFdf) +
-  geom_boxploth(aes(x=value, y=variable,fill= paralogy),outlier.shape = NA) +
-  theme_bw() +
-  theme(axis.title.y = element_blank()) +
-  xlab("importances") +
-  ggtitle("wRF model: high vs low paralogy")
-
-grid.arrange(p6_1, p6_2, p6_3, p6_4, ncol=2, nrow =2, widths=c(0.52,0.48))
-#945x647
-```
 
 ### Impact of subsampling
 
