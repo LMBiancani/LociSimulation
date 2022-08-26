@@ -777,10 +777,33 @@ and / or:
 python ~/tools/PML/model_training/train_random_forest.py wRFtrain_tab.tsv
 ```
 
-Each time the trained model will be saved in a file `model_file.bin` (can overwrite previous results)
+Each time the trained model will be saved in a file `model_file.bin` (can overwrite previous results, so advised to be done in separate folders)
 
 
 ## Evaluate model training
+
+### Predict utility of loci using trained models
+
+Assuming model training for RF and wRF models was done in separate folders (see the previous section), keep subsequent steps separate as well. First, do the prediction on the RF model. Navigate where the locus properties table and model file are:
+```
+cd directory_w_trained_RF_model
+#run the prediction
+python ~/tools/PML/locus_utility_prediction/predict_locus_utility.py -i RFall_tab.tsv -m model_file.bin
+#split tables into training and testing datasets
+head -1 ML_predicted.csv > ML_test_predicted.csv; tail -n 19997 ML_predicted.csv >> ML_test_predicted.csv
+head -20001 ML_predicted.csv > ML_train_predicted.csv
+```
+
+Then repeat the same for the wRF model in a separate location:
+
+```
+cd directory_w_trained_wRF_model
+#run the prediction
+python ~/tools/PML/locus_utility_prediction/predict_locus_utility.py -i wRFall_tab.tsv -m model_file.bin
+#split tables into training and testing datasets
+head -1 ML_predicted.csv > ML_test_predicted.csv; tail -n 19997 ML_predicted.csv >> ML_test_predicted.csv
+head -20001 ML_predicted.csv > ML_train_predicted.csv
+```
 
 ### Accuracy and feature importances
 
@@ -1110,8 +1133,252 @@ grid.arrange(p5_1, p5_2, p5_3, p5_4, p5_5, p5_6,
 
 ### Impact of subsampling
 
+#### Create lists of filtered loci for each dataset
+
+Navigate to where the predictions were made
 ```
-Scripts for fig 7
+#make and move into a separate directory nested within the predictions folder:
+mkdir subsets
+cd subsets
+#generate the filtered subsets for the testing subset only!
+python ~/tools/PML/locus_utility_prediction/subset_generator.py -i ML_test_predicted.csv -s bwr
+#uplink to the cluster to run tree inference - have uplink to each dataset folder.
+#for example, for the Fong dataset:
+rsync -avz fong_* andromeda:/home/aknyshov/alex_data/ML/final_simul_datasets/fong/wRFsubsets/
+#random replicates need to be analyzed within one of models only, so for the second model only best and worst are analyzed
+rsync -avz fong_best* fong_worst* andromeda:/home/aknyshov/alex_data/ML/final_simul_datasets/fong/RFsubsets/
+```
+
+#### Run IQ-TREE and Astral to infer trees on subsampled matrices
+
+On a compute cluster with slurm, navigate to the dataset folder where the subset lists were put, create the list of files to submit an array job over, and submit the array job
+```
+cd path_to_dataset/wRFsubsets
+ls * > array_list.txt
+sbatch --array=1-7 ../../iqtree_array_concat.sh
+sbatch --array=1-7 ../../run_astral_array.sh
+```
+
+Repeat for the other type of model. Since random replicates were analyzed above, and only 3 lists were copied, adjust the array length accordingly:
+```
+cd path_to_dataset/RFsubsets
+ls * > array_list.txt
+sbatch --array=1-3 ../../iqtree_array_concat.sh
+sbatch --array=1-3 ../../run_astral_array.sh
+```
+
+When complete, downlink files from the slurm cluster if necessary. For astral trees, some additional processing is required to reformat the parenthetical tree to work well with APE. The script from my main repo will introduce explicit 0 to the tip length of astral trees, sed will replace the delimiter in the support values. This could be potentially done with other software, or not necessary, but in my experience the APE's phylo parser struggles if this not done...
+```
+for f in astral*.tre; do python3 ~/tools/main_repo/py3/relabelPhylo.py /home/alex/data/Google_Folder/university/research/URI_ML/simTest5/dummy.txt ${f}; sed 's/;pp/_pp/g' ${f}.renamed | sed 's/'\''//g' | sed 's/\[//g' | sed 's/\]//g' > ${f}.renamed2 ; done
+```
+
+#### Run analysis in R to check and plot results
+
+Reformat the data and prepare the figure
+```
+#prepare the data
+dssamples <- ds_name_vector[1:4]
+aggregatedsdata <- tibble(idx=character(),
+                          pred=character(),
+                          subs=character(),
+                          fill=character(),
+                          property=character(),
+                          value=numeric())
+for (f in 1:4){
+  for (pred in c("All","Random600","RF_model", "wRF_model")){
+    if (pred == "All"){
+      subs="A"
+      fill="A"
+      sampletreeiq <- rescale(read.tree(paste0("simulations/empirical/",dssamples[f],"/inferenceTest.treefile")), model = "depth", 1)
+      sampletreeal <- read.tree(paste0("simulations/empirical/",dssamples[f],"/astral.tre.renamed2"))
+      if (length(sampletreeiq$tip.label)<length(sptrees[[f]]$tip.label)){
+        sptree <- drop.tip(sptrees[[f]], sptrees[[f]]$tip.label[!(sptrees[[f]]$tip.label %in% sampletreeiq[[t]]$tip.label)])
+      } else {
+        sptree <- sptrees[[f]]
+      }
+      sptree <- rescale(sptree, model = "depth", 1)
+      RFiq=1-RF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+      wRFiq=1-wRF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+      SHaLRT=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[1])),na.rm = T)
+      UFBoot=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[2])),na.rm = T)
+      RFal=1-RF.dist(sptree, sampletreeal, normalize = T, check.labels = T)
+      AstrPP=mean(as.numeric(sapply(strsplit(sapply(strsplit(sampletreeal$node.label, "_"), function(x) x[1]), "="), function(x) x[2])), na.rm = T)
+      aggregatedsdata <- add_row(aggregatedsdata,
+                                 idx=rep(paste0("tree",f),6),
+                                 pred=rep(pred,6),
+                                 subs=rep(subs,6),
+                                 fill=rep(fill,6),
+                                 property=c("RFiq", "RFal", "wRFiq",
+                                            "SHaLRT", "UFBoot", "AstrPP"),
+                                 value=c(RFiq, RFal, wRFiq,
+                                         SHaLRT, UFBoot, AstrPP))
+      for (r in which(combo_simul_eval_df$dataset == dssamples[f] & combo_simul_eval_df$MLset=="test")){
+        aggregatedsdata <- add_row(aggregatedsdata,
+                                   idx=rep(combo_simul_eval_df$loci[r],4),
+                                   pred=rep(pred,4),
+                                   subs=rep(subs,4),
+                                   fill=rep(fill,4),
+                                   property=c("rate", "loclen", "paralogy", "contamination"),
+                                   value=c(combo_simul_eval_df$abl[r],
+                                           combo_simul_eval_df$loclen[r],
+                                           combo_simul_eval_df$prop_paralogy[r],
+                                           combo_simul_eval_df$prop_contamination[r]))
+      }
+    } else if (pred == "Random600") {
+      for (subs in c(0:3)) {
+        fill="R"
+        sampletreeiq <- rescale(read.tree(paste0("simulations/empirical/",dssamples[f],"/wRFsubsets/inference_",dssamples[f],"_random",subs,".txt.treefile")), model = "depth", 1)
+        sampletreeal <- read.tree(paste0("simulations/empirical/",dssamples[f],"/wRFsubsets/astral_",dssamples[f],"_random",subs,".txt.tre.renamed2"))
+        if (length(sampletreeiq$tip.label)<length(sptrees[[f]]$tip.label)){
+          sptree <- drop.tip(sptrees[[f]], sptrees[[f]]$tip.label[!(sptrees[[f]]$tip.label %in% sampletreeiq[[t]]$tip.label)])
+        } else {
+          sptree <- sptrees[[f]]
+        }
+        sptree <- rescale(sptree, model = "depth", 1)
+        RFiq=1-RF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+        wRFiq=1-wRF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+        SHaLRT=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[1])),na.rm = T)
+        UFBoot=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[2])),na.rm = T)
+        RFal=1-RF.dist(sptree, sampletreeal, normalize = T, check.labels = T)
+        AstrPP=mean(as.numeric(sapply(strsplit(sapply(strsplit(sampletreeal$node.label, "_"), function(x) x[1]), "="), function(x) x[2])), na.rm = T)
+        aggregatedsdata <- add_row(aggregatedsdata,
+                                   idx=rep(paste0("tree",f),6),
+                                   pred=rep(pred,6),
+                                   subs=rep(paste0("R", subs),6),
+                                   fill=rep(fill,6),
+                                   property=c("RFiq", "RFal", "wRFiq",
+                                              "SHaLRT", "UFBoot", "AstrPP"),
+                                   value=c(RFiq, RFal, wRFiq,
+                                           SHaLRT, UFBoot, AstrPP))
+        loclist <- readLines(paste0("model_training/wRF/all/subsets/",dssamples[f],"_random",subs,".txt"))
+        for (r in which(combo_simul_eval_df$dataset == dssamples[f] &
+                        combo_simul_eval_df$MLset=="test" &
+                        combo_simul_eval_df$loci %in% paste0(dssamples[f],"_",loclist))){
+          aggregatedsdata <- add_row(aggregatedsdata,
+                                     idx=rep(combo_simul_eval_df$loci[r],4),
+                                     pred=rep(pred,4),
+                                     subs=rep(paste0("R", subs),4),
+                                     fill=rep(fill,4),
+                                     property=c("rate", "loclen", "paralogy", "contamination"),
+                                     value=c(combo_simul_eval_df$abl[r],
+                                             combo_simul_eval_df$loclen[r],
+                                             combo_simul_eval_df$prop_paralogy[r],
+                                             combo_simul_eval_df$prop_contamination[r]))
+        }
+      }
+    } else if (pred == "RF_model") {
+      for (subs in c("best800", "best600", "worst600")){
+        fill=subs
+        sampletreeiq <- rescale(read.tree(paste0("simulations/empirical/",dssamples[f],"/RFsubsets/inference_",dssamples[f],"_",subs,".txt.treefile")), model = "depth", 1)
+        sampletreeal <- read.tree(paste0("simulations/empirical/",dssamples[f],"/RFsubsets/astral_",dssamples[f],"_",subs,".txt.tre.renamed2"))
+        if (length(sampletreeiq$tip.label)<length(sptrees[[f]]$tip.label)){
+          sptree <- drop.tip(sptrees[[f]], sptrees[[f]]$tip.label[!(sptrees[[f]]$tip.label %in% sampletreeiq[[t]]$tip.label)])
+        } else {
+          sptree <- sptrees[[f]]
+        }
+        sptree <- rescale(sptree, model = "depth", 1)
+        RFiq=1-RF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+        wRFiq=1-wRF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+        SHaLRT=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[1])),na.rm = T)
+        UFBoot=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[2])),na.rm = T)
+        RFal=1-RF.dist(sptree, sampletreeal, normalize = T, check.labels = T)
+        AstrPP=mean(as.numeric(sapply(strsplit(sapply(strsplit(sampletreeal$node.label, "_"), function(x) x[1]), "="), function(x) x[2])), na.rm = T)
+        aggregatedsdata <- add_row(aggregatedsdata,
+                                   idx=rep(paste0("tree",f),6),
+                                   pred=rep(pred,6),
+                                   subs=rep(subs,6),
+                                   fill=rep(fill,6),
+                                   property=c("RFiq", "RFal", "wRFiq",
+                                              "SHaLRT", "UFBoot", "AstrPP"),
+                                   value=c(RFiq, RFal, wRFiq,
+                                           SHaLRT, UFBoot, AstrPP))
+        loclist <- readLines(paste0("model_training/RF/all/subsets/",dssamples[f],"_",subs,".txt"))
+        for (r in which(combo_simul_eval_df$dataset == dssamples[f] &
+                        combo_simul_eval_df$MLset=="test" &
+                        combo_simul_eval_df$loci %in% paste0(dssamples[f],"_",loclist))){
+          aggregatedsdata <- add_row(aggregatedsdata,
+                                     idx=rep(combo_simul_eval_df$loci[r],4),
+                                     pred=rep(pred,4),
+                                     subs=rep(subs,4),
+                                     fill=rep(fill,4),
+                                     property=c("rate", "loclen", "paralogy", "contamination"),
+                                     value=c(combo_simul_eval_df$abl[r],
+                                             combo_simul_eval_df$loclen[r],
+                                             combo_simul_eval_df$prop_paralogy[r],
+                                             combo_simul_eval_df$prop_contamination[r]))
+        }
+      }
+    } else if (pred == "wRF_model") {
+      for (subs in c("best800", "best600", "worst600")){
+        fill=subs
+        sampletreeiq <- rescale(read.tree(paste0("simulations/empirical/",dssamples[f],"/wRFsubsets/inference_",dssamples[f],"_",subs,".txt.treefile")), model = "depth", 1)
+        sampletreeal <- read.tree(paste0("simulations/empirical/",dssamples[f],"/wRFsubsets/astral_",dssamples[f],"_",subs,".txt.tre.renamed2"))
+        if (length(sampletreeiq$tip.label)<length(sptrees[[f]]$tip.label)){
+          sptree <- drop.tip(sptrees[[f]], sptrees[[f]]$tip.label[!(sptrees[[f]]$tip.label %in% sampletreeiq[[t]]$tip.label)])
+        } else {
+          sptree <- sptrees[[f]]
+        }
+        sptree <- rescale(sptree, model = "depth", 1)
+        RFiq=1-RF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+        wRFiq=1-wRF.dist(sptree, sampletreeiq, normalize = T, check.labels = T)
+        SHaLRT=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[1])),na.rm = T)
+        UFBoot=mean(as.numeric(sapply(strsplit(sampletreeiq$node.label, "/"), function(x) x[2])),na.rm = T)
+        RFal=1-RF.dist(sptree, sampletreeal, normalize = T, check.labels = T)
+        AstrPP=mean(as.numeric(sapply(strsplit(sapply(strsplit(sampletreeal$node.label, "_"), function(x) x[1]), "="), function(x) x[2])), na.rm = T)
+        aggregatedsdata <- add_row(aggregatedsdata,
+                                   idx=rep(paste0("tree",f),6),
+                                   pred=rep(pred,6),
+                                   subs=rep(subs,6),
+                                   fill=rep(fill,6),
+                                   property=c("RFiq", "RFal", "wRFiq",
+                                              "SHaLRT", "UFBoot", "AstrPP"),
+                                   value=c(RFiq, RFal, wRFiq,
+                                           SHaLRT, UFBoot, AstrPP))
+        loclist <- readLines(paste0("model_training/wRF/all/subsets/",dssamples[f],"_",subs,".txt"))
+        for (r in which(combo_simul_eval_df$dataset == dssamples[f] &
+                        combo_simul_eval_df$MLset=="test" &
+                        combo_simul_eval_df$loci %in% paste0(dssamples[f],"_",loclist))){
+          aggregatedsdata <- add_row(aggregatedsdata,
+                                     idx=rep(combo_simul_eval_df$loci[r],4),
+                                     pred=rep(pred,4),
+                                     subs=rep(subs,4),
+                                     fill=rep(fill,4),
+                                     property=c("rate", "loclen", "paralogy", "contamination"),
+                                     value=c(combo_simul_eval_df$abl[r],
+                                             combo_simul_eval_df$loclen[r],
+                                             combo_simul_eval_df$prop_paralogy[r],
+                                             combo_simul_eval_df$prop_contamination[r]))
+        }
+      }
+    }
+  }
+}
+     
+aggregatedsdata$property <- factor(aggregatedsdata$property)
+aggregatedsdata$property <- fct_relevel(aggregatedsdata$property,'RFiq','RFal','wRFiq',
+                                        'SHaLRT',"UFBoot","AstrPP","rate","loclen",
+                                        "paralogy","contamination")
+levels(aggregatedsdata$property)[10] <- "contam."
+
+#plot basic figure
+p7pre <- ggplot(aggregatedsdata, aes(x=subs, y=value, fill=fill)) +
+  geom_violin(show.legend = F) +
+  stat_summary(fun = median, fun.min = median, fun.max = median, geom = "crossbar", width = 0.25, show.legend = F) +
+  stat_summary(fun = mean, fun.min = mean, fun.max = mean, geom = "point", shape=5, show.legend = F) +
+  theme_bw() +
+  facet_grid(property~pred, scales = "free",switch="y") +
+  ylab("properties") + xlab("subsets")
+
+#adjust facet proportions
+library(grid)
+p7tab = ggplot_gtable(ggplot_build(p7pre))
+p7tab$widths[6] = p7tab$widths[6]/4
+p7tab$widths[10] = 3*p7tab$widths[10]/4
+p7tab$widths[12] = 3*p7tab$widths[12]/4
+
+#plot
+grid.draw(p7tab)
+#700x800
 ```
 
 
