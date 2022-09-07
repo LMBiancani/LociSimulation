@@ -173,10 +173,11 @@ When complete, submit a job to prepare species tree for each locus to assess rat
 sbatch prune_rescale_species_tree.sh
 ```
 
-When complete, submit jobs to run HyPhy to assess site rates for each locus (since separate trees were estimated for Train and Test datasets, rate assessments are done separately as well):
+When complete, submit jobs to run HyPhy to assess site rates for each locus (since separate trees were estimated for Train and Test datasets, rate assessments are done separately as well), as well as to reconstruct a coalescence-framework tree of the test subdataset using Astral:
 ```
 sbatch --array=1-4 rate_assessment_Train.sh
 sbatch --array=5-8 rate_assessment_Test.sh
+sbatch run_astral.sh
 ```
 
 When complete, download/assemble together the following files/folders for the final assessment steps:
@@ -188,6 +189,7 @@ rate_assessment
 alignments3
 fastsp_output.csv
 iqtree_concattree/inference*.treefile
+astral_tree/astral.tre
 ```
 An example of the `rsync` command would be:
 ```
