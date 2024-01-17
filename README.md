@@ -13,6 +13,8 @@ Add contents here
 
 For consistency, as well as because not all studies release the tree files, the trees were inferred denovo based on provided alignments
 
+Empirical datasets from Fong et al (2012), Liu et al (2017), McGowen et al (2020) and Wickett et al (2014) are provided in /datasets/ along with scripts to generate a concatenated alignment and run IQTREE.
+
 ##### Prepare the starting trees for simulation
 
 First create a folder for empirical simulations
