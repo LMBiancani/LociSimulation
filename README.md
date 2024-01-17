@@ -17,19 +17,19 @@ Empirical datasets from Fong et al (2012), Liu et al (2017), McGowen et al (2020
 
 ##### Prepare the starting trees for simulation
 
-First create a folder for empirical simulations
+First create a folder for empirical simulations by running:
 
 ```
-mkdir -p simulations/empirical/fong/1/
-mkdir -p simulations/empirical/wickett/1/
-mkdir -p simulations/empirical/mcgowen/1/
-mkdir -p simulations/empirical/liu/1/
+1_empirical_simulation_prep.sh
 ```
 
-Place the inferred phylograms for each dataset in the corresponding `1` folder under the name of `inference.treefile`.
+Next, run the following R script to root, transform to ultrametric, rescale, and re-label empirical trees ahead of SimPhy simulations. 
+```
+2_empirical_tree_processor.sh
+```
 
-Then run the following code in R:
 
+OLD README BELOW
 ```
 library(ape)
 library(ggplot2)
