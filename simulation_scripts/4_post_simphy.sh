@@ -12,8 +12,6 @@ pwd
 date
 
 
-
-
 for j in ../simulations/empirical/fong/1/loc_*/1/s_tree.trees
 	do echo $j
 	if [ -s $j ]
