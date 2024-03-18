@@ -14,7 +14,7 @@ date
 
 module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
 
-for l in ../simulations/empirical/*
+for l in ../simulations/random/*
 
 do
 	echo $l
@@ -23,10 +23,10 @@ do
 	Rscript ../../../../simulation_scripts/generate_sim_properties.R
 	cd ../../../../simulation_scripts
 	pwd
-	Rscript run_SimPhy.R $l/1/sptree.nex $l/1/df.csv 3_run_simphy.sh $l/1/gene_trees.tre $l/1/
+	Rscript run_SimPhy.R $l/1/sptree.nex $l/1/df.csv 3_run_simphy_command_list.txt $l/1/gene_trees.tre $l/1/
+	grep "ds_" 3_run_simphy_command_list.txt | split -l 2000 - 3_run_simphy_list_
+	ls 3_run_simphy_list_* >> array_list.txt
 
-	#Rscript ../../../../simulation_scripts/prep_INDELible.R ./gene_trees.tre ./df.csv
-
+	
 done
-
 	

@@ -15,6 +15,7 @@ library(MultiRNG)
 library(EnvStats)
 library(castor)
 library(phangorn)
+library(tidyverse)
 
 args = commandArgs(trailingOnly=TRUE)
 gene_trees_path <- args[1]
@@ -22,46 +23,14 @@ gene_trees <- read.tree(gene_trees_path)
 df_path <- args[2]
 df <- read.csv(df_path)
 
+
 nloci <- length(df[,1])
 
 source("../../../../simulation_scripts/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")
 options(scipen = 999)
 
-modify_tree <- function(oldTree, lambdaVal, ParalogTaxa, ParalogBL) {
-  
-  #a function to add paralogy and phylogenetic signal modification
-
-  #edit tip names
-  oldTree[[1]]$tip.label <- as.character(oldTree[[1]]$tip.label)
-  oldTree[[1]]$tip.label <- sapply(strsplit(oldTree[[1]]$tip.label, "_"), function(x) x[1])
-  oldTree[[1]]$tip.label <-as.phylo(oldTree[[1]]$tip.label)
-  #transform orthologs into paralogs
-  paralog_tips <- eval(parse(text=ParalogTaxa))
-  if (length (paralog_tips) == 0) {
-    newTree <- oldTree[[1]]
-  } else {
-    paralog_tips <- as.character(paralog_tips)
-    #split tree
-    #pull out taxa selected to be paralogs as a subtree
-    orthoTree <- drop.tip(oldTree[[1]],paralog_tips)
-    paraTree <- drop.tip(oldTree[[1]],oldTree[[1]]$tip.label[!(oldTree[[1]]$tip.label %in% paralog_tips)])
-    #regraft the paralog subtree
-    newTree <- bind.tree(orthoTree, paraTree)
-    newTree <- multi2di(newTree,random = F)
-    #modify paralog clade branch length
-    if (length(paralog_tips) == 1) {
-      newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] <- newTree$edge.length[which(newTree$edge[,2] == which(newTree$tip.label == paralog_tips))] + max(newTree$edge.length)*ParalogBL
-    } else {
-      newTree$edge.length[which(newTree$edge[,2] == getMRCA(newTree,paralog_tips))] <- max(newTree$edge.length)*ParalogBL
-    }
-  }
-  
-  #modify tree by lambda
-  newTree <- rescale(newTree, model = "lambda",lambdaVal)
-  
-  return(newTree)
-}
+source("../../../../simulation_scripts/modify_gene_tree.R")
 
 #non CDS
 write("[TYPE] NUCLEOTIDE 1",
@@ -92,7 +61,7 @@ modelselectionsd <- numeric()
 for (f in 1:nloci){
   set.seed(df$modelseed[f])
   #modify the gene tree by lambda and get paralogs
-  new_tree <- modify_tree(gene_trees[f],df$lambdaPS[f], df$paralog_taxa[f], df$paralog_branch_mod[f])
+  new_tree <- modify_tree(gene_trees[[f]], df$lambdaPS[f], df$paralog_taxa[f], df$paralog_branch_mod[f])
   treelist[[f]] <- new_tree
   #clone the gene tree for model params
   new_tree2 <- new_tree
@@ -112,6 +81,7 @@ for (f in 1:nloci){
   #reconstruct model at each node and tip accordingly
   modelnames <- c()
   traversal <- get_tree_traversal_root_to_tips(new_tree2, T)
+  #convert this loop to function
   for (x in traversal$queue){
     if (Ancestors(new_tree2,x,'parent') == 0) {
       #set root model
@@ -148,7 +118,8 @@ for (f in 1:nloci){
   modelbf <- numeric()
   new_tree2$edge.length <- NULL
   branchlist[[f]] <- new_tree2
-
+  
+  #convert to function
   if (df$proteinCoding[f] == "TRUE") {
 
     #protein coding locus processing
@@ -163,6 +134,7 @@ for (f in 1:nloci){
     modelkappa <- numeric()
     modelselection <- numeric()
     #iterate over models
+    
     for (model1 in modelnames) {
       basefreqs <- draw.dirichlet(1,61,rep(10,61),1)[1,]
       basefreqs <- c(basefreqs[1:10], 0, 0, basefreqs[11:12], 0, basefreqs[13:61])
@@ -228,31 +200,7 @@ for (f in 1:nloci){
       }
 
       #substitution model exchangeabilities (1-6)
-      paramvector <- rep(NA,6)
-       #               a = TC;   b = TA;  c = TG;  
-        # a1 = CT;             d = CA;  e = CG;  
-        # b1 = AT;  d1 = AC;            f = AG;  
-        # c1 = GT;  e1 = GC;  f1 = GA; 
-      #set exA - TC
-      if (modelType == "K80" | modelType == "HKY" | modelType == "TrN" | modelType == "TrNef" |
-        modelType == "TIM" | modelType == "TIMef" | modelType == "GTR" | modelType == "SYM") {
-        paramvector[1] = round(rlnormTrunc(1,log(4), log(2.5),max=16),3)
-      }
-      #set exB and exC - TA and TG
-      if (modelType == "K81" | modelType == "K81uf" | modelType == "TIM" | modelType == "TIMef" | 
-        modelType == "TVM" | modelType == "TVMef" | modelType == "GTR" | modelType == "SYM") {
-        paramvector[2] = round(rlnormTrunc(1,log(1.25), log(2.5),max=3.5),3)
-        paramvector[3] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
-      }
-      #set exD and exE - CA and CG
-      if (modelType == "TVM" | modelType == "TVMef" | modelType == "GTR" | modelType == "SYM") {
-        paramvector[4] = round(rlnormTrunc(1,log(1), log(2.5),max=2.5),3)
-        paramvector[5] = round(rlnormTrunc(1,log(0.8), log(2.5),max=2),3)
-      }
-      #set exF - AG
-      if (modelType == "TrN" | modelType == "TrNef") {
-        paramvector[6] = round(rlnormTrunc(1,log(3), log(2.5),max=9),3)
-      }
+      paramvector <- get_param_vector(modelType)
 
       #produce model string
       if (modelType == "GTR" | modelType == "SYM") {
@@ -298,10 +246,6 @@ for (f in 1:nloci){
                                         e=1,f=1))
       }
 
-      #indel model
-      paramvector[7] <- round(runif(1,min=1.5,max=2),3)
-      #indel rate
-      paramvector[8] <- round(runif(1,min=0.001,max=0.002),5)
 
       #write out model params
       write(paste("[MODEL]", model1),
