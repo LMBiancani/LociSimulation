@@ -16,7 +16,7 @@ date
 
 module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
 
-for i in ../simulations/random/*/1/
+for i in ../simulations/*/*/1/
 	do
 	cd $i
 	pwd

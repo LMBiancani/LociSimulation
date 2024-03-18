@@ -14,7 +14,7 @@ date
 
 module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
 
-for l in ../simulations/random/*
+for l in ../simulations/*/*
 
 do
 	echo $l

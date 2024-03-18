@@ -12,7 +12,7 @@ pwd
 date
 
 
-for i in ../simulations/random/*; do 
+for i in ../simulations/*/*; do 
     echo $i; 
     while [[ $(ls ${i}/1/loc_*/1/g_trees1.trees | wc -l) -lt 2000 ]]; do
         for j in $(seq 1 2000); do # go through all loc_ (2000)
