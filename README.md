@@ -13,7 +13,7 @@ Add contents here
 
 For consistency, as well as because not all studies release the tree files, the trees were inferred denovo based on provided alignments
 
-Run the script feature_assessment/1_run_iqtree_array.sh from each dataset's (fong, wickett, liu, mcgowen) corresponding directory to generate gene trees for each alignment.
+Navigate to the datasets/ directory and for each dataset (Fong, Liu, Wickett, McGowen) follow the instructions in the README to download the appropriate dataset and run the accompanying iqtree shell script.
 
 ##### Prepare the starting trees for simulation
 
