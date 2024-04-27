@@ -12,14 +12,14 @@ cores=12
 pwd
 date
 
-for i in ../simulations/empirical/*/1
+for i in ../simulations/*/*/1
 	do
 	cd ${i}
 	pwd
 	ls
 	python ${amas} summary -c ${cores} -o amas_output2.txt -f fasta -d dna -i alignments2/*.fas 
 	python ${amas} summary -c ${cores} -o amas_output3.txt -f fasta -d dna -i alignments3/*.fas
-	cd ../../../../feature_assessment/
+	cd ../../../../3_feature_assessment/
 done
 
 date

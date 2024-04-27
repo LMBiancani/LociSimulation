@@ -10,18 +10,19 @@ module load R/4.0.3-foss-2020b
 module load HyPhy/2.5.33-gompi-2020b
 date
 
-for i in ../simulations/empirical/*/1
+for i in ../simulations/*/*/1
 do
 	cd ${i}
 
 	fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p alignmentGroups/array_list.txt)
-	aligned_loci_path="../alignments3/"
+	aligned_loci_path="../alignments3"
 	batch_script="/opt/software/HyPhy/2.5.33-gompi-2020b/share/hyphy/TemplateBatchFiles/LEISR.bf"
 	iqtree_log_path="../iqtree_genetrees3/"
 	pruned_trees_path="../pruned_species_trees_Train.tre"
 	gene_tree_names="../inferred_gene_trees_Train.txt"
-
+	
 	cd rate_assessment
+	
 	cat ../alignmentGroups/${fileline} | while read line
 	do
 	
@@ -34,9 +35,10 @@ do
 		treefile="temp_tree_${SLURM_ARRAY_TASK_ID}.tre"
 		loc_name=$(echo ${line} | cut -f1 -d.)
 		sed -n $(grep -wn ${loc_name} ${gene_tree_names} | cut -f1 -d:)p ${pruned_trees_path} > ${treefile}
-		hyphy ${batch_script} ${aligned_loci_path}/${line} ${treefile} Nucleotide ${useModel} ${useRVAS} 	
+		hyphy ${batch_script} ${aligned_loci_path}/${line} ${treefile} Nucleotide ${useModel} ${useRVAS} 
 		mv ${aligned_loci_path}/${line}.LEISR.json .
 		rm ${treefile}
 	done
+	cd ../../../../../3_feature_assessment
 done
 date

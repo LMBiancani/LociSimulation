@@ -9,7 +9,7 @@
 
 module load MAFFT/7.475-gompi-2020b-with-extensions
 
-for i in ../simulations/random/*/1/alignmentGroups
+for i in ../simulations/*/*/1/alignmentGroups
 do
 	cd ${i}
 	pwd
@@ -20,5 +20,5 @@ do
 	do
 		mafft --auto --thread 4 ../alignments2/${line} > ../alignments3/${line}
 	done
-	cd ../../../../../feature_assessment
+	cd ../../../../../3_feature_assessment
 done

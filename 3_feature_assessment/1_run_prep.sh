@@ -9,7 +9,7 @@
 
 
 date
-for i in ../simulations/random/*/1
+for i in ../simulations/*/*/1
 	do
 	cd ${i}
 	pwd
