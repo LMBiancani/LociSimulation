@@ -107,6 +107,8 @@ When complete, run the main feature assessment script
 
 Output files are `ML_train.txt` and `ML_test.txt` respectively. These files are used for some of the downstream interrogations, however, to train / use the machine learning model, ML_train/test file for all datasets are combined together and certain columns are excluded (for ex, wRF column is excluded when training using RF as the proxy for phylogenetic utility).
 
+### UPDATED TO THIS POINT ONLY
+
 ### Assessment summary
 
 Read the dataset trees
