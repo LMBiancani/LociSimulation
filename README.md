@@ -52,76 +52,57 @@ If all expected gene trees have been saved in gene_trees.tre, run INDELible:
 sbatch 5_INDELible.sh
 ```
 
-#####ONLY UP TO DATE TO THIS POINT
+
 
 
 
 ### Run assessment programs
 
-For each simulated dataset, transfer the folder `alignments2` to a similarly structured folder on a cluster with slurm. Additionally transfer scripts / clone the repo to the cluster as well. Make sure that `MAFFT`, `AMAS`, `IQ-TREE2`, `FastSP`, and `HyPhy` are installed, and correct paths/modules in the submission scripts as needed.
+Make sure that `MAFFT`, `AMAS`, `IQ-TREE2`, `FastSP`, and `HyPhy` are installed, and correct paths/modules in the submission scripts as needed.
 
-Then, in a given dataset directory (where the folder `alignments2` is located) run the prep script to set up necessary folders:
+Navigate to 3_feature_assessment and run assessment scripts according to numbered order:
 ```
-sbatch prep.sh
+sbatch 1_prep.sh
 ```
 
 When complete, submit the alignment job (8 array elements correspond to 2000 files split into 250 file bins):
 ```
-sbatch --array=1-8 mafft.sh
+sbatch --array=1-8 2_mafft.sh
 ```
 
 When complete, submit jobs to run AMAS (properties), IQ-TREE (trees), and FastSP (alignment accuracy)
 ```
-sbatch run_amas.sh
-sbatch --array=1-8 iqtree_array.sh
-sbatch run_FastSP.sh
-sbatch iqtree_concat.sh
+sbatch 3_run_amas.sh
+sbatch 4_run_FastSP.sh
+sbatch 5_iqtree_concat.sh
+sbatch --array=1-8 6_iqtree_array.sh
+
 ```
 
 When complete, submit a job to prepare species tree for each locus to assess rates with HyPhy
 ```
-sbatch prune_rescale_species_tree.sh
+sbatch 7_prune_rescale_species_tree.sh
 ```
 
 When complete, submit jobs to run HyPhy to assess site rates for each locus (since separate trees were estimated for Train and Test datasets, rate assessments are done separately as well), as well as to reconstruct a coalescence-framework tree of the test subdataset using Astral:
 ```
-sbatch --array=1-4 rate_assessment_Train.sh
-sbatch --array=5-8 rate_assessment_Test.sh
-sbatch run_astral.sh
-```
-
-When complete, download/assemble together the following files/folders for the final assessment steps:
-```
-inferred_gene_trees*
-pruned_species_trees*
-amas_output?.txt
-rate_assessment
-alignments3
-fastsp_output.csv
-iqtree_concattree/inference*.treefile
-astral_tree/astral.tre
-```
-An example of the `rsync` command would be:
-```
-rsync -avzr andromeda:/path_to_dataset/inferred_gene_trees* local_path
+sbatch --array=1-4 8_rate_assessment_Train.sh
+sbatch --array=5-8 9_rate_assessment_Test.sh
+sbatch 10_run_astral.sh
 ```
 
 ### Run assessment script
 
 For simulation datasets the true trees are known. So instead of using pruned and rescaled inferred trees, we prepare the true simulated trees.
 
-For each dataset, run the following commands:
-
-Run this command to prepare the true species trees for feature assessments:
+Run the following to prepare true simulated trees:
 ```
-Rscript ~/tools/PML/feature_assessment/prune_tree_simul.R 1/s_tree.trees inferred_gene_trees_Train.tre pruned_simul_trees_Train.tre
-Rscript ~/tools/PML/feature_assessment/prune_tree_simul.R 1/s_tree.trees inferred_gene_trees_Test.tre pruned_simul_trees_Test.tre
+sbatch 11_pruen_simul_trees.sh
 ```
 
 When complete, run the main feature assessment script
 ```
-Rscript ~/tools/PML/feature_assessment/assess_gene_properties.R ./alignments3/ inferred_gene_trees_Train.tre inferred_gene_trees_Train.txt pruned_simul_trees_Train.tre amas_output3.txt ./rate_assessment/ ML_train.txt ./fastsp_output.csv
-Rscript ~/tools/PML/feature_assessment/assess_gene_properties.R ./alignments3/ inferred_gene_trees_Test.tre inferred_gene_trees_Test.txt pruned_simul_trees_Test.tre amas_output3.txt ./rate_assessment/ ML_test.txt ./fastsp_output.csv
+12_assess_properties.sh
 ```
 
 Output files are `ML_train.txt` and `ML_test.txt` respectively. These files are used for some of the downstream interrogations, however, to train / use the machine learning model, ML_train/test file for all datasets are combined together and certain columns are excluded (for ex, wRF column is excluded when training using RF as the proxy for phylogenetic utility).
