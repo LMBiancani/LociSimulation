@@ -1,6 +1,9 @@
 Loci Subsampling - Selecting Loci that support known clades
 Analysis notes
 
+GitHub Repo:
+https://github.com/LMBiancani/FilterByKnownClades
+
 Written Notes:
 https://docs.google.com/document/d/1JuyuBTQ92Tx13pbG4MbDrLy_Qv37Juk4LdzJcGbz2Qw/edit?usp=sharing
 
@@ -20,8 +23,21 @@ On Github:
 - Create a new, empty repo and give it the original name of the Forked Repository
 
 Locally:
-- Push all changes to Github (you should not have to do anything special because the new repo now has the same name as 
+- Push all changes to Github (you should not have to do anything special because the new repo now has the same name as
 the repo this was originally synced with).
 On Github:
 - Confirm the new repository contains everything it should
 - Delete the forked repository
+
+On Andromeda:
+git clone https://github.com/LMBiancani/FilterByKnownClades
+
+add gitignore and include Loci folder
+
+Subset Zack's aligned loci to create test dataset:
+/data/schwartzlab/zbergeron/SISRS_mammals/filteredMammalLoci
+(101,405 alignments)
+ls *11.fasta
+(2,780 alignement)
+
+cp /data/schwartzlab/zbergeron/SISRS_mammals/filteredMammalLoci/*11.fasta /data/schwartzlab/Biancani/FilterByKnownClades/Loci/
