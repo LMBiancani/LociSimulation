@@ -7,6 +7,12 @@ https://github.com/LMBiancani/FilterByKnownClades
 Written Notes:
 https://docs.google.com/document/d/1JuyuBTQ92Tx13pbG4MbDrLy_Qv37Juk4LdzJcGbz2Qw/edit?usp=sharing
 
+Andromeda location:
+cd /data/schwartzlab/Biancani/FilterByKnownClades/
+
+Local location:
+cd /Users/biancani/Documents/FilterByKnownClades
+
 2024.05.29
 
 Goal: convert a forked repo to a stand-alone repository without loosing any of the tracked history or contributions.
