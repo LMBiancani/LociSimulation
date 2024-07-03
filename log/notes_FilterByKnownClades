@@ -16,6 +16,11 @@ cd /Users/biancani/Documents/FilterByKnownClades
 Alexandra Machine Learning Repo (for simulated loci):
 https://github.com/alexandrawalling/PML/tree/main
 
+Local (macbook) directory:
+/Users/biancani/Documents/FilterByKnownClades
+Andromeda directory:
+/data/schwartzlab/Biancani/FilterByKnownClades
+
 2024.05.29
 
 Goal: convert a forked repo to a stand-alone repository without loosing any of the tracked history or contributions.
@@ -59,6 +64,13 @@ Simulated loci:
 /data/schwartzlab/awalling/Phylo_ML/simulations/empirical/mcgowen/1/alignments3/
 /data/schwartzlab/awalling/Phylo_ML/simulations/empirical/wickett/1/alignments3/
 
+Use copy_data.sh to copy simulated loci to Loci folder (on andromeda only: Data folder listed in gitignore)
+deistination folders:
+/data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/simulated_loci/
+/data/schwartzlab/Biancani/FilterByKnownClades/data/Liu/simulated_loci/
+/data/schwartzlab/Biancani/FilterByKnownClades/data/McGowen/simulated_loci/
+/data/schwartzlab/Biancani/FilterByKnownClades/data/Wickett/simulated_loci/
+
 tree used for simulations: inferenceEmpirical.iqtree
 submission file that generated Empirical trees:
 run_iqtree_Fong_empirical.sh
@@ -69,6 +81,7 @@ in...
 /data/schwartzlab/awalling/Phylo_ML/datasets/McGowen_alignments/
 /data/schwartzlab/awalling/Phylo_ML/datasets/Wickett_alignments/
 
+Example submission file for generating emperical trees:
 run_iqtree_Fong_empirical.sh
 ----------
 #!/bin/bash
@@ -109,3 +122,40 @@ To Do:
 - Build species tree from filtered simulated Loci
 - Build species tree from unfiltered simulated LOCI
 - Compare species tree to empirical tree (which is more similar)?
+
+
+nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/01_iqtree_prep.sh
+##########
+#!/bin/bash
+#SBATCH --job-name="IQprep"
+#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=6G
+
+## UPDATE PATHS as needed...
+# path to Project Directory:
+PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to IQtree scripts:
+scripts_dir=$PROJECT/01_iqtree
+# path to aligned loci:
+aligned_loci_path=$PROJECT/Loci/Simulated/Fong/
+# path to output folder (will be created if doesn't exist):
+OUTPUT=$PROJECT/output
+# name of iqtree array work folder (will be created if doesn't exist):
+array_work_folder=iqtree_assessment
+
+
+mkdir -p $OUTPUT
+cd $OUTPUT
+mkdir -p ${array_work_folder}
+cd ${array_work_folder}
+mkdir scf
+ls ${aligned_loci_path} | rev | cut -f1 -d/ | rev | split - aligned_loci_list_
+arrayN=$(ls aligned_loci_list_* | wc -l)
+ls aligned_loci_list_* > array_list.txt
+echo sbatch --array=1-${arrayN}%40 ${scripts_dir}iqtree_array.sh
+##########
