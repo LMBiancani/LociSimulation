@@ -123,12 +123,13 @@ To Do:
 - Build species tree from unfiltered simulated LOCI
 - Compare species tree to empirical tree (which is more similar)?
 
+2024.07.10
 
 nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/00_iqtree_prep.sh
 ##########
 #!/bin/bash
 #SBATCH --job-name="IQprep"
-#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=0:30:00  # walltime limit (HH:MM:SS)
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
 #SBATCH --mail-type=ALL
 #SBATCH --nodes=1   # number of nodes
@@ -146,33 +147,80 @@ scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
 aligned_loci_path=$DATA/Fong/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/Fong/
+OUTPUT=$PROJECT/output/Fong
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=iqtree_assessment
+# number of loci per array task
+LociPerTask=50
 
 mkdir -p $OUTPUT
 cd $OUTPUT
 mkdir -p ${array_work_folder}
 cd ${array_work_folder}
-mkdir scf
-ls ${aligned_loci_path} | rev | cut -f1 -d/ | rev | split - aligned_loci_list_
+ls ${aligned_loci_path} | rev | cut -f1 -d/ | rev | split -l $LociPerTask - aligned_loci_list_
 arrayN=$(ls aligned_loci_list_* | wc -l)
 ls aligned_loci_list_* > array_list.txt
-ARRAY="sbatch --array=1-${arrayN}%40 ${scripts_dir}iqtree_array.sh"
+ARRAY="#SBATCH --array=[1-${arrayN}]%40"
 echo $ARRAY
-echo $ARRAY >> array_command.txt
+echo $ARRAY >> sbatch_array_directive.txt
 ##########
 sbatch -q schwartzlab 00_iqtree_prep.sh
-Submitted batch job 329337
-Job ID: 329337
+Submitted batch job 329346
+Job ID: 329346
 Cluster: andromeda
 User/Group: biancani/schwartzlab
 State: COMPLETED (exit code 0)
 Cores: 1
 CPU Utilized: 00:00:00
-CPU Efficiency: 0.00% of 00:00:05 core-walltime
-Job Wall-clock time: 00:00:05
+CPU Efficiency: 0.00% of 00:00:04 core-walltime
+Job Wall-clock time: 00:00:04
 Memory Utilized: 0.00 MB (estimated maximum)
 Memory Efficiency: 0.00% of 6.00 GB (6.00 GB/core)
 
-output: sbatch --array=1-2%40 /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtreeiqtree_array.sh
+output: #SBATCH --array=[1-40]%40
+(to be included in subsequent array jobs)
+
+nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/01_iqtree_array_gtree.sh
+##########
+#!/bin/bash
+#SBATCH --job-name="IQarr_gtree"
+#SBATCH --time=48:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=6G
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+#SBATCH --array=[1-40]%40
+
+## UPDATE as needed...
+# path to Project Directory:
+PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to data directory:
+DATA=$PROJECT/data
+# path to IQtree scripts:
+scripts_dir=$PROJECT/01_iqtree
+# path to aligned loci:
+aligned_loci_path=$DATA/Fong/simulated_loci
+# path to output folder (will be created if doesn't exist):
+OUTPUT=$PROJECT/output/Fong
+# name of iqtree array work folder (will be created if doesn't exist):
+array_work_folder=$OUTPUT/iqtree_assessment
+# path to iqtree executable:
+iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2"
+
+date
+cd $array_work_folder
+mkdir -p GeneTreesUnconstrained
+cd GeneTreesUnconstrained
+
+fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p $array_work_folder/array_list.txt)
+cat ${array_work_folder}/${fileline} | while read line
+do
+	echo $line
+	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G
+	rm inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+done
+##########
+sbatch -q schwartzlab 01_iqtree_array_gtree.sh
+Submitted batch job 329481
