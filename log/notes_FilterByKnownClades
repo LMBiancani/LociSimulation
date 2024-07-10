@@ -124,7 +124,7 @@ To Do:
 - Compare species tree to empirical tree (which is more similar)?
 
 
-nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/01_iqtree_prep.sh
+nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/00_iqtree_prep.sh
 ##########
 #!/bin/bash
 #SBATCH --job-name="IQprep"
@@ -136,18 +136,19 @@ nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/01_iqtree_prep.sh
 #SBATCH -c 1
 #SBATCH --mem-per-cpu=6G
 
-## UPDATE PATHS as needed...
+## UPDATE as needed...
 # path to Project Directory:
 PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to data directory:
+DATA=$PROJECT/data
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$PROJECT/Loci/Simulated/Fong/
+aligned_loci_path=$DATA/Fong/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output
+OUTPUT=$PROJECT/output/Fong/
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=iqtree_assessment
-
 
 mkdir -p $OUTPUT
 cd $OUTPUT
@@ -157,5 +158,21 @@ mkdir scf
 ls ${aligned_loci_path} | rev | cut -f1 -d/ | rev | split - aligned_loci_list_
 arrayN=$(ls aligned_loci_list_* | wc -l)
 ls aligned_loci_list_* > array_list.txt
-echo sbatch --array=1-${arrayN}%40 ${scripts_dir}iqtree_array.sh
+ARRAY="sbatch --array=1-${arrayN}%40 ${scripts_dir}iqtree_array.sh"
+echo $ARRAY
+echo $ARRAY >> array_command.txt
 ##########
+sbatch -q schwartzlab 00_iqtree_prep.sh
+Submitted batch job 329337
+Job ID: 329337
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:00:00
+CPU Efficiency: 0.00% of 00:00:05 core-walltime
+Job Wall-clock time: 00:00:05
+Memory Utilized: 0.00 MB (estimated maximum)
+Memory Efficiency: 0.00% of 6.00 GB (6.00 GB/core)
+
+output: sbatch --array=1-2%40 /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtreeiqtree_array.sh
