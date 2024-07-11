@@ -16,9 +16,9 @@ DATA=$PROJECT/data
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$DATA/Fong/simulated_loci
+aligned_loci_path=$DATA/McGowen/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/Fong
+OUTPUT=$PROJECT/output/McGowen
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=iqtree_assessment
 # number of loci per array task 
