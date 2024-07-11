@@ -81,14 +81,22 @@ in...
 /data/schwartzlab/awalling/Phylo_ML/datasets/McGowen_alignments/
 /data/schwartzlab/awalling/Phylo_ML/datasets/Wickett_alignments/
 
-Emperical Trees (iqtree output):
 Fong:
 /data/schwartzlab/awalling/Phylo_ML/datasets/Fong_alignments/inferenceEmpirical.iqtree
 cp /data/schwartzlab/awalling/Phylo_ML/datasets/Fong_alignments/inferenceEmpirical.iqtree /data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/emperical_tree/
-ML emperical tree:
-nano /data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/emperical_tree/Fong_empericalML.tree
-#####
-(AlligatorMVZ:0.0010194124,(((((((((Ambystoma:0.1373454275,Ensatina:0.0812803609)0/57:0.0041078723,Hynobius:0.0379946529)99.5/97:0.0777390046,((Danio:0.1804868416,((Gasterosteus:0.0885057964,(Takifugu:0.0510401775,Tetraodon:0.0537381056)100/100:0.0668666367)71.8/96:0.0255208536,Oryzias:0.1103897465)100/100:0.1126540307)100/100:0.2539681342,((Xenopus:0.1175611607,Pipa:0.0538188883)96.3/99:0.0524670499,Fejervarya:0.1256654549)99.9/99:0.0598037243)99.7/98:0.0373838204)70.8/76:0.0193183540,(Icthyophis:0.0693574945,Osaecilia:0.0649457137)100/100:0.0697090853)100/85:0.0460989968,((((((((((((Bos:0.0315351400,Tursiops:0.0162369079)99.8/100:0.0036004799,Sus:0.0345584858)99.1/100:0.0020814544,Vicugna:0.0269169531)100/100:0.0087124994,Equus:0.0349927801)84.5/94:0.0012509081,(Myotis:0.0405429395,Pteropus:0.0310602527)100/100:0.0074639393)19.6/78:0.0007590338,(Canis:0.0210130077,Felis:0.0285244334)100/100:0.0141219955)95.6/93:0.0019199078,(Erinaceus:0.0697001652,Sorex:0.0838603181)100/100:0.0170970220)100/100:0.0051171627,((((Callithrix:0.0159242671,((((Homo:0.0015540419,Pan:0.0017091578)98.6/100:0.0005876248,Gorilla:0.0053311709)100/100:0.0019687236,Pongo:0.0061994571)100/100:0.0034275321,Macaca:0.0125386363)100/100:0.0045794259)100/100:0.0157452052,Tarsius:0.0476777452)38.1/97:0.0010186503,(Microcebus:0.0204906032,Otolemur:0.0341278849)100/100:0.0093008669)100/100:0.0042341420,((((Cavia:0.0673749544,(Dipodomys:0.0590525972,(Mus:0.0195909204,Rattus:0.0276882175)100/100:0.0556229927)98.8/100:0.0062772189)96.5/99:0.0030540782,Spermophilus:0.0456330547)100/100:0.0056106779,(Ochotona:0.0616936610,Oryctolagus:0.0355837857)100/100:0.0302353716)98.8/100:0.0032580811,Tupaia:0.0482615099)81.1/98:0.0020851360)100/100:0.0054601902)100/100:0.0051191628,(Choloepus:0.0315097902,Dasypus:0.0322771593)100/100:0.0133814003)77.9/98:0.0027073460,(Echinops:0.0792197193,(Loxodonta:0.0258697259,Procavia:0.0494611026)98.4/100:0.0045496157)100/100:0.0128078670)100/100:0.0659792548,(Macropus:0.0418723054,Monodelphis:0.0324489220)100/100:0.0473956071)100/100:0.0216555114,Ornithorhynchus:0.1118980247)100/100:0.0380750293)100/84:0.0239135947,(((((Anolis:0.0000029792,Rana:0.2275909164)100/79:0.0732407637,(Dracob:0.0062209115,Dracos:0.0107548516)100/97:0.0597746215)99.5/81:0.0087766475,(((((Xenopeltis:0.0230991717,Nerodia:0.0376257981)62.7/95:0.0062011890,Leptotyphlops:0.0618619084)32.7/95:0.0086056784,Geotrypetes:0.0406849304)95.4/99:0.0268767147,(((Rhineura:0.0323899859,Mesalina:0.0298903697)62.9/99:0.0015374222,Bipes:0.0391945077)76.5/99:0.0036086913,Aspidoscelis:0.1176156452)80.5/81:0.0045097156)69.4/77:0.0023988077,((Anniella:0.0097856326,Heloderma:0.0000010000)0/85:0.0000022396,Varanus:0.0600447731)99.8/95:0.0231501895)62.9/71:0.0042454715)99.9/77:0.0101312717,(Plestiodon:0.0386614401,Xantusia:0.0166337124)83.8/92:0.0130832563)62.4/71:0.0025460408,(((Cyrtodactylus:0.0295317554,Heternotia:0.0243816781)87/100:0.0194086838,Chamaeleo:0.0636908676)76.2/89:0.0177693437,Dibamus:0.0534466921)92.1/82:0.0057121273)100/83:0.0587992741)0/71:0.0001869669,Accipiter:0.0816410151)38.4/43:0.0119465511,(Gallus:0.0391939586,(((((Taeniopygia:0.0139071408,(Alethe:0.0228709400,Nectarina:0.0110110955)0/55:0.0000024359)35.9/50:0.0017099985,Sylvietta:0.0112823552)99.3/98:0.0157910015,Casuarius:0.0310705406)80.5/57:0.0117824985,(Dendropicos:0.0003770438,Terpsiphone:0.0011884955)100/100:0.0445047783)47.8/41:0.0066444075,(Aglaiocercus:0.0236805796,Anas:0.0278357699)88.5/84:0.0130083705)88/73:0.0071611377)100/81:0.0546712948)81.3/67:0.0096173185,(((((((((((((Chrysemys:0.0018796517,Malaclemys:0.0027094169)66.3/80:0.0001365518,(Dierochelys:0.0000023850,Aptenodytes:0.0036092500)100/79:0.0030641842)0/11:0.0000013484,Trachemys:0.0021035580)22.1/24:0.0008943989,Pseudemys:0.0020989085)0/18:0.0003775957,Indotestudo:0.0000010000)0/9:0.0000632067,Malacochersus:0.0000010000)0/37:0.0005783382,((Dermochelys:0.0127169033,Emys:0.0000029292)91.9/86:0.0023832651,Terrapene:0.0000023968)0/41:0.0000024904)0/44:0.0000021527,Kinixys:0.0047729711)27.1/39:0.0036307097,(((Eurotestudo:0.0024317132,(Testudo:0.0020040025,Agrionemys:0.0015469269)87.7/99:0.0017968899)89.6/98:0.0016547473,((Geochelone:0.0035930712,Stigmochelys:0.0044407446)0/95:0.0000023539,Chelonoidis:0.0014196411)87/98:0.0057255906)100/96:0.0048853652,(((((Mauremysm:0.0017899999,Mauremysc:0.0056479965)3.9/40:0.0017642199,Cuorag:0.0000010000)0/22:0.0000020518,((Geoemyda:0.0015628305,Leucocephalon:0.0687846810)87.6/82:0.0032169725,(Platysternon:0.0021134023,Sacalia:0.0021092114)0/54:0.0000023982)0/31:0.0000027809)0/29:0.0012442274,Emydura:0.0212259648)0/3:0.0000021528,(Rhinoclemmys:0.0068348388,((Hardella:0.0046924212,Kachuga:0.0037256296)98.3/100:0.0024582496,Malayemys:0.0065972362)90.3/95:0.0013128918)73.2/42:0.0011583311)0/3:0.0000022897)100/13:0.0032977157)96.7/50:0.0019508580,(((((Sternotherusm:0.0015505492,Cuorap:0.0000020130)0/97:0.0000061280,Sternotherusc:0.0027723337)85.1/99:0.0018330935,Kinosternon:0.0031294607)94/98:0.0037785380,(Claudius:0.0054957578,Dermatemys:0.0096853078)67.3/97:0.0008474427)99.9/97:0.0072075751,Chelydra:0.0089034203)92.4/77:0.0010858967)93.3/77:0.0030349812,(Eretmochelys:0.0113750695,Chelonia:0.0057951172)94/99:0.0116802725)98.9/83:0.0048731985,((Apalone:0.0058243269,Pelodiscus:0.0084562750)77.2/100:0.0025967036,Lissemys:0.0080824804)98.7/100:0.0180767693)81.2/81:0.0036080482,(Chelodina:0.0143150766,(Pelomedusa:0.0183757880,(Phrynops:0.0039205146,Platemys:0.0055595014)76.2/99:0.0065035911)76.5/97:0.0076120041)66/94:0.0032465727)100/83:0.0185290183)100/100:0.0566115984,Alligator:0.0039758268);
+
+Liu
+/data/schwartzlab/awalling/Phylo_ML/datasets/Liu_alignments/inferenceEmpirical.iqtree
+cp /data/schwartzlab/awalling/Phylo_ML/datasets/Liu_alignments/inferenceEmpirical.iqtree /data/schwartzlab/Biancani/FilterByKnownClades/data/Liu/emperical_tree/
+
+Wickett
+/data/schwartzlab/awalling/Phylo_ML/datasets/Wickett_alignments/inferenceEmpirical.iqtree
+cp /data/schwartzlab/awalling/Phylo_ML/datasets/Wickett_alignments/inferenceEmpirical.iqtree /data/schwartzlab/Biancani/FilterByKnownClades/data/Wickett/emperical_tree/
+
+McGowen
+/data/schwartzlab/awalling/Phylo_ML/datasets/McGowen_alignments/inferenceEmpirical.iqtree
+cp /data/schwartzlab/awalling/Phylo_ML/datasets/McGowen_alignments/inferenceEmpirical.iqtree /data/schwartzlab/Biancani/FilterByKnownClades/data/McGowen/emperical_tree/
+
 #####
 
 Example submission file for generating emperical trees:
@@ -350,15 +358,13 @@ What node to choose for Fong tree? - Turtles.
 
 2024.07.11
 
-The following R script adapts the R script used to prep the emperical trees for simulations in order to output a mapping to tip numbers to tip name labels.
+The following R script adapts the R script used to prep the emperical trees for simulations in order to output the rerooted emperical tree and a mapping of tip numbers to tip name labels.
 Original R script:
 https://github.com/alexandrawalling/PML/blob/main/1_empirical_tree_generation/empirical_tree_processor.R
 
+########
 module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
 R
-########
-get_tip_labels.R
-########
 #Load in libraries
 library(ape)
 library(ggplot2)
@@ -371,11 +377,14 @@ fong_tree <- read.tree("simulations/empirical/fong/1/inferenceEmpirical.treefile
 fong_tree <- root(fong_tree, outgroup = "Danio")
 #Tip labels:
 fong_tips <- fong_tree$tip.label
+#Export rerooted emperical tree
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/emperical_tree")
+write.tree(fong_tree, file = "Fong_emperical.tree")
 #Replace tip labels with numbers:
 fong_tree$tip.label <- as.character(1:length(fong_tree$tip.label))
 #Tip numbers:
 fong_tip_nums <- fong_tree$tip.label
-#tip names & numbers:
+#Export tip names & numbers:
 fong_tips_df <- data.frame(fong_tip_nums,fong_tips)
 setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/emperical_tree")
 write.table(fong_tips_df, file = "fong_tips.csv", sep = ",", row.names = FALSE, col.names = FALSE)
@@ -386,6 +395,9 @@ wickett_tree <- read.tree("simulations/empirical/wickett/1/inferenceEmpirical.tr
 wickett_tree <- root(wickett_tree, outgroup = "Pyramimonas_parkeae")
 #Tip labels:
 wickett_tips <- wickett_tree$tip.label
+#Export rerooted emperical tree
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Wickett/emperical_tree")
+write.tree(wickett_tree, file = "Wickett_emperical.tree")
 #Replace tip labels with numbers:
 wickett_tree$tip.label <- as.character(1:length(wickett_tree$tip.label))
 #Tip numbers:
@@ -401,6 +413,9 @@ liu_tree <- read.tree("simulations/empirical/liu/1/inferenceEmpirical.treefile")
 liu_tree <- root(liu_tree, outgroup = "danio_rer")
 #Tip labels:
 liu_tips <- liu_tree$tip.label
+#Export rerooted emperical tree
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Liu/emperical_tree")
+write.tree(liu_tree, file = "Liu_emperical.tree")
 #Replace tip labels with numbers:
 liu_tree$tip.label <- as.character(1:length(liu_tree$tip.label))
 #Tip numbers:
@@ -416,6 +431,9 @@ mcgowen_tree <- read.tree("simulations/empirical/mcgowen/1/inferenceEmpirical.tr
 # mcgowen_tree <- root(mcgowen_tree, outgroup = "") #this tree was not re-rooted for simulations
 #Tip labels:
 mcgowen_tips <- mcgowen_tree$tip.label
+#Export rerooted emperical tree
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/McGowen/emperical_tree")
+write.tree(mcgowen_tree, file = "McGowen_emperical.tree")
 #Replace tip labels with numbers:
 mcgowen_tree$tip.label <- as.character(1:length(mcgowen_tree$tip.label))
 #Tip numbers:
