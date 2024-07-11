@@ -19,3 +19,5 @@ Slurm submission script: 00_iqtree_prep.sh
 ### 01. Unconstrained Gene Trees
 
 Slurm submission script: 01_iqtree_array_gtree.sh
+
+### 02. Constrained Gene Trees
