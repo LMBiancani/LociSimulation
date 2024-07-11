@@ -17,9 +17,9 @@ DATA=$PROJECT/data
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$DATA/Fong/simulated_loci
+aligned_loci_path=$DATA/McGowen/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/Fong
+OUTPUT=$PROJECT/output/McGowen
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=$OUTPUT/iqtree_assessment
 # path to iqtree executable:
@@ -35,5 +35,6 @@ cat ${array_work_folder}/${fileline} | while read line
 do
 	echo $line
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G
-	rm inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
+
