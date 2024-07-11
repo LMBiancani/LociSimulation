@@ -152,12 +152,14 @@ nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/00_iqtree_prep.sh
 PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$DATA/Fong/simulated_loci
+aligned_loci_path=$DATA/$DATASET/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/Fong
+OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=iqtree_assessment
 # number of loci per array task
@@ -343,6 +345,82 @@ Job Wall-clock time: 00:36:39
 Memory Utilized: 17.40 MB
 Memory Efficiency: 0.28% of 6.00 GB
 
-
 Constrained gene trees:
-What node to choose for Fong tree?
+What node to choose for Fong tree? - Turtles.
+
+2024.07.11
+
+The following R script adapts the R script used to prep the emperical trees for simulations in order to output a mapping to tip numbers to tip name labels.
+Original R script:
+https://github.com/alexandrawalling/PML/blob/main/1_empirical_tree_generation/empirical_tree_processor.R
+
+module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
+R
+########
+get_tip_labels.R
+########
+#Load in libraries
+library(ape)
+library(ggplot2)
+library(geiger)
+library(ggtree)
+
+#Empirical species tree 1 (Fong et al.):
+setwd("/data/schwartzlab/awalling/Phylo_ML")
+fong_tree <- read.tree("simulations/empirical/fong/1/inferenceEmpirical.treefile")
+fong_tree <- root(fong_tree, outgroup = "Danio")
+#Tip labels:
+fong_tips <- fong_tree$tip.label
+#Replace tip labels with numbers:
+fong_tree$tip.label <- as.character(1:length(fong_tree$tip.label))
+#Tip numbers:
+fong_tip_nums <- fong_tree$tip.label
+#tip names & numbers:
+fong_tips_df <- data.frame(fong_tip_nums,fong_tips)
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/emperical_tree")
+write.table(fong_tips_df, file = "fong_tips.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+#Empirical species tree 2 (Wickett et al.):
+setwd("/data/schwartzlab/awalling/Phylo_ML")
+wickett_tree <- read.tree("simulations/empirical/wickett/1/inferenceEmpirical.treefile")
+wickett_tree <- root(wickett_tree, outgroup = "Pyramimonas_parkeae")
+#Tip labels:
+wickett_tips <- wickett_tree$tip.label
+#Replace tip labels with numbers:
+wickett_tree$tip.label <- as.character(1:length(wickett_tree$tip.label))
+#Tip numbers:
+wickett_tip_nums <- wickett_tree$tip.label
+#tip names & numbers:
+wickett_tips_df <- data.frame(wickett_tip_nums,wickett_tips)
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Wickett/emperical_tree")
+write.table(wickett_tips_df, file = "wickett_tips.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+#Empirical species tree 3 (Liu et al.):
+setwd("/data/schwartzlab/awalling/Phylo_ML")
+liu_tree <- read.tree("simulations/empirical/liu/1/inferenceEmpirical.treefile")
+liu_tree <- root(liu_tree, outgroup = "danio_rer")
+#Tip labels:
+liu_tips <- liu_tree$tip.label
+#Replace tip labels with numbers:
+liu_tree$tip.label <- as.character(1:length(liu_tree$tip.label))
+#Tip numbers:
+liu_tip_nums <- liu_tree$tip.label
+#tip names & numbers:
+liu_tips_df <- data.frame(liu_tip_nums,liu_tips)
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Liu/emperical_tree")
+write.table(liu_tips_df, file = "liu_tips.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+#Empirical species tree 4 (McGowen et al.):
+setwd("/data/schwartzlab/awalling/Phylo_ML")
+mcgowen_tree <- read.tree("simulations/empirical/mcgowen/1/inferenceEmpirical.treefile")
+# mcgowen_tree <- root(mcgowen_tree, outgroup = "") #this tree was not re-rooted for simulations
+#Tip labels:
+mcgowen_tips <- mcgowen_tree$tip.label
+#Replace tip labels with numbers:
+mcgowen_tree$tip.label <- as.character(1:length(mcgowen_tree$tip.label))
+#Tip numbers:
+mcgowen_tip_nums <- mcgowen_tree$tip.label
+#tip names & numbers:
+mcgowen_tips_df <- data.frame(mcgowen_tip_nums,mcgowen_tips)
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/McGowen/emperical_tree")
+write.table(mcgowen_tips_df, file = "mcgowen_tips.csv", sep = ",", row.names = FALSE, col.names = FALSE)
