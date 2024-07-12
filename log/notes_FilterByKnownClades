@@ -442,3 +442,188 @@ mcgowen_tip_nums <- mcgowen_tree$tip.label
 mcgowen_tips_df <- data.frame(mcgowen_tip_nums,mcgowen_tips)
 setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/McGowen/emperical_tree")
 write.table(mcgowen_tips_df, file = "mcgowen_tips.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+
+Constraint Trees
+The following R script adapts the R script used to prep the emperical trees for simulations in order to output constraint trees.
+Original R script: https://github.com/alexandrawalling/PML/blob/main/1_empirical_tree_generation/empirical_tree_processor.R
+########
+module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
+R
+## Load in libraries
+library(ape)
+library(ggplot2)
+library(geiger)
+library(ggtree)
+
+## Empirical species tree 1 (Fong et al.):
+setwd("/data/schwartzlab/Biancani/FilterByKnownClades/data/Fong/emperical_tree")
+fong_tree <- read.tree("Fong_emperical.tree")
+## Label nodes with numbers:
+## Number of internal nodes
+num_internal_nodes <- fong_tree$Nnode
+### num_internal_nodes = 127
+## Number of tips
+num_tips <- Ntip(fong_tree)
+### num_tips = 129
+# Generate sequential node numbers (node numbers start with the number of tips +1)
+sequential_numbers <- seq((1+num_tips), (1+num_tips+num_internal_nodes))
+# Assign sequential numbers to node labels
+fong_tree$node.label <- as.character(sequential_numbers)
+### fong_tree$node.label are now numbered 130-257
+# Export numbered tree
+write.tree(fong_tree, file = "Fong_numbered_nodes.tree")
+### inspect tree: Node 140 is Turtles (need to collapse all but this node)
+# Extract the clade starting from node 140
+turtles <- extract.clade(fong_tree, 140)
+### 46 Turtles
+# list of Turtles
+turtle_taxa <- turtles$tip.label
+# list of non-Turtles
+non_turtle_taxa <- setdiff(fong_tree$tip.label, turtle_taxa)
+# convert taxon names to tip numbers
+
+
+
+error! internal nodes are numbered starting from the number of tips plus one. For example, if a tree has 10 tips, the internal nodes would start from 11.
+
+
+
+2024.07.12 - backup of R script:
+
+2024.07.11
+
+
+Original R script (used to prep the emperical trees for simulations):
+  https://github.com/alexandrawalling/PML/blob/main/1_empirical_tree_generation/empirical_tree_processor.R
+
+What this script does:
+  - copy emperical trees from Alexandra (after re-rooting)
+  -
+
+  in order to output the rerooted emperical tree and a mapping of tip numbers to tip name labels.
+
+
+########
+module load R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2
+R
+#Load in libraries
+library(ape)
+library(ggplot2)
+library(geiger)
+library(ggtree)
+
+datasets <- c("Fong","Liu","Wickett","McGowen")
+
+# copy emperical trees from Alexandra:
+for (dataset in datasets){
+  setwd("/data/schwartzlab/awalling/Phylo_ML")
+  tree_path <- paste("simulations/empirical", tolower(dataset), "1/inferenceEmpirical.treefile", sep="/")
+  emperical_tree <- read.tree(tree_path)
+  #re-root trees (as done by Alexandra):
+  if (dataset == "Fong"){
+    emperical_tree <- root(emperical_tree, outgroup = "Danio")
+  } else if (dataset == "Liu"){
+    emperical_tree <- root(emperical_tree, outgroup = "danio_rer")
+  } else if (dataset == "Wickett"){
+    emperical_tree <- root(emperical_tree, outgroup = "Pyramimonas_parkeae")
+  } else if (dataset == "McGowen"){
+    # McGowen tree was not re-rooted for simulations
+  }
+  #Save rerooted emperical tree
+  out_path <- paste("/data/schwartzlab/Biancani/FilterByKnownClades/data", dataset, "emperical_tree", sep = "/")
+  setwd(out_path)
+  filename <- paste(dataset, "emperical.tree", sep = "_")
+  #write.tree(emperical_tree, filename)
+}
+
+# Tip processing of emperical trees
+for (dataset in datasets){
+  #read previously saved emperical tree:
+  directory_path <- paste("/data/schwartzlab/Biancani/FilterByKnownClades/data", dataset, "emperical_tree", sep = "/")
+  setwd(directory_path)
+  emperical_filename <- paste(dataset, "emperical.tree", sep = "_")
+  emperical_tree <- read.tree(emperical_filename)
+  #store current tip labels
+  tips <- emperical_tree$tip.label
+  tip_names_tree <- emperical_tree
+  #Replace tip labels with numbers:
+  emperical_tree$tip.label <- as.character(1:length(emperical_tree$tip.label))
+  #store numbered tip labels
+  tip_nums <- emperical_tree$tip.label
+  tip_num_tree <- emperical_tree
+  #Export tip names & numbers:
+  tips_df <- data.frame(tip_nums, tips)
+  filename <- paste(dataset,"tips.csv",sep = "_")
+  #write.table(tips_df, file = filename, sep = ",", row.names = FALSE, col.names = FALSE)
+  #Export tree with numbered tips:
+  filename <- paste(dataset, "num_tips_emperical.tree", sep = "_")
+  #write.tree(tip_num_tree, filename)
+  #create combined tip tree
+  # Use apply to concatenate strings across rows (margin=1),
+  combined_tips <- apply(tips_df, 1, function(row) paste(row, collapse = "_"))
+  #Replace tip labels with numbers & names:
+  emperical_tree$tip.label <- combined_tips
+  combo_tip_tree <- emperical_tree
+  #Export tree with combined tips:
+  filename <- paste(dataset, "combo_tips_emperical.tree", sep = "_")
+  #write.tree(combo_tip_tree, filename)
+  #Generate collapsed trees for constrained gene trees, ex. (A,B,C,D,(E,F,G,H));
+  # Label nodes with numbers:
+  # Number of internal nodes:
+  num_internal_nodes <- combo_tip_tree$Nnode
+  # Number of tips:
+  num_tips <- Ntip(combo_tip_tree)
+  # Generate node numbers (node numbers start with the number of tips +1)
+  node_numbers <- seq((1+num_tips), (1+num_tips+num_internal_nodes))
+  # Assign sequential numbers to node labels
+  node_num_tree <- combo_tip_tree
+  node_num_tree$node.label <- as.character(node_numbers)
+  # Export node numbered tree:
+  filename <- paste(dataset, "num_nodes_emperical.tree", sep = "_")
+  #write.tree(node_num_tree, filename)
+  #Trees with numbered nodes were inspected to find the node corresponding to clade to be constrained
+  #Fong=turtles(node#140) #Liu=primates(node#135)#Wickett=Angiosperms-flowering plants(node#116) #McGowen=cetaceans-ingroup(node#177)
+  if (dataset=="Fong"){
+    node <- 140
+    print(dataset)
+    print(as.character(node))
+  } else if (dataset=="Liu"){
+    node <- 135
+    print(dataset)
+    print(as.character(node))
+  } else if (dataset=="Wickett"){
+    node <- 116
+    print(dataset)
+    print(as.character(node))
+  } else if (dataset=="McGowen"){
+    node <- 177
+    print(dataset)
+    print(as.character(node))
+  }
+}
+
+# IQ-TREE: -g Specify a topological constraint tree file in NEWICK format. The constraint tree can be a multifurcating tree and need not to include all taxa.
+#Generate collapsed trees for constrained gene trees
+# ex. (A,B,C,D,(E,F,G,H));
+
+dataset <- "Fong"
+# add to above for loop after testing!
+
+
+  ### inspect tree: Node 140 is Turtles (need to collapse all but this node)
+  # Extract the clade starting from node 140
+  turtles <- extract.clade(fong_tree, 140)
+  ### 46 Turtles
+  # list of Turtles
+  turtle_taxa <- turtles$tip.label
+  # list of non-Turtles
+  non_turtle_taxa <- setdiff(fong_tree$tip.label, turtle_taxa)
+  # convert taxon names to tip numbers
+
+
+
+  error! internal nodes are numbered starting from the number of tips plus one. For example, if a tree has 10 tips, the internal nodes would start from 11.
+
+  # Get the tip labels that are descendants of node 11
+  
