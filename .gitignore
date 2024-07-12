@@ -1,3 +1,4 @@
 **/simulated_loci/
 slurm*
 /output
+.DS_Store
