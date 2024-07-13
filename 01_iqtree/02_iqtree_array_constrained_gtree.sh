@@ -15,13 +15,13 @@ PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
 # Dataset name:
-DATASET="Liu"
+DATASET="McGowen"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
 aligned_loci_path=$DATA/$DATASET/simulated_loci
-# path to constraint tree:
-CONSTRAINT=$DATA/$DATASET/emperical_tree/$DATASET\_constraint.newick
+# path to constraint trees
+constraint_path=$DATA/$DATASET/constraint_trees
 # path to output folder (will be created if doesn't exist):
 OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
@@ -38,7 +38,10 @@ fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p $array_work_folder/array_list.txt)
 cat ${array_work_folder}/${fileline} | while read line
 do
 	echo $line
+  locusID="${line%.fas}"
+  CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
 	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
+
 
