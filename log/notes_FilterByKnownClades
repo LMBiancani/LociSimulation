@@ -536,8 +536,8 @@ DATASET="Fong"
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
 aligned_loci_path=$DATA/$DATASET/simulated_loci
-# path to constraint tree:
-CONSTRAINT=$DATA/$DATASET/emperical_tree/$DATASET\_constraint.newick
+# path to constraint trees
+constraint_path=$DATA/$DATASET/constraint_trees
 # path to output folder (will be created if doesn't exist):
 OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
@@ -554,27 +554,39 @@ fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p $array_work_folder/array_list.txt)
 cat ${array_work_folder}/${fileline} | while read line
 do
 	echo $line
+  locusID="${line%.fas}"
+  CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
 	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
-Submitted batch job 329951
+Submitted batch job 330035
+
 
 ########## Liu ##########
-for file in $(ls 0*)
+for file in $(ls 02*)
 do
     sed -i 's/\bFong\b/Liu/g' "$file"
 done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
-Submitted batch job 329991
+Submitted batch job 330075
 
-ERROR: ERROR: Taxon 2 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 3 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 5 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 6 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 8 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 9 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 11 in constraint tree does not appear in full tree
-ERROR: ERROR: Taxon 13 in constraint tree does not appear in full tree
+########## Wickett ##########
+for file in $(ls 02*)
+do
+    sed -i 's/\bLiu\b/Wickett/g' "$file"
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330115
+
+########## McGowen ##########
+for file in $(ls 02*)
+do
+    sed -i 's/\bWickett\b/McGowen/g' "$file"
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330155
