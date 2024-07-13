@@ -466,3 +466,10 @@ for (dataset in datasets){
   filename = paste(dataset, "constraint.newick", sep = "_")
   #cat(combined_newick, file = filename)
 }
+
+2024.07.12
+
+To do:
+- finish updating Dataset variable in iqtree scripts above and update scripts on GitHub
+- create new genetree script for constrained gene trees (with new output directories)
+- run constrained gene trees
