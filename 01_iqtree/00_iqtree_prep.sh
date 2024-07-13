@@ -13,15 +13,17 @@
 PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$DATA/McGowen/simulated_loci
+aligned_loci_path=$DATA/$DATASET/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/McGowen
+OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=iqtree_assessment
-# number of loci per array task 
+# number of loci per array task
 LociPerTask=50
 
 mkdir -p $OUTPUT
@@ -34,4 +36,3 @@ ls aligned_loci_list_* > array_list.txt
 ARRAY="#SBATCH --array=[1-${arrayN}]%40"
 echo $ARRAY
 echo $ARRAY >> sbatch_array_directive.txt
-

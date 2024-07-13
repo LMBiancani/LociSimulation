@@ -14,12 +14,14 @@
 PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$DATA/McGowen/simulated_loci
+aligned_loci_path=$DATA/$DATASET/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/McGowen
+OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=$OUTPUT/iqtree_assessment
 # path to iqtree executable:
