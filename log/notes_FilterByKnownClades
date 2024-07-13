@@ -218,12 +218,14 @@ nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/01_iqtree_array_gt
 PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
-aligned_loci_path=$DATA/Fong/simulated_loci
+aligned_loci_path=$DATA/$DATASET/simulated_loci
 # path to output folder (will be created if doesn't exist):
-OUTPUT=$PROJECT/output/Fong
+OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=$OUTPUT/iqtree_assessment
 # path to iqtree executable:
@@ -317,7 +319,17 @@ Memory Efficiency: 0.00% of 6.00 GB (6.00 GB/core)
 ##########
 sbatch -q schwartzlab 01_iqtree_array_gtree.sh
 Submitted batch job 329600
-
+Job ID: 329600
+Array Job ID: 329600_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:39:25
+CPU Efficiency: 98.50% of 00:40:01 core-walltime
+Job Wall-clock time: 00:40:01
+Memory Utilized: 26.23 MB
+Memory Efficiency: 0.43% of 6.00 GB
 
 
 ########## McGowen ##########
@@ -457,19 +469,112 @@ for (dataset in datasets){
   }
   constrained_clade <- extract.clade(tip_num_tree, node) #extract constrained clade from tip numbered tree
   constrained_tip_nums <- constrained_clade$tip.label #store tip numbers for taxa in constrained clade
-  unconstrained_tips <- setdiff(tip_nums, constrained_tip_nums) #filter constrained tips from all tips to store unconstrained tips
+  unconstrained_tip_nums <- setdiff(tip_nums, constrained_tip_nums) #filter constrained tips from all tips to store unconstrained tips
   ## Generate newick format for constrained tree:
   constrained_newick <- paste("(", (paste(constrained_tip_nums, collapse = ", ")), ")", sep = "")
-  unconstrained_newick <- paste(unconstrained_tips, collapse = ", ")
+  unconstrained_newick <- paste(unconstrained_tip_nums, collapse = ", ")
   combined_newick <- paste("(", unconstrained_newick, ",", constrained_newick ,");",sep = "")
   ## Export constrained tree (in newick format)
-  filename = paste(dataset, "constraint.newick", sep = "_")
+  filename <- paste(dataset, "constraint.newick", sep = "_")
   #cat(combined_newick, file = filename)
+  ## Generate pruned constraint trees for each simulated locus
+  loci_path <- paste("/data/schwartzlab/Biancani/FilterByKnownClades/data", dataset, "simulated_loci", sep = "/")
+  constraint_path <- paste("/data/schwartzlab/Biancani/FilterByKnownClades/data", dataset, "constraint_trees", sep = "/")
+  loci <- list.files(path = loci_path, pattern = "loc*", full.names = FALSE) # list simulated loci filenames
+  for (locus in loci) {
+    setwd(loci_path)
+    locus_lines <- readLines(locus) #read file lines into character vector
+    headings <- locus_lines[grepl("^>", locus_lines)]
+    taxa <- gsub(">", "", headings) #strip ">" from headings to produce list of taxa
+    constrained_tips <- intersect(constrained_tip_nums, taxa) #filter constrained_tip_nums for only entries that also appear in taxa
+    unconstrained_tips <- intersect(unconstrained_tip_nums, taxa) #filter unconstrained_tip_nums for only entries that also appear in taxa
+    ## Generate newick format for filtered constrained tree:
+    constrained_newick <- paste("(", (paste(constrained_tips, collapse = ", ")), ")", sep = "")
+    unconstrained_newick <- paste(unconstrained_tips, collapse = ", ")
+    combined_newick <- paste("(", unconstrained_newick, ",", constrained_newick ,");",sep = "")
+    ## Export constrained tree (in newick format)
+    name <- gsub(".fas", "", locus)
+    filename <- paste(name,"constraint.newick", sep = "_")
+    setwd(constraint_path)
+    cat(combined_newick, file = filename)
+  }
 }
 
 2024.07.12
 
 To do:
-- finish updating Dataset variable in iqtree scripts above and update scripts on GitHub
-- create new genetree script for constrained gene trees (with new output directories)
+-x- Update Dataset variable in iqtree scripts above and update scripts on GitHub
+-x- Generate filtered constrained gene trees for each locus (a given locus may not contain all taxa)
+- create new genetree script for constrained gene trees
 - run constrained gene trees
+
+2024.07.13
+
+## Constrained Gene Trees
+
+nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/02_iqtree_array_constrained_gtree.sh
+##########
+#!/bin/bash
+#SBATCH --job-name="IQarr_gtree"
+#SBATCH --time=48:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=6G
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+#SBATCH --array=[1-40]%40
+
+## UPDATE as needed...
+# path to Project Directory:
+PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to data directory:
+DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
+# path to IQtree scripts:
+scripts_dir=$PROJECT/01_iqtree
+# path to aligned loci:
+aligned_loci_path=$DATA/$DATASET/simulated_loci
+# path to constraint tree:
+CONSTRAINT=$DATA/$DATASET/emperical_tree/$DATASET\_constraint.newick
+# path to output folder (will be created if doesn't exist):
+OUTPUT=$PROJECT/output/$DATASET
+# name of iqtree array work folder (will be created if doesn't exist):
+array_work_folder=$OUTPUT/iqtree_assessment
+# path to iqtree executable:
+iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2"
+
+date
+cd $array_work_folder
+mkdir -p GeneTreesConstrained
+cd GeneTreesConstrained
+
+fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p $array_work_folder/array_list.txt)
+cat ${array_work_folder}/${fileline} | while read line
+do
+	echo $line
+	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
+	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 329951
+
+########## Liu ##########
+for file in $(ls 0*)
+do
+    sed -i 's/\bFong\b/Liu/g' "$file"
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 329991
+
+ERROR: ERROR: Taxon 2 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 3 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 5 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 6 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 8 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 9 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 11 in constraint tree does not appear in full tree
+ERROR: ERROR: Taxon 13 in constraint tree does not appear in full tree
