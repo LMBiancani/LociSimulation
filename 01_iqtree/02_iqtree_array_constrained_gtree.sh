@@ -15,7 +15,7 @@ PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
 # Dataset name:
-DATASET="McGowen"
+DATASET="Fong"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
@@ -41,7 +41,26 @@ do
   CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
   cd $array_work_folder
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre GeneTreesConstrained/inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
-  cd GeneTreeConstrained
-	rm -f inference_${line}.parstree inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+	rm -f GeneTreesConstrained/inference_${line}.parstree GeneTreesConstrained/inference_${line}.ckp.gz GeneTreesConstrained/inference_${line}.iqtree GeneTreesConstrained/inference_${line}.log GeneTreesConstrained/inference_${line}.bionj GeneTreesConstrained/inference_${line}.mldist GeneTreesConstrained/inference_${line}.uniqueseq.phy
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330035
+Job ID: 330035
+Array Job ID: 330035_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:17:50
+CPU Efficiency: 99.07% of 01:18:34 core-walltime
+Job Wall-clock time: 01:18:34
+Memory Utilized: 33.93 MB
+Memory Efficiency: 0.55% of 6.00 GB
+
+########## Liu ##########
+for file in $(ls 02*)
+do
+    sed -i 's/\bFong\b/Liu/g' "$file"
 done
 
