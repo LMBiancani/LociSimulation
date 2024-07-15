@@ -241,7 +241,7 @@ cat ${array_work_folder}/${fileline} | while read line
 do
 	echo $line
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G
-	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+	rm -f inference_${line}.parstree inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
 ##########
 sbatch -q schwartzlab 01_iqtree_array_gtree.sh
@@ -505,8 +505,8 @@ for (dataset in datasets){
 To do:
 -x- Update Dataset variable in iqtree scripts above and update scripts on GitHub
 -x- Generate filtered constrained gene trees for each locus (a given locus may not contain all taxa)
-- create new genetree script for constrained gene trees
-- run constrained gene trees
+-x- create new genetree script for constrained gene trees
+-x- run constrained gene trees
 
 2024.07.13
 
@@ -548,7 +548,6 @@ iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree
 date
 cd $array_work_folder
 mkdir -p GeneTreesConstrained
-cd GeneTreesConstrained
 
 fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p $array_work_folder/array_list.txt)
 cat ${array_work_folder}/${fileline} | while read line
@@ -556,13 +555,25 @@ do
 	echo $line
   locusID="${line%.fas}"
   CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
-	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
-	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+  cd $array_work_folder
+	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre GeneTreesConstrained/inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
+  cd GeneTreeConstrained
+	rm -f inference_${line}.parstree inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330035
-
+Job ID: 330035
+Array Job ID: 330035_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:17:50
+CPU Efficiency: 99.07% of 01:18:34 core-walltime
+Job Wall-clock time: 01:18:34
+Memory Utilized: 33.93 MB
+Memory Efficiency: 0.55% of 6.00 GB
 
 ########## Liu ##########
 for file in $(ls 02*)
@@ -572,6 +583,17 @@ done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330075
+Job ID: 330075
+Array Job ID: 330075_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:52:22
+CPU Efficiency: 98.71% of 00:53:03 core-walltime
+Job Wall-clock time: 00:53:03
+Memory Utilized: 25.79 MB
+Memory Efficiency: 0.42% of 6.00 GB
 
 ########## Wickett ##########
 for file in $(ls 02*)
@@ -581,6 +603,17 @@ done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330115
+Job ID: 330115
+Array Job ID: 330115_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:16:54
+CPU Efficiency: 98.91% of 01:17:45 core-walltime
+Job Wall-clock time: 01:17:45
+Memory Utilized: 42.54 MB
+Memory Efficiency: 0.69% of 6.00 GB
 
 ########## McGowen ##########
 for file in $(ls 02*)
@@ -590,3 +623,39 @@ done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330155
+Job ID: 330155
+Array Job ID: 330155_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:23:23
+CPU Efficiency: 97.16% of 00:24:04 core-walltime
+Job Wall-clock time: 00:24:04
+Memory Utilized: 17.06 MB
+Memory Efficiency: 0.28% of 6.00 GB
+
+2024.07.14
+
+For Fong an Liu datasets some output files of the constrained gene trees were in the parent directory
+instead of the GeneTreeConstrained directory. Moved Liu files but need to edit
+script (above) and rerun for Fong Constrained gene trees. (Wickett was fine). McGowen is missing one gene tree so rerun that as well.
+
+Fong
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330312
+
+McGowen
+##########
+for file in $(ls 02*)
+do
+    sed -i 's/\bFong\b/McGowen/g' "$file"
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330432
+
+
+To Do:
+- collect gene trees
