@@ -557,8 +557,7 @@ do
   CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
   cd $array_work_folder
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre GeneTreesConstrained/inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
-  cd GeneTreeConstrained
-	rm -f inference_${line}.parstree inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+	rm -f GeneTreesConstrained/inference_${line}.parstree GeneTreesConstrained/inference_${line}.ckp.gz GeneTreesConstrained/inference_${line}.iqtree GeneTreesConstrained/inference_${line}.log GeneTreesConstrained/inference_${line}.bionj GeneTreesConstrained/inference_${line}.mldist GeneTreesConstrained/inference_${line}.uniqueseq.phy
 done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
@@ -659,3 +658,33 @@ Submitted batch job 330432
 
 To Do:
 - collect gene trees
+
+
+nano 03_iqtree_collect_gtrees.sh
+##########
+#!/bin/bash
+#SBATCH --job-name="IQout"
+#SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=8G
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+
+## UPDATE as needed...
+# path to Project Directory:
+PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to data directory:
+DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
+# path to output folder:
+OUTPUT=$PROJECT/output/$DATASET
+# name of iqtree array work folder (will be created if doesn't exist):
+array_work_folder=$OUTPUT/iqtree_assessment
+
+date
+> gtrees.txt; cat ../../SISRS_mammals/iqtree_assessment_mammals/array_list.txt | while read line1; do cat ../../SISRS_mammals/iqtree_assessment_mammals/${line1} >> gtrees.txt; done
+> gtrees.tre; cat gtrees.txt | while read line; do cat ./inference_${line}.treefile >> gtrees.tre; done
+date
