@@ -37,6 +37,5 @@ cat ${array_work_folder}/${fileline} | while read line
 do
 	echo $line
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G
-	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
 
