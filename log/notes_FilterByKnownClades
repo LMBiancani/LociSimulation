@@ -654,11 +654,21 @@ done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330432
+Job ID: 330432
+Array Job ID: 330432_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:35:57
+CPU Efficiency: 97.29% of 00:36:57 core-walltime
+Job Wall-clock time: 00:36:57
+Memory Utilized: 16.84 MB
+Memory Efficiency: 0.27% of 6.00 GB
 
 
 To Do:
-- collect gene trees
-
+Collect gene trees
 
 nano 03_iqtree_collect_gtrees.sh
 ##########
