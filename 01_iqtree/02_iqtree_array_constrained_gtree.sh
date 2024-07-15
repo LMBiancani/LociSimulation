@@ -32,7 +32,6 @@ iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree
 date
 cd $array_work_folder
 mkdir -p GeneTreesConstrained
-cd GeneTreesConstrained
 
 fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p $array_work_folder/array_list.txt)
 cat ${array_work_folder}/${fileline} | while read line
@@ -40,8 +39,9 @@ do
 	echo $line
   locusID="${line%.fas}"
   CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
-	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
-	rm -f inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
+  cd $array_work_folder
+	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre GeneTreesConstrained/inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
+  cd GeneTreeConstrained
+	rm -f inference_${line}.parstree inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
-
 
