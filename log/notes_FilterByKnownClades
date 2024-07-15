@@ -241,7 +241,6 @@ cat ${array_work_folder}/${fileline} | while read line
 do
 	echo $line
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre inference_${line} -alrt 1000 -m GTR+G
-	rm -f inference_${line}.parstree inference_${line}.ckp.gz inference_${line}.iqtree inference_${line}.log inference_${line}.bionj inference_${line}.mldist inference_${line}.uniqueseq.phy
 done
 ##########
 sbatch -q schwartzlab 01_iqtree_array_gtree.sh
@@ -557,7 +556,7 @@ do
   CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
   cd $array_work_folder
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre GeneTreesConstrained/inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
-	rm -f GeneTreesConstrained/inference_${line}.parstree GeneTreesConstrained/inference_${line}.ckp.gz GeneTreesConstrained/inference_${line}.iqtree GeneTreesConstrained/inference_${line}.log GeneTreesConstrained/inference_${line}.bionj GeneTreesConstrained/inference_${line}.mldist GeneTreesConstrained/inference_${line}.uniqueseq.phy
+	#rm -f GeneTreesConstrained/inference_${line}.parstree GeneTreesConstrained/inference_${line}.ckp.gz GeneTreesConstrained/inference_${line}.iqtree GeneTreesConstrained/inference_${line}.log GeneTreesConstrained/inference_${line}.bionj GeneTreesConstrained/inference_${line}.mldist GeneTreesConstrained/inference_${line}.uniqueseq.phy
 done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
@@ -644,6 +643,17 @@ Fong
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330312
+Job ID: 330312
+Array Job ID: 330312_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:41:18
+CPU Efficiency: 98.83% of 01:42:30 core-walltime
+Job Wall-clock time: 01:42:30
+Memory Utilized: 33.86 MB
+Memory Efficiency: 0.55% of 6.00 GB
 
 McGowen
 ##########
@@ -666,11 +676,11 @@ Job Wall-clock time: 00:36:57
 Memory Utilized: 16.84 MB
 Memory Efficiency: 0.27% of 6.00 GB
 
-
 To Do:
 Collect gene trees
 
-nano 03_iqtree_collect_gtrees.sh
+########## Collect Constrained Fong Gene Trees ##########
+nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/03_iqtree_collect_gtrees.sh
 ##########
 #!/bin/bash
 #SBATCH --job-name="IQout"
@@ -689,12 +699,81 @@ PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 DATA=$PROJECT/data
 # Dataset name:
 DATASET="Fong"
+# Gene tree type (Constrained or Unconstrained)
+GTT="Constrained"
 # path to output folder:
 OUTPUT=$PROJECT/output/$DATASET
 # name of iqtree array work folder (will be created if doesn't exist):
 array_work_folder=$OUTPUT/iqtree_assessment
+# path to gene Trees
+GTREES=$array_work_folder/GeneTrees$GTT
+
+cd $GTREES
 
 date
-> gtrees.txt; cat ../../SISRS_mammals/iqtree_assessment_mammals/array_list.txt | while read line1; do cat ../../SISRS_mammals/iqtree_assessment_mammals/${line1} >> gtrees.txt; done
-> gtrees.tre; cat gtrees.txt | while read line; do cat ./inference_${line}.treefile >> gtrees.tre; done
-date
+( > gtrees.txt; cat $array_work_folder/array_list.txt | while read line1; do cat $array_work_folder/${line1} >> gtrees.txt; done )
+( > gtrees.tre; cat gtrees.txt | while read line; do cat ./inference_${line}.treefile >> gtrees.tre; done )
+dates
+##########
+sbatch 03_iqtree_collect_gtrees.sh
+Submitted batch job 330654
+Job ID: 330654
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:00:04
+CPU Efficiency: 4.44% of 00:01:30 core-walltime
+Job Wall-clock time: 00:01:30
+Memory Utilized: 532.00 KB
+Memory Efficiency: 0.01% of 8.00 GB
+
+
+2024.07.15
+- need to re-run gene tree because script deleted necessary output filter_SISRS_output (edit script to save all outputs)
+##########
+Fong Constrained - already fine!
+##########
+Collect Fong Constrained - already done.
+##########
+Fong Unconstrained
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+sbatch -q schwartzlab 01_iqtree_array_gtree.sh
+Submitted batch job 330659
+(running)
+##########
+Liu Constrained
+##########
+for file in $(ls 02*)
+do
+    sed -i 's/\bFong\b/Liu/g' "$file"
+done
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330696
+(queued)
+##########
+Liu Unconstrained
+##########
+for file in $(ls 01*)
+do
+    sed -i 's/\bFong\b/Liu/g' "$file"
+done
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+sbatch -q schwartzlab 01_iqtree_array_gtree.sh
+Submitted batch job 330697
+(queued)
+
+********* To Do: ***********
+collect Fong unconstrained
+collect Liu: constrained, unconstrained
+McGowen: Constrained, unconstrained
+Wickett: Constrained, unconstrained
+collect McGowen and Wickett, Constrained, unconstrained
+
+Next:
+extract maximum likelihood value for each gene tree
+compare constrained vs. unconstrained likelihoods
