@@ -556,7 +556,7 @@ do
   CONSTRAINT="${constraint_path}/${locusID}_constraint.newick"
   cd $array_work_folder
 	${iqtree_exe} -nt 1 -s ${aligned_loci_path}/${line} -pre GeneTreesConstrained/inference_${line} -alrt 1000 -m GTR+G -g $CONSTRAINT
-	#rm -f GeneTreesConstrained/inference_${line}.parstree GeneTreesConstrained/inference_${line}.ckp.gz GeneTreesConstrained/inference_${line}.iqtree GeneTreesConstrained/inference_${line}.log GeneTreesConstrained/inference_${line}.bionj GeneTreesConstrained/inference_${line}.mldist GeneTreesConstrained/inference_${line}.uniqueseq.phy
+	#rm -f GeneTreesConstrained/inference_${line}.ckp.gz ## put this line back in - removes a checkpoint file
 done
 ##########
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
@@ -741,7 +741,17 @@ Fong Unconstrained
 cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
 sbatch -q schwartzlab 01_iqtree_array_gtree.sh
 Submitted batch job 330659
-(running)
+Job ID: 330659
+Array Job ID: 330659_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:04:05
+CPU Efficiency: 98.72% of 01:04:55 core-walltime
+Job Wall-clock time: 01:04:55
+Memory Utilized: 35.23 MB
+Memory Efficiency: 0.57% of 6.00 GB
 ##########
 Liu Constrained
 ##########
@@ -753,7 +763,18 @@ done
 cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
 sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
 Submitted batch job 330696
-(queued)
+Job ID: 330696
+Array Job ID: 330696_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:01:16
+CPU Efficiency: 98.42% of 01:02:15 core-walltime
+Job Wall-clock time: 01:02:15
+Memory Utilized: 25.78 MB
+Memory Efficiency: 0.42% of 6.00 GB
+
 ##########
 Liu Unconstrained
 ##########
@@ -765,15 +786,310 @@ done
 cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
 sbatch -q schwartzlab 01_iqtree_array_gtree.sh
 Submitted batch job 330697
-(queued)
+Job ID: 330697
+Array Job ID: 330697_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:50:29
+CPU Efficiency: 98.60% of 00:51:12 core-walltime
+Job Wall-clock time: 00:51:12
+Memory Utilized: 26.23 MB
+Memory Efficiency: 0.43% of 6.00 GB
 
-********* To Do: ***********
+##########
+McGowen Constrained
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+for file in $(ls 02*)
+do
+    sed -i 's/\bLiu\b/McGowen/g' "$file"
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330790
+Job ID: 330790
+Array Job ID: 330790_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:39:50
+CPU Efficiency: 97.71% of 00:40:46 core-walltime
+Job Wall-clock time: 00:40:46
+Memory Utilized: 16.88 MB
+Memory Efficiency: 0.27% of 6.00 GB
+
+##########
+McGowen Unconstrained
+##########
+for file in $(ls 01*)
+do
+    sed -i 's/\bLiu\b/McGowen/g' "$file"
+done
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+sbatch -q schwartzlab 01_iqtree_array_gtree.sh
+Submitted batch job 330830
+Job ID: 330830
+Array Job ID: 330830_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 00:36:26
+CPU Efficiency: 97.90% of 00:37:13 core-walltime
+Job Wall-clock time: 00:37:13
+Memory Utilized: 17.36 MB
+Memory Efficiency: 0.28% of 6.00 GB
+
+
+##########
+Wickett Constrained
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+for file in $(ls 02*)
+do
+    sed -i 's/\bMcGowen\b/Wickett/g' "$file"
+done
+##########
+sbatch -q schwartzlab 02_iqtree_array_constrained_gtree.sh
+Submitted batch job 330870
+Job ID: 330870
+Array Job ID: 330870_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:24:29
+CPU Efficiency: 99.18% of 01:25:11 core-walltime
+Job Wall-clock time: 01:25:11
+Memory Utilized: 43.19 MB
+Memory Efficiency: 0.70% of 6.00 GB
+
+##########
+Wickett Unconstrained
+##########
+for file in $(ls 01*)
+do
+    sed -i 's/\bMcGowen\b/Wickett/g' "$file"
+done
+##########
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree
+sbatch -q schwartzlab 01_iqtree_array_gtree.sh
+Submitted batch job 330885
+Job ID: 330885
+Array Job ID: 330885_40
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Cores: 1
+CPU Utilized: 01:29:52
+CPU Efficiency: 99.37% of 01:30:26 core-walltime
+Job Wall-clock time: 01:30:26
+Memory Utilized: 46.29 MB
+Memory Efficiency: 0.75% of 6.00 GB
+
+********* To Do?: ***********
 collect Fong unconstrained
 collect Liu: constrained, unconstrained
-McGowen: Constrained, unconstrained
-Wickett: Constrained, unconstrained
 collect McGowen and Wickett, Constrained, unconstrained
 
 Next:
 extract maximum likelihood value for each gene tree
 compare constrained vs. unconstrained likelihoods
+
+output files with maximum likelihood values:
+.log
+This log file contains detailed information about the analysis, including the maximum likelihood value.
+.iqtree
+The .iqtree file, named inference_${line}.iqtree, also contains a summary of the results, including the maximum likelihood value. This file provides a comprehensive report of the analysis, including the final tree, model parameters, and the likelihood score.
+
+Fong constrained
+inference_loc_1.fas.ckp.gz
+inference_loc_1.fas.iqtree
+inference_loc_1.fas.log
+inference_loc_1.fas.parstree
+inference_loc_1.fas.treefile
+
+inference_loc_1.fas.iqtree:
+Log-likelihood of the tree: -6615.7758 (s.e. 195.6494)
+Unconstrained log-likelihood (without tree): -4450.5640q
+
+inference_loc_1.fas.log:
+Estimate model parameters (epsilon = 0.100)
+1. Initial log-likelihood: -7050.771
+2. Current log-likelihood: -6645.233
+3. Current log-likelihood: -6644.017
+Optimal log-likelihood: -6644.016
+...
+BEST SCORE FOUND : -6615.776
+
+Fong unconstrained
+inference_loc_1.fas.bionj   inference_loc_1.fas.iqtree  inference_loc_1.fas.mldist
+inference_loc_1.fas.ckp.gz  inference_loc_1.fas.log     inference_loc_1.fas.treefile
+
+inference_loc_1.fas.iqtree
+Log-likelihood of the tree: -6510.8087 (s.e. 192.4996)
+Unconstrained log-likelihood (without tree): -4450.5640
+
+s.e. = standard error
+Compare Overlapping Confidence Intervals: If the confidence intervals of two log-likelihood values overlap, this suggests that there is no statistically significant difference between them. Conversely, if the confidence intervals do not overlap, this indicates that there may be a statistically significant difference between the log-likelihood values.
+
+info needed:
+loci_list
+unconstrained likelihood
+unconstrained se
+constrained likelihood
+constrained se
+
+Adapt collect gtrees script to also collect likelihood scores and standard error:
+
+nano /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/03_collect_gtree_data.sh
+##########
+#!/bin/bash
+#SBATCH --job-name="IQout"
+#SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=8G
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+
+module load R/4.0.3-foss-2020b
+
+## UPDATE as needed...
+# path to Project Directory:
+PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to IQtree scripts:
+scripts_dir=$PROJECT/01_iqtree
+# path to data directory:
+DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
+# path to output folder:
+OUTPUT=$PROJECT/output/$DATASET
+# name of iqtree array work folder (will be created if doesn't exist):
+array_work_folder=$OUTPUT/iqtree_assessment
+
+# generates a list of locus names and collects gene trees
+
+for type in "Constrained" "Unconstrained"
+do
+  GTT=$type
+  GTREES=$array_work_folder/GeneTrees$GTT # path to gene Trees
+  cd $GTREES
+  date
+  ( > gtrees.txt; cat $array_work_folder/array_list.txt | while read line1; do cat $array_work_folder/${line1} >> gtrees.txt; done )
+  ( > gtrees.tre; cat gtrees.txt | while read line; do cat ./inference_${line}.treefile >> gtrees.tre; done )
+  dates
+done
+
+cd $array_work_folder
+Rscript ${scripts_dir}/collect_gtrees.R $array_work_folder
+
+
+
+
+
+
+NOTE: McGowen GeneTreesConstrained is missing one gene tree. Always use gene tree list from Constrained gene trees for comparisons (it will be the shorter list)
+
+
+2024.07.16
+
+Concatenated Trees... Unfiltered
+
+#!/bin/bash
+#SBATCH --job-name="IQ_CatTree"
+#SBATCH --time=12:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=24   # processor core(s) per node
+#SBATCH --mem=50G   # total memory
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+
+nano Cat_Tree.sh
+----------
+#!/bin/bash
+#SBATCH --job-name="IQ_CatTree"
+#SBATCH --time=96:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=24   # processor core(s) per node
+#SBATCH --mem=100G
+#SBATCH --exclusive
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+
+## UPDATE as needed...
+# path to Project Directory:
+PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
+# path to data directory:
+DATA=$PROJECT/data
+# Dataset name:
+DATASET="Fong"
+# path to aligned loci:
+aligned_loci_path=$DATA/$DATASET/simulated_loci
+# path to output folder (will be created if doesn't exits):
+OUTPUT=$PROJECT/output/$DATASET/iqtree_assessment/CatTree_Unfiltered
+# path to iqtree executable:
+iqtree_exe="/data/schwartzlab/alex/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtree2"
+# path to AMAS.py
+amas_py="/home/aknyshov/alex_data/andromeda_tools/AMAS/amas/AMAS.py"
+
+mkdir -p $OUTPUT
+cd $OUTPUT
+date
+
+#Concatenate input fasta files and prepare partitions ahead of IQTree run
+python3 $amas_py concat -f fasta -d dna --out-format fasta --part-format raxml -i $aligned_loci_path/*fas -c 24 -t concatenated_loci.fasta -p partitions.txt
+
+#Run IQtree. Flags: -nt: use 24 CPU cores -spp: specifies partition file but allows partitions to have different evolutionary speeds -pre: specifies prefix for output files -m: determine best fit model immediately followed by tree reconstruction -bb: sets 1000 bootstrap replicates  -alrt: sets 1000 replicates to perform SH-like approximate likelihood test (SH-aLRT)
+${iqtree_exe} -nt 24 -s concatenated_loci.fasta -spp partitions.txt -pre unfiltered_loci -m MFP -bb 1000 -alrt 1000
+
+date
+----------
+sbatch -q schwartzlab Cat_Tree.sh
+Submitted batch job 331433
+
+
+Liu Unfiltered Tree:
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/
+for file in $(ls Cat*)
+do
+    sed -i 's/\bFong\b/Liu/g' "$file"
+done
+sbatch -q schwartzlab Cat_Tree.sh
+Submitted batch job 331467
+Job ID: 331467
+Cluster: andromeda
+User/Group: biancani/schwartzlab
+State: COMPLETED (exit code 0)
+Nodes: 2
+Cores per node: 42
+CPU Utilized: 8-12:20:51
+CPU Efficiency: 38.77% of 21-23:03:12 core-walltime
+Job Wall-clock time: 06:16:28
+Memory Utilized: 22.53 GB
+Memory Efficiency: 4.51% of 500.00 GB
+
+McGowen Unfiltered Tree:
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/
+for file in $(ls Cat*)
+do
+    sed -i 's/\bLiu\b/McGowen/g' "$file"
+done
+sbatch -q schwartzlab Cat_Tree.sh
+Submitted batch job 331468
+
+Wickett Unfiltered tree:
+cd /data/schwartzlab/Biancani/FilterByKnownClades/01_iqtree/
+for file in $(ls Cat*)
+do
+    sed -i 's/\bMcGowen\b/Wickett/g' "$file"
+done
+sbatch -q schwartzlab Cat_Tree.sh
+Submitted batch job 331469
