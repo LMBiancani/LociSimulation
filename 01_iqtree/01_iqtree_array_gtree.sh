@@ -15,7 +15,7 @@ PROJECT=/data/schwartzlab/Biancani/FilterByKnownClades
 # path to data directory:
 DATA=$PROJECT/data
 # Dataset name:
-DATASET="Liu"
+DATASET="Wickett"
 # path to IQtree scripts:
 scripts_dir=$PROJECT/01_iqtree
 # path to aligned loci:
