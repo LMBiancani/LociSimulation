@@ -29,8 +29,9 @@ def parse_path_file(pathfile, columns_to_exclude=[]):
 			headerB = True
 			for pathline in pathfilehandle:
 				strippathline = pathline.strip()
-				basename = strippathline.split("/")[-2]
-				print ("parsing table",basename)
+				print(strippathline)
+				#basename = strippathline.split("/")[-2]
+				#print ("parsing table",basename)
 				with open(strippathline) as fhandle:
 					reader = csv.reader(fhandle, delimiter='\t', quotechar='"')
 					header = reader.__next__()
@@ -38,7 +39,7 @@ def parse_path_file(pathfile, columns_to_exclude=[]):
 						output_line(header, outhandle, columns_to_exclude)
 						headerB = False
 					for readerline in reader:
-						readerline[0] = basename+'_'+readerline[0]
+						readerline[0] =strippathline+'_'+readerline[0]
 						output_line(readerline, outhandle, columns_to_exclude)
 	print("done")
 

@@ -187,12 +187,13 @@ def main():
         locus_data = ps.read_csv(vars(args)["locus_data"], sep='\t')
         with open(vars(args)["modelfilename"], 'rb') as f:
             rfr_tt = pickle.load(f)
-        n_jobs = vars(args)["n_jobs"]
+       	n_jobs = vars(args)["n_jobs"]
 
-        #reformat data
-        df = locus_data.iloc[:,1:]
-        feats = df.columns.values.tolist()
-
+	#reformat data
+        df = locus_data.iloc[:,2:]
+        headers = locus_data.columns.values.tolist()
+        feats = headers[2:]
+        print(feats)
         #compute PD values
         f_vals = compute_f_vals_manual(rfr_tt, df, feats=feats)
 

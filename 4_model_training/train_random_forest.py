@@ -3,10 +3,13 @@ Caitlin  Guccione, modified by Alex Knyshov
 A script to train random forest regressor
 '''
 import sys
-import pandas as ps
+import pandas as pd
 import numpy as np
 import pickle
 import argparse
+import shap
+import pdb
+from matplotlib import pyplot as plt 
 from sklearn import tree
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -14,6 +17,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.inspection import permutation_importance
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
 
 
 def parse_input_table(input_table):
@@ -59,7 +64,8 @@ def model_tuning(param_list, x_train, y_train, n_jobs):
                                     int(rfr_random.best_params_['max_depth']+
                                         rfr_random.best_params_['max_depth']*0.25)]
     if rfr_random.best_params_['max_features'] in ('auto', 'sqrt'):
-        param_grid2['max_features'] = rfr_random.best_params_['max_features']
+        param_grid2['max_features'] = [rfr_random.best_params_['max_features']]
+        
     else:
         param_grid2['max_features'] = [rfr_random.best_params_['max_features']-
                                         rfr_random.best_params_['max_features']*0.25,
@@ -163,16 +169,26 @@ def main():
         sys.exit()
     else:
         args = parser.parse_args()
-        locus_data = ps.read_csv(vars(args)["locus_data"], sep='\t')
+        locus_data = pd.read_csv(vars(args)["locus_data"], sep='\t')
         n_jobs = vars(args)["n_jobs"]
 
-        #parse the input table
+#parse the input table
         y_data, x_data, feature_names = parse_input_table(locus_data)
         #Split the dataset into trainning and test 
         x_train, x_test, y_train, y_test = train_test_split(x_data, y_data,
                                                 random_state=42,
                                                 test_size=vars(args)["test_size"])
 
+
+        # scale the X data 
+        scaler = StandardScaler()
+        scaler.fit(x_train)
+        x_train, x_test = scaler.transform(x_train), scaler.transform(x_test)
+
+
+        print(f"x_test dtype: {x_test.dtype}")
+        print(f"x_test shape: {x_test.shape}")
+        print(f"x_test sample: {x_test[:5]}")
         #tune the hyperparams if required
         if vars(args)["tuning"]:
             print("performing hyperparameter tuning")
@@ -196,13 +212,41 @@ def main():
         print ("parameters used for final model training:")
         print (param_list)
         rfr_tt = model_training(param_list, x_train, y_train, n_jobs)
+        y_pred = rfr_tt.predict(x_test)
+        
+        #Calculate mean squared error
+        mse = mean_squared_error(y_test, y_pred)
+        print("Mean Squared Error:", mse)
 
         #evaluate model accuracy
         evaluate_model(rfr_tt, x_test, y_test, feature_names)
-
+        
+       
         #save the model
         with open('model_file.bin', 'wb') as f:
-            pickle.dump(rfr_tt, f)
+            pickle.dump(rfr_tt, f)  
+      
+        #Evaluate the model
+        r2 = r2_score(y_pred=y_pred, y_true=y_test)
+        plt.plot(y_test, y_pred, ".")
+        plt.title(f"$R^2$ score on test data = {r2:.4f}");
+        plt.savefig('r2_score_rfr.png', dpi = 300, bbox_inches='tight')
+        plt.close()
+        
+        #Initialize the SHAP explainer
+        explainer = shap.TreeExplainer(rfr_tt, x_test, model_output="raw")
+        #Calculate SHAP values
+
+        shap_values = explainer(x_test, check_additivity=False)
+
+        #Plot SHAP values summary plot
+
+        shap.summary_plot(shap_values, features=x_test, feature_names=feature_names)
+
+        #Save figure
+        plt.savefig('rfr_shap_summary_plot.png', dpi=300, bbox_inches='tight')
+        plt.close()
+
 
 
 if __name__ == "__main__":

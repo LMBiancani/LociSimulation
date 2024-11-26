@@ -5,6 +5,7 @@ and removes selected columns
 '''
 import sys
 import csv
+import os
 
 def output_line(line, handle, columns_to_exclude):
 	'''
@@ -24,13 +25,14 @@ def parse_path_file(pathfile, columns_to_exclude=[]):
 	A function to parse input files and write output
 	'''
 	print ("read path file")
+	working_dir=os.getcwd()
+	basename = os.path.basename(os.path.dirname(working_dir))
 	with open(pathfile) as pathfilehandle:
 		with open(sys.argv[2], "w") as outhandle:
 			headerB = True
 			for pathline in pathfilehandle:
 				strippathline = pathline.strip()
-				basename = strippathline.split("/")[-2]
-				print ("parsing table",basename)
+				print(strippathline)
 				with open(strippathline) as fhandle:
 					reader = csv.reader(fhandle, delimiter='\t', quotechar='"')
 					header = reader.__next__()
@@ -38,7 +40,7 @@ def parse_path_file(pathfile, columns_to_exclude=[]):
 						output_line(header, outhandle, columns_to_exclude)
 						headerB = False
 					for readerline in reader:
-						readerline[0] = basename+'_'+readerline[0]
+						readerline[0] =basename+'_'+readerline[0]
 						output_line(readerline, outhandle, columns_to_exclude)
 	print("done")
 
