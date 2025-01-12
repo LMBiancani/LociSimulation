@@ -18,8 +18,8 @@ module load matplotlib/3.5.2-foss-2022a
 module load SHAP/0.42.1-foss-2022a 
 module load SciPy-bundle/2022.05-foss-2022a
 
-python3 SVM_regressor.py -i ../RF_model/RFtrain_tab.tsv -t 20 -o rf_svm_model.bin
+python3 SVM_regressor.py -i ../RF_model/RFtrain_tab.tsv -t 20 -o rf_svm_model_scaler.pkl
 
-python3 SVM_regressor.py -i ../wRF_model/wRFtrain_tab.tsv -t 20 -o wrf_svm_model.bin
+python3 SVM_regressor.py -i ../wRF_model/wRFtrain_tab.tsv -t 20 -o wrf_svm_model_scaler.pkl
 
 date

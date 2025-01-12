@@ -38,23 +38,21 @@ def cartesian_product(*arrays):
     return arr.reshape(-1, la)
 
 
-def compute_f_vals_sklearn(model, X, feats=None, grid_resolution=2):
+def compute_f_vals_sklearn(model, X, feats=None, grid_resolution=100):
     '''
     A function to compute F values (partial dependence values)
     using synthetic grid values
     '''
 
     def _pd_to_df(pde, feature_names):
-        grid_points = pde["values"]
-        df = ps.DataFrame(cartesian_product(*grid_points))
+        df = ps.DataFrame(cartesian_product(*pde[1]))
         rename = {i: feature_names[i] for i in range(len(feature_names))}
         df.rename(columns=rename, inplace=True)
-        df['preds'] = pde["average"].flatten()
+        df['preds'] = pde[0].flatten()
         return df
 
-
     def _get_feat_idxs(feats):
-        return [X.columns.get_loc(f) for f in feats]
+        return [tuple(list(X.columns).index(f) for f in feats)]
 
     f_vals = {}
     if feats is None:
@@ -65,8 +63,6 @@ def compute_f_vals_sklearn(model, X, feats=None, grid_resolution=2):
         model, X, _get_feat_idxs(feats), 
         grid_resolution=grid_resolution
     )
-
-
 
     # Establish the grid
     df_full = _pd_to_df(pd_full, feats)
@@ -190,7 +186,7 @@ def main():
         args = parser.parse_args()
         locus_data = ps.read_csv(vars(args)["locus_data"], sep='\t')
         with open(vars(args)["modelfilename"], 'rb') as f:
-            rfr_tt, scaler = pickle.load(f)
+            rfr_tt = pickle.load(f)
        	n_jobs = vars(args)["n_jobs"]
 
 	#reformat data
@@ -199,7 +195,7 @@ def main():
         feats = headers[2:]
         print(feats)
         #compute PD values
-        f_vals = compute_f_vals_sklearn(rfr_tt, df, feats=feats)
+        f_vals = compute_f_vals_manual(rfr_tt, df, feats=feats)
 
         #compute first order H-values
         print ("compute first order H-values")
@@ -222,8 +218,6 @@ def main():
             print ("level:", n)
             for subset in combs:
                 h_val = compute_h_val(f_vals, subset)
-                #print(h_val)
-                #print(subset)
                 subsets.append(' x '.join(subset))
                 h_vals.append(h_val)
             if n == 2:
@@ -232,36 +226,18 @@ def main():
                 plt.rcParams.update({'figure.figsize': [4,3]})
                 subsets1 = np.array(subsets)
                 h_vals1 = np.array(h_vals)
-                k1 = 8
+                k1 = 4
                 for subset1 in subsets1[h_vals1.argsort()[::-1][:k1]]:
-                    split_feats = tuple(subset1.split(' x ')) # Produces a list of strings
-                        
-                    print("Features:", split_feats) 
-            
-            
-                    pd_result = partial_dependence(rfr_tt, df, split_feats, kind='average')
-                    pd_average = pd_result["average"]  # Extract the average PD values
+                    print (subset1)
+                    split_feats = [tuple(subset1.split(' x '))]
+                    PartialDependenceDisplay.from_estimator(rfr_tt, df, split_feats, kind='average', n_jobs=n_jobs)
+                    plt.tight_layout(pad=0.5)
+                    plt.savefig(subset1+".svg")
+        subsets = np.array(subsets)
+        h_vals = np.array(h_vals)
+        df2 = ps.DataFrame({'features':subsets[h_vals.argsort()[::-1]], 'h_vals':h_vals[h_vals.argsort()[::-1]]})
+        df2.to_csv("second_order_H_vals.csv", index=False, encoding='utf-8')
 
-                    if np.ptp(pd_average) == 0:
-                        print(f"Skipping flat PD plot for features: {split_feats}")
-                    elif np.isnan(pd_average).any() or np.isinf(pd_average).any():
-                        print(f"Skipping PD plot for features {split_feats} due to NaN or Infinity in values.")
-                    else:
-
-                
-                        split_feats = [split_feats]    
-                        # Plot the Partial Dependence
-            
-                        PartialDependenceDisplay.from_estimator(rfr_tt, df, features=split_feats, kind='average')
-                        plt.show()
-                        plt.tight_layout(pad=0.5)
-                        plt.savefig(f"{subset1}.svg")
-                        plt.close()  # Close the plot to free up memory
-            
-    subsets = np.array(subsets)
-    h_vals = np.array(h_vals)
-    df2 = ps.DataFrame({'features':subsets[h_vals.argsort()[::-1]], 'h_vals':h_vals[h_vals.argsort()[::-1]]})
-    df2.to_csv("second_order_H_vals.csv", index=False, encoding='utf-8')
 
 if __name__ == "__main__":
     main()

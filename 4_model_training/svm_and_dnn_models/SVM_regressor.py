@@ -80,35 +80,58 @@ def main():
         Xtrain, Xval = scaler.transform(Xtrain), scaler.transform(Xval)
         
     # Define the parameter grid
-    param_grid = {
-        'C': [0.1, 1, 10, 100],
-        'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1],
-        'epsilon': [0.1, 0.2, 0.5, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    }
+    #param_grid = {
+    #    'C': [0.1, 1, 10, 100],
+    #    'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1],
+    #    'epsilon': [0.1, 0.2, 0.5, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    #}
 
 
     #Train SVR
-    svm_regressor_scaled = SVR(kernel='rbf')
+    #svm_regressor_scaled = SVR(kernel='rbf')
     
 
     # Set up the GridSearchCV
-    grid_search = GridSearchCV(estimator=svm_regressor_scaled, param_grid=param_grid, cv=5, scoring='neg_mean_squared_error', verbose=2, n_jobs=-1)
+    #grid_search = GridSearchCV(estimator=svm_regressor_scaled, param_grid=param_grid, cv=5, scoring='neg_mean_squared_error', verbose=2, n_jobs=-1)
 
     #Fit the GridSearchCV to the data
-    grid_search.fit(Xtrain, Ytrain)
+    #grid_search.fit(Xtrain, Ytrain)
 
     # Get the best parameters and the best model
-    best_params = grid_search.best_params_
-    best_model = grid_search.best_estimator_
-    print("Best Parameters:", best_params)
+    #best_params = grid_search.best_params_
+    #best_model = grid_search.best_estimator_
+    #print("Best Parameters:", best_params)
     
     #Fit the model
-    svm_regressor_scaled.fit(Xtrain, Ytrain) 
-        
+    #svm_regressor_scaled.fit(Xtrain, Ytrain) 
+    
+
+
+
+    # Define specific parameters
+    specific_params = {
+        'C': 10,         # Replace with your chosen value for C
+        'gamma': 0.01,   # Replace with your chosen value for gamma
+        'epsilon': 0.2   # Replace with your chosen value for epsilon
+    }
+
+    # Train SVR with specific parameters
+    svm_regressor_scaled = SVR(kernel='rbf', 
+                               C=specific_params['C'], 
+                               gamma=specific_params['gamma'], 
+                               epsilon=specific_params['epsilon'])
+
+    # Fit the model to the data
+    svm_regressor_scaled.fit(Xtrain, Ytrain)
+
+    # Optional: Evaluate the model on training data or test data
+    print("Model trained with specific parameters: C=10, gamma=0.01, epsilon=0.2.")
+
+    
     #save the model
     with open(vars(args)["output_file"], 'wb') as f:
-        pickle.dump(svm_regressor_scaled, f)
-    
+        pickle.dump((svm_regressor_scaled, scaler), f) 
     # Use the best parameters to predict
     y_pred = svm_regressor_scaled.predict(Xval)
     mse = mean_squared_error(Yval, y_pred)

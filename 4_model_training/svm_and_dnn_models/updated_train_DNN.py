@@ -134,7 +134,8 @@ def main():
                             dest="locus_data", required=True)
     optional.add_argument('-t', metavar='N', help='number of threads',
                             dest="n_jobs", type=int, default=1)
-    
+    required.add_argument("--name", metavar="output_name", help="output file name for model", dest="model") 
+    required.add_argument("--scaler", metavar="scaler_name", help="output file name for scaler", dest="scaler")
     if len(sys.argv) == 0:
         parser.print_help()
         sys.exit()
@@ -142,7 +143,8 @@ def main():
         args = parser.parse_args()
         locus_data = pd.read_csv(vars(args)["locus_data"], sep='\t')
         n_jobs = vars(args)["n_jobs"]
-
+        output_name = args.model
+        scaler_name = args.scaler
         #parse the input table
         y_data, x_data, feature_names = parse_input_table(locus_data)
         x_data = pd.concat(x_data, axis=1).T 
@@ -235,7 +237,9 @@ def main():
     if not os.path.exists(resdir):
         os.makedirs(resdir)
     model_state_dict = model.state_dict()
-    torch.save(model_state_dict, os.path.join(resdir, "model.pt"),)
+    torch.save(model_state_dict, os.path.join(resdir, output_name),)
+    torch.save(scaler, os.path.join(resdir, scaler_name),)
+
     with open(os.path.join(resdir, "val_loss.txt"), "w") as f:
         f.write(str(best_val_loss))
     history_df = pd.DataFrame(history,)

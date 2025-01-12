@@ -185,7 +185,6 @@ def main():
         scaler.fit(x_train)
         x_train, x_test = scaler.transform(x_train), scaler.transform(x_test)
 
-
         print(f"x_test dtype: {x_test.dtype}")
         print(f"x_test shape: {x_test.shape}")
         print(f"x_test sample: {x_test[:5]}")
@@ -213,7 +212,7 @@ def main():
         print (param_list)
         rfr_tt = model_training(param_list, x_train, y_train, n_jobs)
         y_pred = rfr_tt.predict(x_test)
-        
+        y_train_pred = rfr_tt.predict(x_train)    
         #Calculate mean squared error
         mse = mean_squared_error(y_test, y_pred)
         print("Mean Squared Error:", mse)
@@ -223,29 +222,37 @@ def main():
         
        
         #save the model
-        with open('model_file.bin', 'wb') as f:
-            pickle.dump(rfr_tt, f)  
+        #with open("model_and_scaler.pkl", "wb") as f:
+        #    pickle.dump((rfr_tt, scaler), f)
       
         #Evaluate the model
         r2 = r2_score(y_pred=y_pred, y_true=y_test)
         plt.plot(y_test, y_pred, ".")
-        plt.title(f"$R^2$ score on test data = {r2:.4f}");
+        plt.title(f"$R^2$ score on validation data = {r2:.4f}");
         plt.savefig('r2_score_rfr.png', dpi = 300, bbox_inches='tight')
         plt.close()
-        
+
+        r2_train = r2_score(y_pred=y_train_pred, y_true=y_train)
+        plt.plot(y_train, y_train_pred, ".")
+        plt.title(f"$R^2$ score on training data = {r2:.4f}");
+        plt.savefig('r2_score_rfr_training_data.png', dpi = 300, bbox_inches='tight')
+        plt.close()
+         
         #Initialize the SHAP explainer
-        explainer = shap.TreeExplainer(rfr_tt, x_test, model_output="raw")
+        #explainer = shap.TreeExplainer(rfr_tt, x_test, model_output="raw")
         #Calculate SHAP values
 
-        shap_values = explainer(x_test, check_additivity=False)
+        #shap_values = explainer(x_test, check_additivity=False)
 
         #Plot SHAP values summary plot
 
-        shap.summary_plot(shap_values, features=x_test, feature_names=feature_names)
+        #shap.summary_plot(shap_values, features=x_test, feature_names=feature_names)
 
         #Save figure
-        plt.savefig('rfr_shap_summary_plot.png', dpi=300, bbox_inches='tight')
-        plt.close()
+        #plt.savefig('rfr_shap_summary_plot.png', dpi=300, bbox_inches='tight')
+        #plt.close()
+
+
 
 
 
