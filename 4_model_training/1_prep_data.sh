@@ -10,6 +10,9 @@
 cd $SLURM_SUBMIT_DIR
 
 date
+rm path_ML_train.txt
+rm path_ML_test.txt
+rm path_ML_all.txt
 
 for i in ../simulations/*/*/1
 do
@@ -25,12 +28,17 @@ done
 #RF Similarity
 #train Y
 python3 prep_train_table.py path_ML_train.txt RFtrain_tab.tsv 2 3
+#test Y
+python3 prep_train_table.py path_ML_test.txt RFtest_tab.tsv 2 3
+
 #all woY
 python3 prep_train_table.py path_ML_all.txt RF_combined_ML.tsv 1 2 3
 
 #wRF similarity
 #train Y
 python3 prep_train_table.py path_ML_train.txt wRFtrain_tab.tsv 1 3
+#test Y
+python3 prep_train_table.py path_ML_test.txt wRFtest_tab.tsv 1 3
 #all woY
 python3 prep_train_table.py path_ML_all.txt wRF_combined_ML.tsv 1 2 3
 
