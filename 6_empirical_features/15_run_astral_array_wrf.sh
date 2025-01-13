@@ -11,7 +11,7 @@
 module load R/4.0.3-foss-2020b
 date
 
-featureslist=(Fong_features Wickett_features)
+featureslist=(Liu_features)
 
 for i in ${featureslist[@]}
 do

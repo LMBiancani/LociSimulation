@@ -12,12 +12,11 @@ cores=12
 pwd
 date
 
-for i in McGowen_features/
+for i in Liu_features/
 	do
 	cd ${i}
 	pwd
 	ls
-	python ${amas} summary -c ${cores} -o amas_output2.txt -f fasta -d dna -i alignments2/*.fas 
 	python ${amas} summary -c ${cores} -o amas_output3.txt -f fasta -d dna -i alignments3/*.fas
 	cd ../
 done

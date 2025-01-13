@@ -12,11 +12,12 @@ cd $SLURM_SUBMIT_DIR
 date
 
 
-featureslist=(Wickett_features Fong_features)
+featureslist=(Liu_features)
 
 for i in ${featureslist[@]}
 do
 	cd $i
+        rm path_ML_all.txt
 	echo ML_data.txt >> path_ML_all.txt
         
 

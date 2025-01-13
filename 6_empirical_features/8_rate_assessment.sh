@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH -c 1
 #SBATCH --mem-per-cpu=6G
-#SBATCH --array=1-7
+#SBATCH --array=1-18
 
 
 module load R/4.0.3-foss-2020b
@@ -13,23 +13,21 @@ module load HyPhy/2.5.33-gompi-2020b
 date
 
 
-featureslist=(McGowen_features)
+featureslist=(Liu_features)
 
 for i in ${featureslist[@]}
 do
 	cd ${i}
         
-#       mkdir iqtree_genetrees
-#       cp iqtree_genetrees2/inference* iqtree_genetrees/
-#       cp iqtree_genetrees3/inference* iqtree_genetrees/
 	fileline=$(sed -n ${SLURM_ARRAY_TASK_ID}p alignmentGroups/array_list.txt)
-	aligned_loci_path="../alignments5"
+	aligned_loci_path="../alignments3"
 	batch_script="/opt/software/HyPhy/2.5.33-gompi-2020b/share/hyphy/TemplateBatchFiles/LEISR.bf"
-	iqtree_log_path="../iqtree_genetrees"
+	iqtree_log_path="../iqtree_genetrees3"
 	pruned_trees_path="../pruned_species_trees.tre"
 	gene_tree_names="../inferred_gene_trees.txt"
 	echo $fileline
-        mkdir rate_assessment
+        #rm -rf rate_assessment
+        #mkdir rate_assessment
 	cd rate_assessment
 	pwd
 	cat ../alignmentGroups/${fileline} | while read line

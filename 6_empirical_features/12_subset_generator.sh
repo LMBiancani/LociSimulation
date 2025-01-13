@@ -15,18 +15,18 @@ module load scikit-learn/0.23.1-foss-2020a-Python-3.8.2
 module load treeinterpreter/0.2.3-foss-2020a
 
 
-featureslist=(Wickett_features Fong_features)
+featureslist=(Liu_features)
 
 for i in ${featureslist[@]}
 do
 	cd ${i}
 	pwd
 	cd randomforest_subsets
-        #rm *txt
-	#sed -i 's/ML_data.txt_/ML_data_/g' RF_predicted_ML.tsv	
 
 	python3 ../../subset_generator.py -i ../RF_model/RF_predicted_ML.tsv -s i 
-	rm array_list.txt
+	
+        sed -i 's/data.txt_//g' ML_best*
+        rm array_list.txt
 	ls ML*txt > array_list.txt
 	
 
@@ -35,10 +35,11 @@ do
         cd wRF_subsets	
 	#sed -i 's/ML_data.txt_/ML_data_/g' wRF_predicted_ML.tsv
 	python3 ../../../subset_generator.py -i ../../wRF_model/wRF_predicted_ML.tsv -s i
-	rm array_list.txt
+	sed -i 's/data.txt_//g' ML_best*
+        rm array_list.txt
 	ls ML*txt > array_list.txt
 	cd ../../..
 
 done
 
-date
+date 

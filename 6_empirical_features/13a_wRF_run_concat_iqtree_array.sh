@@ -15,7 +15,7 @@ iqtree_exe="/home/aknyshov/alex_data/andromeda_tools/iqtree-2.1.2-Linux/bin/iqtr
 
 
 
-featureslist=(Wickett_features)
+featureslist=(Liu_features)
 
 for i in ${featureslist[@]}
 do
@@ -30,6 +30,6 @@ do
 
 	${iqtree_exe} -nt 20 -s concatenated_${fileline}.fasta -spp partitions_${fileline}.txt -pre inference_${fileline} -m MFP -bb 1000 -alrt 1000
 
-	cd ../../
+	cd ../../..
 done
 date

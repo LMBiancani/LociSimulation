@@ -11,7 +11,7 @@ date
 
 
 
-featureslist=(McGowen_features)
+featureslist=(Liu_features)
 
 for i in ${featureslist[@]}
 do

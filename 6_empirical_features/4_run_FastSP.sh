@@ -10,7 +10,7 @@ module load all/Java/17.0.2
 fastsp="/home/aknyshov/alex_data/andromeda_tools/FastSP/FastSP.jar"
 
 
-for i in Wickett_features
+for i in Liu_features
 do	
 	cd ${i}
 	pwd

@@ -8,6 +8,8 @@
 
 date
 
+for file in Liu_features/iqtree_genetrees3/*; do rm $file; done
+
 for i in Liu_features/alignmentGroups/
 
 do
@@ -15,7 +17,7 @@ do
 	cd ${i}
 	pwd
 	#path to first half of gene alignments for dataset
-	aligned_loci_path2="../alignments2"
+#	aligned_loci_path2="../alignments2"
 	#path to second half of gene alignments for dataset
 	aligned_loci_path3="../alignments3"
 
@@ -29,9 +31,9 @@ do
 	echo "File line:${fileline} "
        	cat ${fileline} | while read line
 	do
-		cd ../iqtree_genetrees2
+#		cd ../iqtree_genetrees2
 
-		$iqtree_exe --keep-ident -nt 2 -s ${aligned_loci_path2}/${line} -pre inference_${line} -m MFP -bb 1000 -alrt 1000 #iqtree job. Flags instruct iqtree to keep sequence identifiers as they are in the input file; to set 2 threads for parallel processing; specifies a DNA aligment file; specifies a prefix for the output files; specifies the substitution model to be used, MFP, a mixture model of amino acid frequencies; sets 1000 ultrafast bootstraps; and ets the number of replicates for the non-parametric approximate likelihood ratio test (aLRT) to 1000 
+#		$iqtree_exe --keep-ident -nt 2 -s ${aligned_loci_path2}/${line} -pre inference_${line} -m MFP -bb 1000 -alrt 1000 #iqtree job. Flags instruct iqtree to keep sequence identifiers as they are in the input file; to set 2 threads for parallel processing; specifies a DNA aligment file; specifies a prefix for the output files; specifies the substitution model to be used, MFP, a mixture model of amino acid frequencies; sets 1000 ultrafast bootstraps; and ets the number of replicates for the non-parametric approximate likelihood ratio test (aLRT) to 1000 
 		cd ../iqtree_genetrees3
 		$iqtree_exe --keep-ident -nt 2 -s ${aligned_loci_path3}/${line} -pre inference_${line} -m MFP -bb 1000 -alrt 1000
 		cd ../alignmentGroups
