@@ -20,7 +20,7 @@ do
 	astral_path="/home/aknyshov/alex_data/andromeda_tools/ASTRAL/Astral/astral.5.7.8.jar"
 	collapser_path="../../../../3_feature_assessment/collapse_by.R"
 
-	single_sample=$(sed -n ${SLURM_ARRAY_TASK_ID}p subsets/wRF_subsets/array_list.txt)
+	single_sample=$(sed -n ${SLURM_ARRAY_TASK_ID}p subsets/wRF_subsets/array_list.tx)
 	sed_exp=$(cut -f1 -d, subsets/wRF_subsets/${single_sample} | grep -wnf - ${gene_tree_names} | awk -F: '{print $1"p"}' | paste -sd";")
 	echo sed -n ${sed_exp} ${gene_tree_path} ">" subsets/wRF_subsets/trees_${single_sample}.tre
 	sed -n ${sed_exp} ${gene_tree_path} > subsets/wRF_subsets/trees_${single_sample}.tre

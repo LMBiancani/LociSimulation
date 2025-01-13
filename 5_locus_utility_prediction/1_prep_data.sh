@@ -11,6 +11,9 @@ cd $SLURM_SUBMIT_DIR
 
 date
 
+
+
+
 for i in ../simulations/*/*/1
 do
 	cd ${i}
@@ -41,5 +44,4 @@ do
 
 	cd ../../../../5_locus_utility_prediction
 done
-
 date

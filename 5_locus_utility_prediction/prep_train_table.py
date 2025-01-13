@@ -26,7 +26,7 @@ def parse_path_file(pathfile, columns_to_exclude=[]):
 	'''
 	print ("read path file")
 	working_dir=os.getcwd()
-	basename = os.path.basename(os.path.dirname(working_dir))
+#	basename = os.path.basename(os.path.dirname(working_dir))
 	with open(pathfile) as pathfilehandle:
 		with open(sys.argv[2], "w") as outhandle:
 			headerB = True
@@ -40,7 +40,7 @@ def parse_path_file(pathfile, columns_to_exclude=[]):
 						output_line(header, outhandle, columns_to_exclude)
 						headerB = False
 					for readerline in reader:
-						readerline[0] =basename+'_'+readerline[0]
+						readerline[0] = readerline[0]
 						output_line(readerline, outhandle, columns_to_exclude)
 	print("done")
 

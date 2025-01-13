@@ -26,14 +26,12 @@ do
 	mkdir subsets
 	cd subsets
 
-	python3 ../../../../../5_locus_utility_prediction/predict_locus_utility.py -i ../RF_combined_ML.tsv -o RF_predicted_ML.tsv -m ../../../../../4_model_training/RF_model/model_file.bin
+	python3 ../../../../../5_locus_utility_prediction/predict_locus_utility.py -i ../RF_combined_ML.tsv -o RF_combined_predicted_ML.tsv -m ../../../../../4_model_training/RF_model/model_and_scaler.pkl
 
-	sed -i 's/ML_test\.txt_//g' RF_predicted_ML.tsv
 #wRF model
 
-	python3 ../../../../../5_locus_utility_prediction/predict_locus_utility.py -i ../wRF_combined_ML.tsv -o wRF_predicted_ML.tsv -m ../../../../../4_model_training/wRF_model/model_file.bin
+	python3 ../../../../../5_locus_utility_prediction/predict_locus_utility.py -i ../wRF_combined_ML.tsv -o wRF_combined_predicted_ML.tsv -m ../../../../../4_model_training/wRF_model/model_and_scaler.pkl
 	
-	sed -i 's/ML_test\.txt_//g' wRF_predicted_ML.tsv
 
 
 	cd ../../../../../5_locus_utility_prediction
