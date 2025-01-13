@@ -51,13 +51,15 @@ ggMarginal(ggplot(branchdata,aes(brlen, brdep)) + geom_point() + theme_bw())
 combo_simul_eval_df <- data.frame()
 #iterate over datasets
 for (f in 1:length(ds_name_vector)){
+  base_name <- ds_name_vector[f]
+
   #read main simulated properties
   simul_df <- read.csv(paste0(ds_path_vector[f],"/1/df.csv"), header = T)[,2:21]
-  simul_df$loci <- paste0(simul_df$loci, ".fas")
+  simul_df$loci <- paste0(base_name,'_',simul_df$loci, ".fas")
 
   #read simulated substitution model properties
   model_df <- read.csv(paste0(ds_path_vector[f],"/1/df2.csv"), header = T)[,2:8]
-  model_df$loci <- paste0(model_df$loci, ".fas")
+  model_df$loci <- paste0(base_name,'_',model_df$loci, ".fas")
 
   #merge and compute additional variables from existing
   simul_df <- merge(simul_df, model_df, by="loci")

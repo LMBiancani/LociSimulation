@@ -18,6 +18,8 @@ ds_path_vector <- c(list.files(path="../simulations/empirical", pattern="", full
 ds_name_vector <- c(list.files(path="../simulations/empirical", pattern="", full.names=F, recursive=FALSE),
                     paste0("ds_", 1:16))
 
+
+#read in species trees for all datasets
 sptrees <- list()
 branchdata <- data.frame()
 for (f in 1:20) {
@@ -29,58 +31,81 @@ class(sptrees) <- "multiPhylo"
 
 
 
-
-#Check node height/branch length distributions across all datasets
-library(ggExtra)
-ggMarginal(ggplot(branchdata,aes(log(brlen), brdep)) + geom_point() + theme_bw())
-ggMarginal(ggplot(branchdata,aes(brlen, brdep)) + geom_point() + theme_bw())
-
 #Read the properties of all loci of all datasets. These include both
 #true values of simulated properties (not used in the machine learning model)
 #and assessed values (used in the ML)
 
-#create data frame to populate
-combo_simul_eval_df <- data.frame()
+#Read the properties of all loci of all datasets. These include both
+#true values of simulated properties (not used in the machine learning model)
+#and assessed values (used in the ML)
+simul_df <- data.frame()
+model_df <-data.frame()
 #iterate over datasets
 for (f in 1:length(ds_name_vector)){
+  base_name <- ds_name_vector[f]
+
   #read main simulated properties
-  simul_df <- read.csv(paste0(ds_path_vector[f],"/1/df.csv"), header = T)[,2:21]
-  simul_df$loci <- paste0(simul_df$loci, ".fas")
+  temp_simul_df <- read.csv(paste0(ds_path_vector[f], "/1/df.csv"), header = TRUE)[, 2:21]
+  temp_simul_df$loci <- paste0(base_name, '_', temp_simul_df$loci, ".fas")
 
-  #read simulated substitution model properties
-  model_df <- read.csv(paste0(ds_path_vector[f],"/1/df2.csv"), header = T)[,2:8]
-  model_df$loci <- paste0(model_df$loci, ".fas")
+  # Read simulated substitution model properties
+  temp_model_df <- read.csv(paste0(ds_path_vector[f], "/1/df2.csv"), header = TRUE)[, 2:8]
+  temp_model_df$loci <- paste0(base_name, '_', temp_model_df$loci, ".fas")
 
-  #merge and compute additional variables from existing
-  simul_df <- merge(simul_df, model_df, by="loci")
-  nmissing_taxa <- sapply(simul_df$taxa_missing, function(x) length(eval(parse(text=x))))
-  nremaining_taxa <- sapply(simul_df$remaining_taxa, function(x) length(eval(parse(text=x))))
-  simul_df$prop_missing_taxa <- nmissing_taxa/(nmissing_taxa+nremaining_taxa)
-  simul_df$prop_paralogy <- sapply(simul_df$paralog_cont, function(x) eval(parse(text=x)))/(nmissing_taxa+nremaining_taxa)
-  simul_df$prop_contamination <- sapply(simul_df$cont_pair_cont, function(x) eval(parse(text=x)))/(nmissing_taxa+nremaining_taxa)
+  # Merge and compute additional variables
+  merged_df <- merge(temp_simul_df, temp_model_df, by = "loci")
+  nmissing_taxa <- sapply(merged_df$taxa_missing, function(x) length(eval(parse(text = x))))
+  nremaining_taxa <- sapply(merged_df$remaining_taxa, function(x) length(eval(parse(text = x))))
+  merged_df$prop_missing_taxa <- nmissing_taxa / (nmissing_taxa + nremaining_taxa)
+  merged_df$prop_contamination <- sapply(merged_df$cont_pair_cont, function(x) eval(parse(text = x))) / (nmissing_taxa + nremaining_taxa)
 
-  #read assessed properties table for the training subsets
-  ML_train_df <- read.table(paste0(ds_path_vector[f],"/1/ML_train.txt"), header = T)
-  ML_train_df$MLset <- "train"
+  # Append to the main data frames
+  simul_df <- rbind(simul_df, merged_df)
+  model_df <- rbind(model_df, temp_model_df)
 
-  #read assessed properties table for the testing subsets and merge with the previous
-  ML_test_df <- read.table(paste0(ds_path_vector[f],"/1/ML_test.txt"), header = T)
-  ML_test_df$MLset <- "test"
-  ML_df <- rbind(ML_train_df, ML_test_df)
-  
-  #if assessed, read the gene tree distance btw aligned and unaligned input loci
-  #this looks at how alignment error manisfested itself in gene trees
-  #genetreedf <- read.csv(paste0(ds_path_vector[f],"/1/gtreedist.csv"), header = T)
-  #colnames(genetreedf)[2:3] <- c("gtrRFsim", "gtrwRFsim")
 
-  #merge all
-  combo_df <- merge(simul_df, ML_df, by.x="loci", by.y="locname")
- #combo_df <- merge(combo_df, genetreedf, by.x="loci", by.y="locname")
-  combo_df[,1] <- paste0(ds_name_vector[f], "_", combo_df[,1])
-  combo_df$dataset <- ds_name_vector[f]
-  combo_simul_eval_df <- rbind(combo_simul_eval_df,combo_df)
 }
 
+
+#read assessed properties table for the training subsets
+
+RF_train_df <- read.table("../5_locus_utility_prediction/RFtrain_tab.tsv", header = T)
+RF_train_df$MLset <- "train"
+
+
+wRF_train_df <- read.table("../5_locus_utility_prediction/wRFtrain_tab.tsv", header = T)
+wRF_train_df$MLset <- "train"
+
+RF_test_df <- read.table("../5_locus_utility_prediction/RFtest_tab.tsv", header = T)
+RF_test_df$MLset <- "test"
+
+
+wRF_test_df <- read.table("../5_locus_utility_prediction/wRFtest_tab.tsv", header = T)
+wRF_test_df$MLset <- "test"
+
+
+#read assessed properties table for the testing subsets and merge with the previous
+
+
+RF_df <- rbind(RF_train_df, RF_test_df)
+write_csv(RF_df, "RF_df.csv")
+
+wRF_df <- rbind(wRF_train_df, wRF_test_df)
+write_csv(wRF_df, "wRF_df.csv")
+
+
+#create data frame to populate
+combo_RF_simul_eval_df <- data.frame()
+combo_wRF_simul_eval_df <-data.frame()
+
+#merge all
+combo_RF_df <- merge(simul_df, RF_df, by.x="loci", by.y="locname")
+combo_RF_simul_eval_df <- rbind(combo_RF_simul_eval_df,combo_RF_df)
+
+combo_wRF_df <- merge(simul_df, wRF_df, by.x="loci", by.y="locname")
+combo_wRF_simul_eval_df <- rbind(combo_wRF_simul_eval_df,combo_wRF_df)
+
+combo_simul_eval_df <-rbind(combo_RF_simul_eval_df, combo_wRF_simul_eval_df)
 
 allbranchdfbrl <- tibble()
 logbreaks <- seq(min(log(branchdata$brlen)), max(log(branchdata$brlen)), length.out = 10)
