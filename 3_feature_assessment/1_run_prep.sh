@@ -5,7 +5,9 @@
 #SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH -c 1
 #SBATCH --mem-per-cpu=6G
-
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="molly.donnellan@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
 
 
 date
@@ -28,6 +30,6 @@ for i in ../simulations/*/*/1
 	mkdir rate_assessment
 	mkdir iqtree_concattree
 	mkdir astral_tree
-	cd ../../../../simulation_scripts
+	cd ../../../../2_simulation_scripts
 done
 date
