@@ -3,19 +3,20 @@
 # Working dir is expected to be a specific 
 # species tree dataset folder
 #
-# Adjust the path to modified.write.tree2.R func
+# Adjust the path to modified.write.tree2.R func if needed
 #
 # Comment/uncomment the rate params! (lines 37-41)
 #
 library(ape)
 library(geiger)
+if (!("MultiRNG" %in% rownames(installed.packages()))) {install.packages("MultiRNG", repos = "https://cloud.r-project.org")}
 library(MultiRNG)
 library(EnvStats)
 library(extraDistr)
 
 sptree <- read.tree("s_tree.trees")
 #convert species tree to an appropriate nexus format species tree file
-source("../../../../simulation_scripts/modified.write.tree2.R")
+source("../../../../2_simulation_scripts/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")
 write("#NEXUS", file="sptree.nex")
 write("begin trees;", file="sptree.nex", append=T)
