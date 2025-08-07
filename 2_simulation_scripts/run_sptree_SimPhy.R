@@ -9,7 +9,7 @@
 #
 set.seed(12345)
 #adjust the path to SimPhy. Installation instructions for SimPhy can be found at https://github.com/adamallo/SimPhy/wiki/Manual
-exec_path <- "/data/schwartzlab/awalling/tools/SimPhy_1.0.2/bin/simphy_lnx64"
+exec_path <- "/scratch3/workspace/molly_donnellan_uri_edu-simple/SimPhy_1.0.2/bin/simphy_lnx64"
 ndatasets <- 46 #script simulated 46, but only 16 were used
 dsdf <- data.frame(dsname=paste0("ds_",as.character(1:ndatasets)))
 dsdf$taxnum <- sample(80:120, ndatasets, replace=T)
