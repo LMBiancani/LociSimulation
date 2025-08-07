@@ -3,15 +3,22 @@
 #SBATCH --time=24:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=2   # processor core(s) per node
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="molly.donnellan@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+#SBATCH --array=[0-10]%49
 
 module purge
-module load all/Java/17.0.2 
+module load uri/main
+module load all/Java/21.0.2 
 
-fastsp="/home/aknyshov/alex_data/andromeda_tools/FastSP/FastSP.jar"
+fastsp="../../../../../FastSP/FastSP.jar"
 
+SPP=(../simulations/*/*/1/)
+i=${SPP[$SLURM_ARRAY_TASK_ID]}
 
-for i in ../simulations/*/*/1
-do	
+#for i in ../simulations/*/*/1
+#do	
 	cd ${i}
 	pwd
 	rm fastsp_output.csv
@@ -27,4 +34,4 @@ do
 		done
 	done
 cd ../../../../3_feature_assessment/
-done
+#done
