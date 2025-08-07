@@ -1,13 +1,16 @@
-#!/bin/sh
-
+#!/bin/bash
 #SBATCH --job-name="align2"
 #SBATCH --time=196:00:00  # walltime limit (HH:MM:SS)
-#SBATCH -c 4
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="molly.donnellan@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
 
 ### adjust/add sbatch flags as needed
 
-
-module load MAFFT/7.475-gompi-2020b-with-extensions
+module load uri/main
+module load MAFFT/7.505-GCC-11.3.0-with-extensions 
 
 for i in ../simulations/*/*/1/alignmentGroups
 do
