@@ -4,8 +4,11 @@ library(ggplot2)
 library(geiger)
 library(ggtree)
 
+#Force a headless friendly bitmat device for the session (due to "unable to start device png" error)
+options(bitmapType = "cairo")
+
 #Adjust path to modified.write.tree2.R, a script that adjusts how ape handles treefiles
-source("simulation_scripts/modified.write.tree2.R")
+source("2_simulation_scripts/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")
 
 #Adjust the paths to ML species trees for each dataset.
@@ -51,21 +54,6 @@ ggsave (s, file="simulations/empirical/wickett/1/wickett_tree_um.png")
 write.tree(wickett_tree_um, "simulations/empirical/wickett/1/s_tree.trees", digits=8)
 write(c(20002,100000),"simulations/empirical/wickett/generate_params.txt")
 
-
-#Empirical species tree 3 (McGowen et al.):
-
-
-mcgowen <- read.tree("simulations/empirical/mcgowen/1/inferenceEmpirical.treefile")
-mcgowen_um <- chronos(mcgowen)
-class(mcgowen_um) <-"phylo"
-mcgowen_scale <- 75000000/20
-mcgowen_um <- rescale(mcgowen_um, model = "depth", mcgowen_scale)
-mcgowen_um$tip.label <- as.character(1:length(mcgowen_um$tip.label))
-t <- ggtree(mcgowen_um) + theme_tree2()
-ggsave(t, file="simulations/empirical/mcgowen/1/mcgowen_um.png")
-write.tree(mcgowen_um, "simulations/empirical/mcgowen/1/s_tree.trees", digits=8)
-write(c(20003,1000),"simulations/empirical/mcgowen/generate_params.txt")
-
 #Empirical species tree 4 (Liu et al.):
 
 liu_tree <- read.tree("simulations/empirical/liu/1/inferenceEmpirical.treefile")
@@ -82,5 +70,3 @@ v <- ggtree(liu_tree_um) + theme_tree2()
 ggsave (v, file="simulations/empirical/liu/1/liu_tree_um.png")
 write.tree(liu_tree_um, "simulations/empirical/liu/1/s_tree.trees", digits=8)
 write(c(20004,10000),"simulations/empirical/liu/generate_params.txt")
-
-
