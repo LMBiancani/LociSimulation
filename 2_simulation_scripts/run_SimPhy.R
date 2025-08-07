@@ -3,7 +3,7 @@
 # Working dir is expected to be a specific 
 # species tree dataset folder
 #
-# Adjust the path to SimPhy (line 16)
+# Adjust the path to SimPhy (line 20)
 #
 library(tidyverse)
 args = commandArgs(trailingOnly=TRUE)
@@ -17,7 +17,7 @@ nloci <- length(df[,1])
 cmd0 <- paste0(">", gene_tree)
 system(cmd0)
 for (f in 1:nloci){
-        cmd1 <- paste0("/data/schwartzlab/awalling/tools/SimPhy_1.0.2/bin/simphy_lnx64 -rl f:1",
+        cmd1 <- paste0("/scratch3/workspace/molly_donnellan_uri_edu-simple/SimPhy_1.0.2/bin/simphy_lnx64 -rl f:1", #CHANGE to own path to file
         " -sr ",species_tree_path,
         " -sp f:",df$Ne[f],
         " -su ln:",df$abl[f],",0.1",
