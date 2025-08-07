@@ -26,11 +26,11 @@ df <- read.csv(df_path)
 
 nloci <- length(df[,1])
 
-source("../../../../simulation_scripts/modified.write.tree2.R")
+source("/scratch3/workspace/molly_donnellan_uri_edu-simple/PML/2_simulation_scripts/modified.write.tree2.R")
 assignInNamespace(".write.tree2", .write.tree2, "ape")
 options(scipen = 999)
 
-source("../../../../simulation_scripts/modify_gene_tree.R")
+source("/scratch3/workspace/molly_donnellan_uri_edu-simple/PML/2_simulation_scripts/modify_gene_tree.R")
 
 #non CDS
 write("[TYPE] NUCLEOTIDE 1",
