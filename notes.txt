@@ -1,0 +1,29 @@
+NOTES - LociSimulation
+
+***
+In notes, please include:
+- Date & initials
+- Name of script run & the ***job ID number(s)***
+- Any issues, changes, troubleshooting, etc.
+***
+
+2025.09.29 - LMB
+
+Created Scratch Workspace:
+/scratch3/workspace/biancani_uri_edu-MammalSims
+Made directory for aligned loci:
+mkdir /scratch3/workspace/biancani_uri_edu-MammalSims/loci
+
+Starting with mammal loci from https://github.com/LMBiancani/PlacentalPolytomy
+Original Path to aligned loci: 
+SOURCE_DIR="/data/schwartzlab/Biancani/PlacentalPolytomy/output/01_SISRS_loci_filtered"
+New Path for aligned loci:
+DEST_DIR="/scratch3/workspace/biancani_uri_edu-MammalSims/loci"
+
+Copied loci data from SOURCE_DIR to DEST_DIR via transfer_data.sh:
+sbatch transfer.sh
+Submitted batch job 44413249
+
+
+
+
