@@ -1,0 +1,5 @@
+slurm-*
+datasets/
+3_run_simphy_*
+array_list.txt
+*.log
