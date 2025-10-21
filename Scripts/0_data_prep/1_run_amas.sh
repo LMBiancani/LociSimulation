@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name="AMAS"
-#SBATCH --time=12:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=2:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --ntasks-per-node=12   # processor core(s) per node
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=10G
 #SBATCH -p uri-cpu
@@ -30,6 +30,7 @@ date
 mkdir -p ${Output}
 cd ${Output}
 
+#Concatenate input fasta files and prepare partitions ahead of IQTree run
 python3 ${Scripts}/run_amas.py ${Data} ${Cores} ${AMAS}
 
 date

@@ -93,7 +93,7 @@ for f in batch_outputs + batch_parts:
     except OSError:
         print(f"Warning: could not remove {f}")
 
-print("\n=== All done! ===")
+print("\n=== run_amas.py execution completed. ===")
 print("Output files:")
 print(" - concatenated.fasta")
 print(" - partitions.txt\n")
