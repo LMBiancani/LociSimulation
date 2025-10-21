@@ -176,13 +176,14 @@ for f in batch_outputs + batch_parts:
     except OSError:
         print(f"Warning: could not remove {f}")
 
-print("\n=== All done! ===")
+print("\n=== run_amas.py execution completed. ===")
 print("Output files:")
 print(" - concatenated.fasta")
 print(" - partitions.txt\n")
 ---------------------------------
 
-1_run_amas.sh runs AMAS on an empirical dataset using a helper Python script (run_amas.py), which wraps around the AMAS.py concat command.
+1_run_amas.sh runs AMAS on an empirical dataset to concatenate input fasta files and prepare partitions ahead of IQTree run.
+Uses a helper Python script (run_amas.py), which wraps around the AMAS.py concat command.
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
 
@@ -190,9 +191,9 @@ nano 1_run_amas.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="AMAS"
-#SBATCH --time=12:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=2:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
-#SBATCH --ntasks-per-node=12   # processor core(s) per node
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=10G
 #SBATCH -p uri-cpu
@@ -220,9 +221,78 @@ date
 mkdir -p ${Output}
 cd ${Output}
 
+#Concatenate input fasta files and prepare partitions ahead of IQTree run
 python3 ${Scripts}/run_amas.py ${Data} ${Cores} ${AMAS}
 
 date
 ---------------------------------
 sbatch 1_run_amas.sh
-Submitted batch job 47033875
+Submitted batch job 47034650
+sacct -j 47034650 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+47034650          0:0   00:01:56
+47034650.ba+      0:0   00:01:56   6601112K
+47034650.ex+      0:0   00:01:56          0
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
+
+2_run_iqtree.sh will use iqtree to infer an empirical tree.
+
+nano 2_run_iqtree.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name="IQTREE"
+#SBATCH --time=96:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=24   # processor core(s) per node
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=250G
+#SBATCH -p uri-cpu
+#SBATCH --exclusive
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+# Path to project directory:
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+# Path to scripts directory:
+Scripts="$Project/LociSimulation/Scripts/0_data_prep"
+# Path to output directory
+Output="$Project/output/mammals"
+# Path to IQTREE executable:
+IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+# Number of processor cores per node:
+Cores=${SLURM_NTASKS_PER_NODE}
+
+module purge
+
+date
+cd ${Output}
+
+# --- Check input files ---
+if [[ ! -f "concatenated.fasta" || ! -f "partitions.txt" ]]; then
+    echo "Error: concatenated.fasta or partitions.txt not found in ${Output}"
+    exit 1
+fi
+
+# --- Run IQ-TREE ---
+# Flags:
+#   -nt: number of CPU threads
+#   -spp: partition file allowing different evolutionary rates per partition
+#   -pre: prefix for output files
+#   -m MFP: ModelFinder Plus for best-fit model selection
+#   -bb: ultrafast bootstrap replicates
+#   -alrt: SH-like approximate likelihood test replicates
+
+${IQTREE} -nt ${Cores} \
+    -s concatenated.fasta \
+    -spp partitions.txt \
+    -pre inferenceEmpirical \
+    -m MFP -bb 1000 -alrt 1000
+
+date
+---------------------------------
+sbatch 2_run_iqtree.sh
+Submitted batch job 47034955
+sacct -j 47034955 -o JobID,ExitCode,Elapsed,MaxRSS
