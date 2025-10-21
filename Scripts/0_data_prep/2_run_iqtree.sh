@@ -2,11 +2,10 @@
 #SBATCH --job-name="IQTREE"
 #SBATCH --time=96:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=24   # processor core(s) per node
-#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=24
 #SBATCH --mem=250G
 #SBATCH -p uri-cpu
-#SBATCH --exclusive
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
 #SBATCH --mail-type=ALL
 
@@ -20,7 +19,7 @@ Output="$Project/output/mammals"
 # Path to IQTREE executable:
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
 # Number of processor cores per node:
-Cores=${SLURM_NTASKS_PER_NODE}
+Threads=${SLURM_CPUS_PER_TASK}
 
 module purge
 
@@ -42,7 +41,7 @@ fi
 #   -bb: ultrafast bootstrap replicates
 #   -alrt: SH-like approximate likelihood test replicates
 
-${IQTREE} -nt ${Cores} \
+${IQTREE} -nt ${Threads} \
     -s concatenated.fasta \
     -spp partitions.txt \
     -pre inferenceEmpirical \
