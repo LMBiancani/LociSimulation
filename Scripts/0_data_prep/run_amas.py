@@ -2,8 +2,10 @@
 """
 run_amas.py
 ------------
-Concatenates FASTA alignments in batches using AMAS to avoid memory overload.
-Creates a concatenated alignment file and a corresponding partition file.
+Concatenates FASTA alignments in batches using AMAS (to avoid overloading AMAS input limitations).
+Creates a concatenated alignment file and a corresponding partition file:
+concatenatedTrain.fasta
+partitionsTrain.txt
 
 Usage:
     python run_amas.py <fasta_folder> <num_cores> <path_to_AMAS.py>
@@ -12,79 +14,86 @@ Usage:
 import sys
 import glob
 import subprocess
-from pathlib import Path
+import os
 
-# -----------------------------
-# Parse command-line arguments
-# -----------------------------
-if len(sys.argv) != 4:
-    sys.exit("Usage: python run_amas.py <fasta_folder> <num_cores> <path_to_AMAS.py>")
-
-fasta_folder = Path(sys.argv[1])
+# --- Input arguments ---
+fasta_folder = sys.argv[1]
 total_cores = sys.argv[2]
 amas = sys.argv[3]
 
-# -----------------------------
-# Gather all FASTA files
-# -----------------------------
-files = sorted(glob.glob(str(fasta_folder / "*.fasta")))
-if not files:
-    sys.exit(f"No FASTA files found in {fasta_folder}")
+# --- Collect all fasta files ---
+files = glob.glob(os.path.join(fasta_folder, "*.fasta"))
+files.sort()  # ensure consistent, reproducible order
 
-# -----------------------------
-# Prepare output filenames
-# -----------------------------
-concat_out = "concatenated.fasta"
-part_out = "concatenated_partitions.txt"
-
-# Clean up any old results
-subprocess.run(["rm", "-f", concat_out, part_out])
-
-# -----------------------------
-# Define a helper to run AMAS
-# -----------------------------
-def run_amas_batch(batch_files, first_batch):
-    """Run AMAS concat on a batch of files and append results."""
-    cmd = [
-        "python", amas, "concat",
-        "-c", total_cores,
-        "-t", "amas_output_temp.fasta",
-        "-f", "fasta",
-        "-d", "dna",
-        "--out-format", "fasta",
-        "--part-format", "raxml",
-        "-p", "partitions_temp.txt",
-        "-i"
-    ] + batch_files
-    subprocess.run(cmd, check=True)
-
-    if first_batch:
-        # First batch: initialize output files
-        subprocess.run(["sed", "-e", "$a\\", "amas_output_temp.fasta"], stdout=open(concat_out, "w"))
-        subprocess.run(["sed", "-e", "$a\\", "partitions_temp.txt"], stdout=open(part_out, "w"))
-    else:
-        # Subsequent batches: append excluding the first line
-        with open(concat_out, "a") as cat_out:
-            subprocess.run("sed -e 1d amas_output_temp.fasta | sed -e '$a\\'", shell=True, stdout=cat_out)
-        with open(part_out, "a") as part_cat:
-            subprocess.run("sed -e 1d partitions_temp.txt | sed -e '$a\\'", shell=True, stdout=part_cat)
-
-# -----------------------------
-# Process files in batches of 1000
-# -----------------------------
 batch_size = 1000
-batch = []
-first_batch = True
+batch_outputs = []
+batch_parts = []
 
+count = 0
+fileList = []
+batch_num = 1
+
+# --- Process loci in batches ---
 for f in files:
-    batch.append(f)
-    if len(batch) == batch_size:
-        run_amas_batch(batch, first_batch)
-        first_batch = False
-        batch = []
+    fileList.append(f)
+    count += 1
 
-# Process remaining files
-if batch:
-    run_amas_batch(batch, first_batch)
+    if count == batch_size:
+        batch_fasta = f"amas_batch_{batch_num}.fasta"
+        batch_part = f"partitions_batch_{batch_num}.txt"
 
-print("AMAS concatenation complete.")
+        cmd = (
+            f"python3 {amas} concat "
+            f"-f fasta -d dna --out-format fasta --part-format raxml "
+            f"-i {' '.join(fileList)} "
+            f"-c {total_cores} -t {batch_fasta} -p {batch_part}"
+        )
+        print(f"\n=== Running AMAS on batch {batch_num} ({len(fileList)} files) ===")
+        subprocess.call(cmd, shell=True)
+
+        batch_outputs.append(batch_fasta)
+        batch_parts.append(batch_part)
+        fileList = []
+        count = 0
+        batch_num += 1
+
+# --- Final partial batch (if any) ---
+if len(fileList) > 0:
+    batch_fasta = f"amas_batch_{batch_num}.fasta"
+    batch_part = f"partitions_batch_{batch_num}.txt"
+
+    cmd = (
+        f"python3 {amas} concat "
+        f"-f fasta -d dna --out-format fasta --part-format raxml "
+        f"-i {' '.join(fileList)} "
+        f"-c {total_cores} -t {batch_fasta} -p {batch_part}"
+    )
+    print(f"\n=== Running AMAS on final batch {batch_num} ({len(fileList)} files) ===")
+    subprocess.call(cmd, shell=True)
+
+    batch_outputs.append(batch_fasta)
+    batch_parts.append(batch_part)
+
+# --- Final concatenation across all batches ---
+print("\n=== Performing final concatenation across batches ===")
+
+cmd_final = (
+    f"python3 {amas} concat "
+    f"-f fasta -d dna --out-format fasta --part-format raxml "
+    f"-i {' '.join(batch_outputs)} "
+    f"-c {total_cores} -t concatenated.fasta -p partitions.txt"
+)
+subprocess.call(cmd_final, shell=True)
+
+# --- Cleanup temporary batch files ---
+print("\n=== Cleaning up intermediate files ===")
+for f in batch_outputs + batch_parts:
+    try:
+        os.remove(f)
+    except OSError:
+        print(f"Warning: could not remove {f}")
+
+print("\n=== All done! ===")
+print("Output files:")
+print(" - concatenated.fasta")
+print(" - partitions.txt\n")
