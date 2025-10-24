@@ -261,10 +261,9 @@ Scripts="$Project/LociSimulation/Scripts/0_data_prep"
 Output="$Project/output/mammals"
 # Path to IQTREE executable:
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
-# Number of processor cores per node:
-Threads=${SLURM_CPUS_PER_TASK}
 
 module purge
+Threads=${SLURM_CPUS_PER_TASK}
 
 date
 cd ${Output}
@@ -295,3 +294,8 @@ date
 sbatch 2_run_iqtree.sh
 Submitted batch job 47065851
 sacct -j 47065851 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+47065851          0:0 2-17:22:51            
+47065851.ba+      0:0 2-17:22:51 149134624K 
+47065851.ex+      0:0 2-17:22:51       256K 

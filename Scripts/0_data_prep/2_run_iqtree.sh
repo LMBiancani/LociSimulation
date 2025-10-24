@@ -18,10 +18,9 @@ Scripts="$Project/LociSimulation/Scripts/0_data_prep"
 Output="$Project/output/mammals"
 # Path to IQTREE executable:
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
-# Number of processor cores per node:
-Threads=${SLURM_CPUS_PER_TASK}
 
 module purge
+Threads=${SLURM_CPUS_PER_TASK}
 
 date
 cd ${Output}
