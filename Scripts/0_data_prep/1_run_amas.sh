@@ -13,7 +13,7 @@
 # Path to project directory:
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 # Path to scripts directory:
-Scripts="$Project/LociSimulation/Scripts/0_data_prep"
+Scripts="$Project/LociSimulation/Scripts"
 # Path to output directory (will be created if necessary)
 Output="$Project/output/mammals"
 # Path to aligned loci in fasta format:
@@ -31,6 +31,6 @@ mkdir -p ${Output}
 cd ${Output}
 
 #Concatenate input fasta files and prepare partitions ahead of IQTree run
-python3 ${Scripts}/run_amas.py ${Data} ${Cores} ${AMAS}
+python3 ${Scripts}/0_data_prep/run_amas.py ${Data} ${Cores} ${AMAS}
 
 date

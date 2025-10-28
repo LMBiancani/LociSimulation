@@ -204,7 +204,7 @@ nano 1_run_amas.sh
 # Path to project directory:
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 # Path to scripts directory:
-Scripts="$Project/LociSimulation/Scripts/0_data_prep"
+Scripts="$Project/LociSimulation/Scripts"
 # Path to output directory (will be created if necessary)
 Output="$Project/output/mammals"
 # Path to aligned loci in fasta format:
@@ -222,7 +222,7 @@ mkdir -p ${Output}
 cd ${Output}
 
 #Concatenate input fasta files and prepare partitions ahead of IQTree run
-python3 ${Scripts}/run_amas.py ${Data} ${Cores} ${AMAS}
+python3 ${Scripts}/0_data_prep/run_amas.py ${Data} ${Cores} ${AMAS}
 
 date
 ---------------------------------
@@ -256,7 +256,7 @@ nano 2_run_iqtree.sh
 # Path to project directory:
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 # Path to scripts directory:
-Scripts="$Project/LociSimulation/Scripts/0_data_prep"
+Scripts="$Project/LociSimulation/Scripts"
 # Path to output directory
 Output="$Project/output/mammals"
 # Path to IQTREE executable:
@@ -294,8 +294,13 @@ date
 sbatch 2_run_iqtree.sh
 Submitted batch job 47065851
 sacct -j 47065851 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-47065851          0:0 2-17:22:51            
-47065851.ba+      0:0 2-17:22:51 149134624K 
-47065851.ex+      0:0 2-17:22:51       256K 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+47065851          0:0 2-17:22:51
+47065851.ba+      0:0 2-17:22:51 149134624K
+47065851.ex+      0:0 2-17:22:51       256K
+
+
+2025.10.24
+
+Tree Simulation: combining steps 1 & 2 as prep step (1) is truly minimalistic.
