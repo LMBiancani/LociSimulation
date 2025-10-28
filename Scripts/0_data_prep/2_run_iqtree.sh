@@ -13,7 +13,7 @@
 # Path to project directory:
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 # Path to scripts directory:
-Scripts="$Project/LociSimulation/Scripts/0_data_prep"
+Scripts="$Project/LociSimulation/Scripts"
 # Path to output directory
 Output="$Project/output/mammals"
 # Path to IQTREE executable:
