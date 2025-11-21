@@ -255,15 +255,14 @@ nano 2_run_iqtree.sh
 # --- Variables ---
 # Path to project directory:
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
-# Path to scripts directory:
-Scripts="$Project/LociSimulation/Scripts"
-# Path to output directory
+# Path to output directory (must contain output files from 1_run_amas.sh)
 Output="$Project/output/mammals"
 # Path to IQTREE executable:
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+# Number of cpus per task:
+Threads=${SLURM_CPUS_PER_TASK}
 
 module purge
-Threads=${SLURM_CPUS_PER_TASK}
 
 date
 cd ${Output}
@@ -304,3 +303,5 @@ JobID        ExitCode    Elapsed     MaxRSS
 2025.10.24
 
 Tree Simulation: combining steps 1 & 2 as prep step (1) is truly minimalistic.
+
+2025.11.21
