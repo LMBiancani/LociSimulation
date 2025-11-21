@@ -4,8 +4,8 @@ run_amas.py
 ------------
 Concatenates FASTA alignments in batches using AMAS (to avoid overloading AMAS input limitations).
 Creates a concatenated alignment file and a corresponding partition file:
-concatenatedTrain.fasta
-partitionsTrain.txt
+concatenated.fasta
+partitions.txt
 
 Usage:
     python run_amas.py <fasta_folder> <num_cores> <path_to_AMAS.py>
