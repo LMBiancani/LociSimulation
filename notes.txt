@@ -74,8 +74,8 @@ Mammal data is too large for AMAS so script needs updating to run through loci i
 run_amas.py is a custom batch concatenation wrapper around AMAS.
 It processes FASTA alignments in chunks of 1000 files at a time (to avoid overloading AMAS input limitations), concatenates them, and appends the results into cumulative files.
 Outputs:
-concatenatedTrain.fasta
-partitionsTrain.txt
+concatenated.fasta
+partitions.txt
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
 
@@ -87,8 +87,8 @@ run_amas.py
 ------------
 Concatenates FASTA alignments in batches using AMAS (to avoid overloading AMAS input limitations).
 Creates a concatenated alignment file and a corresponding partition file:
-concatenatedTrain.fasta
-partitionsTrain.txt
+concatenated.fasta
+partitions.txt
 
 Usage:
     python run_amas.py <fasta_folder> <num_cores> <path_to_AMAS.py>
@@ -182,12 +182,12 @@ print(" - concatenated.fasta")
 print(" - partitions.txt\n")
 ---------------------------------
 
-1_run_amas.sh runs AMAS on an empirical dataset to concatenate input fasta files and prepare partitions ahead of IQTree run.
+0.0_amas_concat.sh runs AMAS on an empirical dataset to concatenate input fasta files and prepare partitions ahead of IQTree run.
 Uses a helper Python script (run_amas.py), which wraps around the AMAS.py concat command.
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
 
-nano 1_run_amas.sh
+nano 0.0_amas_concat.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="AMAS"
@@ -218,28 +218,27 @@ module purge
 module load uri/main Python/3.7.4-GCCcore-8.3.0
 
 date
-mkdir -p ${Output}
-cd ${Output}
+mkdir -p ${Output}/0.0_concatenated
+cd ${Output}/0.0_concatenated
 
 #Concatenate input fasta files and prepare partitions ahead of IQTree run
 python3 ${Scripts}/0_data_prep/run_amas.py ${Data} ${Cores} ${AMAS}
 
 date
 ---------------------------------
-sbatch 1_run_amas.sh
-Submitted batch job 47034650
-sacct -j 47034650 -o JobID,ExitCode,Elapsed,MaxRSS
+sbatch 0.0_amas_concat.sh
+Submitted batch job 49112018
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-47034650          0:0   00:01:56
-47034650.ba+      0:0   00:01:56   6601112K
-47034650.ex+      0:0   00:01:56          0
+49112018          0:0   00:01:39
+49112018.ba+      0:0   00:01:39   5584204K
+49112018.ex+      0:0   00:01:40          0
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
 
-2_run_iqtree.sh will use iqtree to infer an empirical tree.
+0.1_iqtree_empirical.sh will use iqtree to infer an empirical tree.
 
-nano 2_run_iqtree.sh
+nano 0.1_iqtree_empirical.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="IQTREE"
@@ -255,21 +254,25 @@ nano 2_run_iqtree.sh
 # --- Variables ---
 # Path to project directory:
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
-# Path to output directory (must contain output files from 1_run_amas.sh)
+# Path to output directory
 Output="$Project/output/mammals"
 # Path to IQTREE executable:
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+# Path to output files from 0.0_amas_concat.sh
+Input="$Output/0.0_concatenated"
 # Number of cpus per task:
 Threads=${SLURM_CPUS_PER_TASK}
 
 module purge
 
 date
-cd ${Output}
+mkdir -p ${Output}/0.1_empirical_tree
+cd ${Output}/0.1_empirical_tree
 
-# --- Check input files ---
-if [[ ! -f "concatenated.fasta" || ! -f "partitions.txt" ]]; then
-    echo "Error: concatenated.fasta or partitions.txt not found in ${Output}"
+# --- Check for input files produced by 0.0_amas_concat.sh---
+
+if [[ ! -f "$Input/concatenated.fasta" || ! -f "$Input/partitions.txt" ]]; then
+    echo "Error: concatenated.fasta or partitions.txt not found in ${Input}"
     exit 1
 fi
 
@@ -283,14 +286,14 @@ fi
 #   -alrt: SH-like approximate likelihood test replicates
 
 ${IQTREE} -nt ${Threads} \
-    -s concatenated.fasta \
-    -spp partitions.txt \
+    -s $Input/concatenated.fasta \
+    -spp $Input/partitions.txt \
     -pre inferenceEmpirical \
     -m MFP -bb 1000 -alrt 1000
 
 date
 ---------------------------------
-sbatch 2_run_iqtree.sh
+sbatch 0.1_iqtree_empirical.sh
 Submitted batch job 47065851
 sacct -j 47065851 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
@@ -299,9 +302,3 @@ JobID        ExitCode    Elapsed     MaxRSS
 47065851.ba+      0:0 2-17:22:51 149134624K
 47065851.ex+      0:0 2-17:22:51       256K
 
-
-2025.10.24
-
-Tree Simulation: combining steps 1 & 2 as prep step (1) is truly minimalistic.
-
-2025.11.21

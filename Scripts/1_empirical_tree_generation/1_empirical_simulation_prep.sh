@@ -1,4 +1,4 @@
-#!/bin/bash
+qq#!/bin/bash
 #SBATCH --job-name="empirical_prep"
 #SBATCH --time=72:00:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
