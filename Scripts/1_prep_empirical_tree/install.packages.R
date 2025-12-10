@@ -1,5 +1,12 @@
-# Define a vector of package names to check and install
-packages_to_install <- c("ape", "ggplot2", "geiger", "ggtree")
+# Capture command-line arguments (package names to check and install)
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) == 0) {
+  stop("Error: No package names provided as arguments. Exiting.", call. = FALSE)
+}
+
+# The packages to install are now in the 'args' vector
+packages_to_install <- args
 
 # Function to check, install, and load packages
 install_and_load <- function(pkg) {
@@ -11,7 +18,7 @@ install_and_load <- function(pkg) {
   } else {
     message(paste("Package", pkg, "is already installed."))
   }
-  
+
   # Load the package (library function)
   library(pkg, character.only = TRUE)
   message(paste("Package", pkg, "loaded successfully."))
