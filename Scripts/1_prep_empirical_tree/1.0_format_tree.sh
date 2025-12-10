@@ -33,12 +33,13 @@ simphy_seed1=12345
 simphy_seed2=67890
 
 # create output subdirectory:
-Output1.0=$Output/1.0_formatted_empirical_tree/
-mkdir -p $Output1.0
-cd $Output1.0
+format_tree_out=$Output/1.0_formatted_empirical_tree
+mkdir -p $format_tree_out
+cd $format_tree_out
 
 module purge
 module load uri/main
+module load ImageMagick/7.1.1-15-GCCcore-12.3.0 # system dependency for the R 'magick' package
 module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
 module load R/4.3.2-gfbf-2023a # Loads updated R version
 
@@ -52,6 +53,6 @@ export R_LIBS=~/R-packages
 Rscript ${Scripts}/1_prep_empirical_tree/install.packages.R $R_packages
 
 ## Process Empirical tree
-Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tree2 $treefile $Output1.0 $out_tip $tree_depth $gen_time $simphy_seed1 $simphy_seed2
+Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tree2 $treefile $format_tree_out $out_tip $tree_depth $gen_time $simphy_seed1 $simphy_seed2
 
 date
