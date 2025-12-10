@@ -22,12 +22,12 @@ Output="$Project/output/mammals"
 treefile=$Output/0.1_empirical_tree/inferenceEmpirical.treefile
 # List of necessary R packages (separated by spaces)
 R_packages="igraph phangorn MASS clusterGeneration ape ggplot2 phytools geiger"
+# List of outgroup taxa for tree rooting (comma separated)
+outgroup="Wallabia_bicolor,Potorous_gilbertii,Pseudochirops_corinnae,Gymnobelideus_leadbeateri,Phalanger_gymnotis,Vombatus_ursinus,Phascolarctos_cinereus,Thylacinus_cynocephalus,Sarcophilus_harrisii,Didelphis_virginiana"
 # Total tree depth: Estimated age (in years) of most recent common ancestor of all species in the tree
 tree_depth=168000000
 # Generation time: Estimated generation time (in years) of all species in the tree:
 gen_time=4.5
-# Taxon (tip name) to use as the outgroup for rooting
-out_tip="Didelphis_virginiana"
 # Random number seeds for generate_params.txt
 simphy_seed1=12345
 simphy_seed2=67890
@@ -56,7 +56,8 @@ export R_LIBS=~/R-packages
 # install R packages
 Rscript ${Scripts}/1_prep_empirical_tree/install.packages.R $R_packages
 
+
 ## Process Empirical tree
-Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tree2 $treefile $format_tree_out $out_tip $tree_depth $gen_time $simphy_seed1 $simphy_seed2
+Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tree2 $treefile $format_tree_out $outgroup $tree_depth $gen_time $simphy_seed1 $simphy_seed2
 
 date
