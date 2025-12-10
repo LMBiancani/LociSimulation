@@ -228,6 +228,7 @@ date
 ---------------------------------
 sbatch 0.0_amas_concat.sh
 Submitted batch job 49112018
+sacct -j 49112018 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
 49112018          0:0   00:01:39
@@ -485,7 +486,8 @@ cd $Output1.0
 
 module purge
 module load uri/main
-module load R-bundle-Bioconductor/3.15-foss-2021b-R-4.2.0
+module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
+module load R/4.3.2-gfbf-2023a # Loads updated R version
 
 ## Install R packages
 
@@ -501,3 +503,11 @@ Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tre
 
 date
 ---------------------------------
+sbatch 1.0_format_tree.sh
+Submitted batch job 50314567 - module Error
+Error: failing to load the Rcpp.so library due to a missing GLIBCXX_3.4.32 symbol, was caused by a compiler mismatch on the HPC cluster. The R package Rcpp (required by ape) had been compiled using a newer version of the GNU Compiler Collection (GCC) than the one available to R at runtime (GCCcore/11.2.0). This was resolved by updating the Slurm script's module load strategy: we first load the newest available toolchain (foss/2024a) to provide the necessary, updated C++ shared libraries (libstdc++.so.6), and then load a compatible R module (R/4.3.2-gfbf-2023a). Crucially, we also forced the deletion and reinstallation of all local R packages (rm -rf ~/R-packages/*) to ensure they were compiled cleanly using the newly loaded, compatible foss/2024a toolchain.
+FIX: Resolve GLIBCXX compiler mismatch in R environment - Updates 1.0_format_tree.sh to load the latest foss toolchain and forces R package reinstallation to fix dependency loading error.
+
+sbatch 1.0_format_tree.sh
+Submitted batch job 50314943
+sacct -j 50314943 -o JobID,ExitCode,Elapsed,MaxRSS
