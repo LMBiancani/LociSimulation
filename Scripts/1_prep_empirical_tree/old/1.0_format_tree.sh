@@ -39,8 +39,7 @@ cd $Output1.0
 
 module purge
 module load uri/main
-module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
-module load R/4.3.2-gfbf-2023a # Loads updated R version
+module load R-bundle-Bioconductor/3.15-foss-2021b-R-4.2.0
 
 ## Install R packages
 
