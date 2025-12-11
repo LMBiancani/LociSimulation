@@ -616,7 +616,10 @@ Replace the single-taxon root(..., outgroup=...) call with the root(..., node=ou
 
 Making updates scripts...
 
-cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tre
+FEAT: Implement clade-based tree rooting via MRCA
+Replaces single-taxon rooting with support for multi-taxa outgroups. Uses ape::getMRCA() to find the common ancestor node index for a comma-separated list of outgroup tips, ensuring accurate clade-based tree rooting.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
 
 nano empirical_tree_processor.R
 ---------------------------------
@@ -783,6 +786,10 @@ Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tre
 date
 ---------------------------------
 sbatch 1.0_format_tree.sh
-Submitted batch job 50382558
-
-sacct -j 50382558 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50427601
+sacct -j 50427601 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50427601          0:0   00:00:42
+50427601.ba+      0:0   00:00:42    379772K
+50427601.ex+      0:0   00:00:42          0 
