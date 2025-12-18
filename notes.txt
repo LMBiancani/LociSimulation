@@ -807,7 +807,7 @@ simphy_seed1=12345
 simphy_seed2=67890
 
 # create output subdirectory:
-format_tree_out=$Output/1.0_formatted_empirical_tree
+format_tree_out=$Output/1.1_formatted_empirical_tree
 mkdir -p $format_tree_out
 cd $format_tree_out
 
@@ -840,4 +840,228 @@ JobID        ExitCode    Elapsed     MaxRSS
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
-Skipping simulation_prep.sh and run_sptree_SimPhy.R because they generate
+Skipping simulation_prep.sh and run_sptree_SimPhy.R because they generate simulated species trees which I don’t need for now. I just need loci simulated from the empirical tree above.
+
+2025.12.18
+
+I streamlined the 2.0_prep_simphy.sh bash script by replacing nested loops and relative pathing with a variable-driven structure that utilizes absolute paths and accepts three specific command-line arguments: the rescaled treefile, the parameter file, and the ape patch script.
+I restructured the generate_sim_properties.R script to capture these arguments via commandArgs(). I updated the average branch length (abl) sampling range to a natural log scale of -20 to -18, which aligns with estimated mammalian substitution rates.
+
+FEAT: Refactor SimPhy prep workflow for single-tree execution
+Streamlined the `2.0_prep_simphy.sh` bash script and `generate_sim_properties.R` to remove nested loops and relative path dependencies. Key updates include:
+- Implemented `commandArgs()` in R to ingest tree, parameter, and patch files directly from Bash variables.
+- Updated substitution rate (ABL) sampling range to -20 to -18 (natural log) to match mammalian empirical data.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano generate_sim_properties.R
+---------------------------------
+# generate_sim_properties.R
+# Purpose: Generate stochastic evolutionary parameters for 2000 simulated loci
+# based on an empirical species tree and mammalian rate ranges.
+# The resulting df.csv will serve as the master "blueprint" for Run_SimPhy.R
+# df.csv contains every stochastic variable needed to generate gene trees
+
+# --- 1. Capture Command Line Arguments ---
+# Arguments must be passed in the following order:
+# [1] treefile         (Path to ultrametric species tree rescaled in generations)
+# [2] params           (Path to generate_params.txt containing reproducibility seed and Ne)
+# [3] mod_write_tree2  (Path to modified.write.tree2.R - custom ape patch for NEXUS output)
+
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check if the correct number of arguments was provided
+if (length(args) < 3) {
+  stop("Error: Missing arguments. Expected: [1] treefile [2] params [3] mod_write_tree2", call. = FALSE)
+}
+
+# Assign arguments to variables
+tree_path       <- args[1]
+params_path     <- args[2]
+mod_write_tree2 <- args[3]
+
+# --- 2. Load Simulation Libraries ---
+library(ape)        # Phylogenetics core
+library(geiger)     # Tree transformation
+library(MultiRNG)   # Multivariate random number generation
+library(EnvStats)   # Statistical distributions
+library(extraDistr) # Zero-inflated Poisson (rzip) for paralogs/contaminants
+
+# --- 3. Setup and Data Loading ---
+
+# Load the scaled, ultrametric species tree
+sptree <- read.tree(tree_path)
+ntaxa <- length(sptree$tip.label)
+
+# Apply ape patch to ensure SimPhy-compatible NEXUS formatting
+source(mod_write_tree2)
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+
+# Extract simulation-wide constants from parameter input file (Seed and Population Size)
+params_vals <- unlist(strsplit(readLines(params_path), " "))
+random_seed <- as.numeric(params_vals[1])
+Ne          <- as.numeric(params_vals[2])
+
+# Set global seed for exact replication of the 2000-locus parameter set
+set.seed(random_seed)
+
+# --- 4. Parameter Generation ---
+## Parameters:              Value/Range:     Scientific Context:
+## Ave Branch Length (abl)  -20 to -18       natural log range estimated for mammals
+## Loci Count (nloci)       2000             Standard for the PML training/testing datasets.
+## Locus Length	            200–2000 bp      Longer loci are identified as a top feature for higher RF similarity.
+## Heterotachy (vbl)        0.5–2.5          Introduces substitution rate variance, a key interaction factor in wRF models.
+## ILS Level (Ne)           in params file   Scales discordance based on the effective population size of the empirical group.
+## random seed              in params file   For reproducibility
+
+nloci <- 2000
+df <- data.frame(loci = paste0("loc_", as.character(1:nloci)))
+
+# [ABL] Average Branch Length (Substitution Rate)
+# Using natural log range -20 to -18 as identified for mammals
+abl <- round(runif(nloci, min = -20, max = -18), 3)
+df$abl <- abl
+
+# Write Species Tree to NEXUS with the [&R] Rooted tag required by SimPhy
+write("#NEXUS", file="sptree.nex")
+write("begin trees;", file="sptree.nex", append=T)
+write(paste0("\ttree tree_1 = [&R] ", write.tree(sptree, digits=8, file="")), file="sptree.nex", append=T)
+write("end;", file="sptree.nex", append=T)
+
+# [VBL] Variance in branch length: Heterotachy (Rate Variance)
+# Models rate variation across the tree
+vbl <- round(runif(nloci,min=0.5,max=2.5),3)
+df <- cbind(df, vbl)
+
+# [Coding Status] CDS? Determines if locus evolves under NUCLEOTIDE or CODON models
+proteinCoding <- sample(c(TRUE,FALSE), nloci, TRUE)
+df <- cbind(df, proteinCoding)
+
+# [Model Seed] Unique seed for individual locus evolution models
+modelseed <- sample(10000:99999,nloci, replace=F)
+df <- cbind(df, modelseed)
+
+# [Locus Length] 200-2000 bp.
+# Longer loci strongly correlate with improved RF similarity/utility
+loclen <- sample(200:2000,nloci, replace=T)
+df <- cbind(df, loclen)
+
+# [LambdaPS] Pagel's Lambda
+# Scales proportion of phylogenetic signal on internal branches
+lambdaPS <- round(runif(nloci,min=0.75,max=1.0),5)
+df <- cbind(df, lambdaPS)
+
+# [ILS] Proportional to Effective Population Size (Ne)
+# Dictates the level of Incomplete Lineage Sorting
+Ne <- rep(Ne, nloci)
+df <- cbind(df, Ne)
+
+# [Seeds] Specific seeds for downstream software execution
+df$seed1 <- sample(10000:99999, nloci, replace = FALSE) # SimPhy seed
+df$seed2 <- ifelse(df$proteinCoding, 54321, 12345)      # INDELible seed
+
+# --- 5. Missing Data Simulation ---
+# Simulates stochastic and systematic data loss
+
+# Entirely missing taxa (up to 50% of total taxa)
+ntaxa_missing <- sample(0:round(ntaxa/2), nloci, replace = TRUE)
+taxa_missing <- list()
+remaining_taxa <- list()
+
+for (f in ntaxa_missing){
+  txm <- sample(c(1:ntaxa), f, replace = FALSE)
+	taxa_missing <- c(taxa_missing, list(txm))
+	remaining_taxa <- c(remaining_taxa, list(setdiff(c(1:ntaxa), txm)))
+}
+df$remaining_taxa <- remaining_taxa
+df$taxa_missing <- taxa_missing
+
+# Partially missing segments within remaining taxa
+taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x, round(length(x)/2)))
+df$taxa_missing_segments <- taxa_missing_segments
+df$missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x), 0.2, 0.6), 3))
+df$missing_segments_bias <- lapply(taxa_missing_segments, function(x) round(runif(length(x), 0, 1), 2))
+
+# --- 6. Paralogy and Contamination ---
+# Simulates non-orthologous signal that can confound species tree error[cite: 35, 36, 556].
+
+# Deep paralogs via Zero-Inflated Poisson distribution
+nremaining_taxa <- lapply(remaining_taxa, length)
+df$paralog_cont <- rzip(nloci, unlist(nremaining_taxa)/(unlist(nremaining_taxa)/2), 0.5)
+df$paralog_branch_mod <- round(runif(nloci, 1.0, 10.0), 2)
+df$paralog_taxa <- apply(df, 1, function(x) sample(x$remaining_taxa, x$paralog_cont))
+
+# Contaminant groups
+df$cont_pair_cont <- rzip(nloci, unlist(nremaining_taxa)/(unlist(nremaining_taxa)/2), 0.5)
+df$cont_pairs <- apply(df, 1, function(x) sample(x$remaining_taxa, x$cont_pair_cont * 2))
+
+# --- 7. Save Blueprint ---
+# Convert lists to character strings to prevent CSV formatting errors
+df <- as.data.frame(df)
+df$remaining_taxa <- gsub("\n", " ", as.character(df$remaining_taxa))
+df_out <- apply(df, 2, as.character)
+
+write.csv(df_out, "df.csv", row.names = FALSE)
+---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.0_prep_simphy.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name="prep_simphy"
+#SBATCH --time=6:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+#SBATCH -p uri-cpu
+#SBATCH -c 2
+#SBATCH --mem-per-cpu=6G
+
+# --- Variables ---
+# Path to project directory:
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+# Path to scripts directory:
+Scripts="$Project/LociSimulation/Scripts"
+# Path to modified.write.tree2.R (script that adjusts how ape handles tree files)
+mod_write_tree2=$Scripts/2_simulation_scripts/modified.write.tree2.R
+# Path to output directory
+Output="$Project/output/mammals"
+# Path to reformatted ultrametric treefile and parameter file generated by 1.1_format_tree.sh
+treefile=$Output/1.1_formatted_empirical_tree/s_tree.trees
+params=$Output/1.1_formatted_empirical_tree/generate_params.txt
+
+# create output subdirectory:
+out_dir=$Output/2.0_simphy_prep
+mkdir -p $out_dir
+cd $out_dir
+
+# --- Module Management ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+# --- Critical Environment Fixes ---
+# 1. Fix for the C++ library (GLIBCXX) errors
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+
+# 2. Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- generate_sim_properties.R ---
+
+Rscript $Scripts/2_simulation_scripts/generate_sim_properties.R $treefile $params $mod_write_tree2
+
+date
+---------------------------------
+sbatch 2.0_prep_simphy.sh
+Submitted batch job 50617731
+sacct -j 50617731 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+50617731          0:0   00:00:13            
+50617731.ba+      0:0   00:00:13    259484K 
+50617731.ex+      0:0   00:00:13          0 

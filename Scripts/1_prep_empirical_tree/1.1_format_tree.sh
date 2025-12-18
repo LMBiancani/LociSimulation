@@ -31,7 +31,7 @@ simphy_seed1=12345
 simphy_seed2=67890
 
 # create output subdirectory:
-format_tree_out=$Output/1.0_formatted_empirical_tree
+format_tree_out=$Output/1.1_formatted_empirical_tree
 mkdir -p $format_tree_out
 cd $format_tree_out
 
