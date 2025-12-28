@@ -1060,8 +1060,180 @@ date
 sbatch 2.0_prep_simphy.sh
 Submitted batch job 50617731
 sacct -j 50617731 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
+JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ---------- 
-50617731          0:0   00:00:13            
-50617731.ba+      0:0   00:00:13    259484K 
-50617731.ex+      0:0   00:00:13          0 
+50617731          0:0   00:00:13
+50617731.ba+      0:0   00:00:13    259484K
+50617731.ex+      0:0   00:00:13          0
+
+2025.12.19
+
+Install SimPhy:
+Installation instructions for SimPhy can be found at https://github.com/adamallo/SimPhy/wiki/Manual
+
+# 1. Create the directory:
+mkdir -p /project/pi_rsschwartz_uri_edu/Biancani/Software/SimPhy
+cd /project/pi_rsschwartz_uri_edu/Biancani/Software/SimPhy
+
+# 2. Download the 64-bit Linux binary directly from the official release
+wget https://github.com/adamallo/SimPhy/releases/download/v1.0.2/SimPhy_1.0.2.tar.gz
+
+# 3. Extract the package
+tar -xzvf SimPhy_1.0.2.tar.gz
+
+# 4.
+cd SimPhy_1.0.2/bin/
+
+# 5. Make the 64-bit Linux binary executable
+chmod +x simphy_lnx64
+
+# 2. Test it
+./simphy_lnx64 -h
+
+Path:
+/project/pi_rsschwartz_uri_edu/Biancani/Software/SimPhy/SimPhy_1.0.2/bin/simphy_lnx64
+
+2025.12.23
+
+Summary of Changes to run_SimPhy.R:
+The refactored run_SimPhy.R has been transformed from an execution script into a dedicated Command Factory. 
+I removed the internal system() calls and the file-cleaning logic to focus strictly on generating simulation parameters. 
+The script now accepts exactly five command-line arguments, allowing it to be fully controlled by a parent Bash script. 
+By utilizing a tidyverse approach with mutate and paste0, it maps the variables from the parameter data frame (df.csv) directly into raw SimPhy shell commands. 
+This output is written to a plain-text file, which serves as a "blueprint" for parallel execution, increasing the flexibility and scalability of the pipeline.
+
+nano run_SimPhy.R
+---------------------------------
+# ==============================================================================
+# Script: Run_SimPhy.R
+# Purpose: Generate a list of SimPhy commands based on generated parameters.
+# ==============================================================================
+
+library(tidyverse)
+
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check for the 5 arguments passed from the shell script
+if (length(args) < 5) {
+  stop("Usage: Rscript Run_SimPhy.R <sptree_path> <df_path> <output_list> <loci_dir> <simphy_path>", call. = FALSE)
+}
+
+species_tree_path <- args[1]
+df_path           <- args[2]
+output_list_path  <- args[3]
+loci_dir          <- args[4]
+simphy            <- args[5]
+
+
+# Load the parameter blueprint generated in the previous step
+df <- read.csv(df_path)
+nloci <- nrow(df)
+
+# Generate the command strings
+# Using mutate and paste0 for a clean 'tidyverse' approach
+df_cmds <- df %>%
+  mutate(command = paste0(
+    simphy, 
+    " -rl f:1",                          # Replicates per locus
+    " -sr ", species_tree_path,          # Input species tree
+    " -sp f:", Ne,                       # Population size for ILS
+    " -su ln:", abl, ",0.1",             # Subst. rate (ln scale)
+    " -hs ln:", vbl, ",1",               # Heterotachy (vbl)
+    " -cs ", seed1,                      # Random seed
+    " -o ", loci_dir, loci               # Locus-specific output folder
+  ))
+
+# Write the command list to the text file
+writeLines(df_cmds$command, con = output_list_path)
+
+cat(paste("Successfully generated  ", nloci, "SimPhy commands in:", output_list_path, "\n"))
+---------------------------------
+
+Summary of Changes to 2.1_simphy_commands.sh:
+The 2.1_simphy_commands.sh script was redesigned to serve as the Bridge between parameter generation and execution. 
+I cleaned up the environment setup by adding cluster-specific fixes, such as the GLIBCXX library path export and the R_LIBS pointer. 
+I replaced the complex "grep-and-split" logic used in older versions with a clean hand-off to the R generator. 
+The script now handles directory infrastructure (creating the 2.1 and 2.2 output folders) and passes absolute paths to the R script to avoid any ambiguity. 
+This separation ensures that the 2,000 commands are validated and stored safely before a single simulation core is even engaged.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.1_simphy_commands.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name=simphy_cmd
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=4G
+#SBATCH -p uri-cpu
+#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+# Path to project directory:
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+# Path to scripts directory:
+Scripts="$Project/LociSimulation/Scripts"
+# Path to output directory
+Output="$Project/output/mammals"
+# Path to SimPhy executable:
+simphy_exe=/project/pi_rsschwartz_uri_edu/Biancani/Software/SimPhy/SimPhy_1.0.2/bin/simphy_lnx64
+
+# Input files (Generated by 2.0_prep_simphy.sh)
+tree_file=$Output/2.0_simphy_prep/sptree.nex
+df_file=$Output/2.0_simphy_prep/df.csv
+
+# create output subdirectory:
+out_dir=$Output/2.1_commands_simphy
+mkdir -p $out_dir
+cd $out_dir
+
+# Output files (To be generated)
+cmd_list=$out_dir/simphy_command_list.txt
+loci_out_dir=$Output/2.2_simulated_loci/ ## note: terminal "/" is necessary! ##
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+# Fix for the C++ library (GLIBCXX) errors:
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+# Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- run_SimPhy.R ---
+
+Rscript "$Scripts/2_simulation_scripts/run_SimPhy.R" \
+    "$tree_file" \
+    "$df_file" \
+    "$cmd_list" \
+    "$loci_out_dir" \
+    "$simphy_exe"
+
+date
+---------------------------------
+sbatch 2.1_simphy_commands.sh
+
+
+Git commit message:
+feat: refactor SimPhy pipeline for modular parallel execution
+
+- Refactor Run_SimPhy.R to act as a command generator instead of an executor.
+- Update Run_SimPhy.R to accept 5 CLI arguments for better path management.
+- Standardize 2.1_simphy_commands.sh to utilize absolute paths and HPC environment fixes.
+- Remove legacy grep/split logic in favor of a unified command list for GNU Parallel.
+- Align Bash-to-R variable hand-off for Ne, seed, and branch length parameters.
+
+
+Notes for 2.2:
+
+# Initialize the gene tree log file
+# This clears the file if it already exists
+cat("", file = gene_tree_log)
+
+# Create the parent directory for the simulations
+mkdir -p "$loci_out_dir"
