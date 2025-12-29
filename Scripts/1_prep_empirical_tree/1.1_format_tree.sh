@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name="process_tree"
-#SBATCH --time=12:00:00                # Walltime limit (HH:MM:SS)
+#SBATCH --time=00:20:00                # Walltime limit (HH:MM:SS)
 #SBATCH --nodes=1                      # Number of nodes
 #SBATCH --ntasks=1                     # Total number of tasks (processes)
-#SBATCH --cpus-per-task=2              # Number of CPU cores per task
-#SBATCH --mem-per-cpu=6G               # Memory per cpu
+#SBATCH --cpus-per-task=1              # Number of CPU cores per task
+#SBATCH --mem-per-cpu=4G               # Memory per cpu
 #SBATCH --mail-user="biancani@uri.edu" # CHANGE TO user email address
 #SBATCH --mail-type=ALL
 #SBATCH -p uri-cpu                     # Partition/queue to submit job to

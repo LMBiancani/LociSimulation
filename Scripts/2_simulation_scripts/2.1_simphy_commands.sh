@@ -3,9 +3,9 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem=1G
 #SBATCH -p uri-cpu
-#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=0:20:00  # walltime limit (HH:MM:SS)
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
 #SBATCH --mail-type=ALL
 

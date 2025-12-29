@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name="prep_simphy"
-#SBATCH --time=6:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=00:20:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
 #SBATCH --mail-type=ALL
 #SBATCH -p uri-cpu
-#SBATCH -c 2
-#SBATCH --mem-per-cpu=6G
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=2G
 
 # --- Variables ---
 # Path to project directory:

@@ -3,10 +3,10 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32        # Number of simulations to run in parallel
-#SBATCH --mem=16G                 # Adjust based on node availability
+#SBATCH --mem=8G                 # Adjust based on node availability
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512       # Required for foss/2024a on this cluster
-#SBATCH --time=12:00:00
+#SBATCH --time=00:30:00
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
@@ -58,7 +58,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     # Check each of the 2000 expected tree files
     for i in {1..2000}; do
         tree_file="$out_dir/loc_$i/1/g_trees1.trees"
-        
+
         # If file doesn't exist (-f) OR is empty (! -s)
         if [[ ! -f "$tree_file" || ! -s "$tree_file" ]]; then
             FAILED_LOCI+=($i)
@@ -72,7 +72,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     else
         RETRY_COUNT=$((RETRY_COUNT + 1))
         echo "WARNING: ${#FAILED_LOCI[@]} simulations failed. Starting Retry #$RETRY_COUNT..."
-        
+
         # Log the failures
         echo "$(date): Attempt $RETRY_COUNT - Failed Loci: ${FAILED_LOCI[*]}" >> "$out_dir/retry_log.txt"
 
@@ -81,7 +81,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             # Extract the specific line from the original command list
             # Since loci are loc_1 to loc_2000, we pull line $locus_id
             cmd=$(sed -n "${locus_id}p" "$cmd_list")
-            
+
             echo "Re-running Locus $locus_id..."
             eval "$cmd"
         done
@@ -106,7 +106,7 @@ for i in {1..2000}
 do
     # Define the path to the replicate 1 tree file
     tree_file="$out_dir/loc_$i/1/g_trees1.trees"
-    
+
     # Append the tree to the master file
     cat "$tree_file" >> "$master_trees"
 done
