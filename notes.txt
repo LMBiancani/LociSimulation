@@ -637,7 +637,7 @@ Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 # Path to scripts directory:
 Scripts="$Project/LociSimulation/Scripts"
 # List of necessary R packages (separated by spaces)
-R_packages="igraph phangorn MASS clusterGeneration ape ggplot2 phytools geiger MultiRNG EnvStats extraDistr tidyverse"
+R_packages="igraph phangorn MASS clusterGeneration ape ggplot2 phytools geiger MultiRNG EnvStats extraDistr tidyverse castor"
 
 module purge
 module load uri/main
@@ -1387,6 +1387,27 @@ fi
 date
 ---------------------------------
 sbatch 2.2_run_simulations.sh
+Submitted batch job 50811294
+sacct -j 50811294 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50811294          0:0   00:00:29
+50811294.ba+      0:0   00:00:29    165104K
+50811294.ex+      0:0   00:00:29       256K
+
+Replicate 1 of 1: Simulating 1 gene trees from 1 locus trees... Done
+All 2,000 simulations verified successfully.
+Final check after retries...
+All simulations verified. Starting sequential harvest into /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.2_simulated_loci/gene_trees.tre...
+Harvesting complete at Mon Dec 29 03:39:19 AM UTC 2025
+Performing final audit of /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.2_simulated_loci/gene_trees.tre...
+-------------------------------------------------------
+ SUCCESS: 2.2_run_simulations.sh finished successfully.
+ Total Trees: 2000
+ Order: Sequential (Locus 1 to 2000)
+ Output file: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.2_simulated_loci/gene_trees.tre
+-------------------------------------------------------
+Mon Dec 29 03:39:19 AM UTC 2025
 
 Git commit message:
 feat: implement auto-recovery and sequential harvesting in 2.2_run_simulations.sh
@@ -1396,3 +1417,417 @@ feat: implement auto-recovery and sequential harvesting in 2.2_run_simulations.s
 - Replace wildcard/find harvesting with a sequential for-loop to preserve locus order (1-2000).
 - Add a final grep-based audit to verify the master tree file contains exactly 2000 Newick strings.
 - Integrate --joblog and --progress flags for better job monitoring and crash resiliency.
+
+
+Workflow Check
+
+2.2 creates the trees.
+2.3 (Bash) sets up the environment and runs Parallel.
+2.3 (Prep R) creates 2,000 control files.
+2.3 (Parallel) runs INDELible and renames outputs to locus_i.phy.
+2.3 (Post R) reads those .phy files, adds contamination/gaps, and saves as .fas.
+
+Summary of Changes to INDELible scripts:
+The simulation pipeline was overhauled to transition from a serialized, directory-dependent structure to a parallelized Control-File Architecture.
+
+2.3_INDELible.sh: I implemented a "Thread-Safe" execution model using GNU Parallel.
+By creating unique temporary working directories (tmp_$i) for each of the 2,000 tasks, I bypassed INDELible’s limitation of requiring a fixed filename (control.txt).
+This allows 32 simulations to run concurrently without file-access collisions, reducing runtime.
+
+prep_INDELible.R: The script was refactored to be fully modular and portable.
+It now accepts dynamic paths for helper scripts and output directories as arguments.
+The core logic was modified to output 2,000 individual control files, and the Nucleotide Substitution Model logic was restored to ensure that the mathematical parameters (GTR, HKY, etc.) are correctly mapped to INDELible’s internal commands.
+
+post_INDELible.R: This script was synchronized with the new naming convention (locus_f.phy) and updated to handle the massive output in a single pass.
+I updated the column-removal logic and ensured the final output is saved in a standardized FASTA format within a dedicated alignments_final directory.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano prep_INDELible.R
+---------------------------------
+library(ape)
+library(geiger)
+library(extraDistr)
+library(MultiRNG)
+library(EnvStats)
+library(castor)
+library(phangorn)
+library(tidyverse)
+
+# --- 1. Capture Arguments ---
+args = commandArgs(trailingOnly=TRUE)
+gene_trees_path <- args[1]
+df_path         <- args[2]
+out_dir         <- args[3]
+script_dir      <- args[4] # This is the $Scripts/2_simulation_scripts path
+
+# --- 2. Dynamic Sourcing ---
+# Use file.path for cross-platform compatibility
+source(file.path(script_dir, "modified.write.tree2.R"))
+source(file.path(script_dir, "modify_gene_tree.R"))
+
+# Apply the custom tree-writing function to the ape namespace
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+options(scipen = 999)
+
+# --- 3. Data Loading ---
+gene_trees <- read.tree(gene_trees_path)
+df <- read.csv(df_path)
+nloci <- length(df[,1])
+
+# --- 4. Main Processing Loop ---
+# We loop through each locus and create a UNIQUE control file for it
+df2_list <- list()
+
+for (f in 1:nloci) {
+  # Define the specific control file for this locus
+  locus_control <- file.path(out_dir, paste0("control_", f, ".txt"))
+
+  # Set seed for model parameters
+  set.seed(df$modelseed[f])
+
+  # --- Model Block Initialization ---
+  if (df$proteinCoding[f] == "TRUE") {
+    write("[TYPE] CODON 1", file=locus_control)
+    write("[SETTINGS]", file=locus_control, append=T)
+    write(paste("\t[randomseed]", df$seed2[f]), file=locus_control, append=T)
+  } else {
+    write("[TYPE] NUCLEOTIDE 1", file=locus_control)
+    write("[SETTINGS]", file=locus_control, append=T)
+    write(paste("\t[randomseed]", df$seed2[f]), file=locus_control, append=T)
+  }
+
+  # --- Tree Modification Logic (Paralogs/Shifts) ---
+  # (Keeping your original logic for modifying the tree structure)
+  new_tree <- modify_tree(gene_trees[[f]], df$lambdaPS[f], df$paralog_taxa[f], df$paralog_branch_mod[f])
+  new_tree2 <- new_tree
+  new_tree2$node.label <- rep("", new_tree2$Nnode)
+
+  # Model shift logic...
+  edges0 <- new_tree$edge.length
+  names(edges0) <- 1:length(edges0)
+  edges1 <- sort(edges0, decreasing = T)
+  edges2 <- edges1[which(cumsum(edges1)<sum(edges1)/4)]
+  edges3 <- as.numeric(names(edges2))
+  nEdges <- rtpois(1, 0.5, -1,length(edges3))
+  edges4 <- sample(edges3,nEdges)
+
+  modelnames <- c()
+  traversal <- get_tree_traversal_root_to_tips(new_tree2, T)
+
+  for (x in traversal$queue){
+    if (Ancestors(new_tree2,x,'parent') == 0) {
+      current_model <- paste0("#mRoot")
+      modelnames <- c(modelnames, current_model)
+      new_tree2$node.label[x-length(new_tree2$tip.label)] <- current_model
+    } else {
+      current_branch <- which(new_tree2$edge[,2]==x)
+      parent_model <- new_tree2$node.label[Ancestors(new_tree2,x,'parent')-length(new_tree2$tip.label)]
+      if (current_branch %in% edges4) {
+        current_model <- paste0("#m", x)
+        modelnames <- c(modelnames, current_model)
+      } else {
+        if (current_model != parent_model) { current_model <- parent_model }
+      }
+      if (x <= length(new_tree2$tip.label)) {
+        new_tree2$tip.label[x] <- paste0(new_tree2$tip.label[x], current_model)
+      } else {
+        new_tree2$node.label[x-length(new_tree2$tip.label)] <- current_model
+      }
+    }
+  }
+
+  # --- Write MODEL definitions to the file ---
+  clean_modelnames <- gsub('#','', modelnames)
+
+  if (df$proteinCoding[f] == "TRUE") {
+    # Codon Model Parameters...
+    pInv <- round(runif(1,0,0.25),3); pNeutral <- round(runif(1,0,1-pInv),3)
+    for (m in clean_modelnames) {
+      basefreqs <- draw.dirichlet(1,61,rep(10,61),1)[1,]
+      basefreqs <- c(basefreqs[1:10], 0, 0, basefreqs[11:12], 0, basefreqs[13:61])
+      kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
+      omegaSelect <- round(runif(1,0,3),3)
+
+      write(paste("[MODEL]", m), file=locus_control, append=T)
+      write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")), file=locus_control, append=T)
+      write(paste("\t[submodel]", paste(kappa, pInv, pNeutral, 0, 1, omegaSelect, collapse=" ")), file=locus_control, append=T)
+      write(paste("\t[indelmodel] POW", round(runif(1,1.5,2),3), "10"), file=locus_control, append=T)
+      write(paste("\t[indelrate]", round(runif(1,0.001,0.002),5)), file=locus_control, append=T)
+    }
+    } else {
+      # Nucleotide Model Parameters...
+      pInv <- round(runif(1,0,0.25),5)
+      ngamcat <- sample(c(0,1),1)
+      alpha <- if(ngamcat==0) round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5) else 0
+
+      for (m in clean_modelnames) {
+        modelType <- sample(c("GTR", "SYM", "TVM", "TVMef", "TIM", "TIMef", "K81uf", "K81", "TrN", "TrNef", "HKY", "K80", "F81", "JC"),1)
+        paramvector <- get_param_vector(modelType)
+
+        # Determine base frequencies for specific models
+        basefreqs <- NA
+        if (modelType %in% c("GTR", "TVM", "TIM", "K81uf", "TrN", "HKY", "F81")) {
+          basefreqs <- draw.dirichlet(1,4,c(10,10,10,10),1)[1,]
+        }
+
+        # --- BUILD THE SUBMODEL STRING ---
+        # This part is mandatory for INDELible to understand the modelType
+        if (modelType %in% c("GTR", "SYM")) {
+          modelstring <- paste(modelType, paste(paramvector[1:5], collapse=" "))
+        } else if (modelType %in% c("TVM", "TVMef")) {
+          modelstring <- paste(modelType, paste(paramvector[2:5], collapse=" "))
+        } else if (modelType %in% c("TIM", "TIMef")) {
+          modelstring <- paste(modelType, paste(paramvector[1:3], collapse=" "))
+        } else if (modelType %in% c("K81uf", "K81")) {
+          modelstring <- paste(modelType, paste(paramvector[2:3], collapse=" "))
+        } else if (modelType %in% c("TrN", "TrNef")) {
+          modelstring <- paste(modelType, paste(paramvector[c(1,6)], collapse=" "))
+        } else if (modelType %in% c("HKY", "K80")) {
+          modelstring <- paste(modelType, paramvector[1])
+        } else {
+          modelstring <- modelType # Covers JC and F81
+        }
+
+        # --- WRITE TO CONTROL FILE ---
+        write(paste("[MODEL]", m), file=locus_control, append=T)
+        write(paste("\t[submodel]", modelstring), file=locus_control, append=T)
+
+        if (!all(is.na(basefreqs))) {
+          write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")), file=locus_control, append=T)
+        }
+
+        write(paste("\t[rates]", pInv, alpha, ngamcat), file=locus_control, append=T)
+        write(paste("\t[indelmodel] POW", paramvector[7], "10"), file=locus_control, append=T)
+        write(paste("\t[indelrate]", paramvector[8]), file=locus_control, append=T)
+      }
+    }
+
+  # --- Write TREE, BRANCHES, and PARTITIONS to the file ---
+  write(paste0("[TREE] t1 ", write.tree(new_tree, file="")), file=locus_control, append=T)
+
+  new_tree2$edge.length <- NULL
+  write(paste0("[BRANCHES] b1 ", write.tree(new_tree2, file="")), file=locus_control, append=T)
+
+  seq_len <- if(df$proteinCoding[f]=="TRUE") round(df$loclen[f]/3) else df$loclen[f]
+  write(paste0("[PARTITIONS] p1 [t1 b1 ", seq_len, "]"), file=locus_control, append=T)
+
+  # --- Final EVOLVE block ---
+  write("[EVOLVE] p1 1 output", file=locus_control, append = T)
+}
+
+# (Optional: df2.csv logging logic remains here) # logging simulated model params: the original script, was tracking things like modelkappasd and modelratesd.
+# Since we are now using a loop, keeping that log would require initialize a data frame before the loop and fill it as you go.
+# Not sure yet if we strictly need those specific standard deviation metrics for downstream analysis, so leaving it out for now to keep the script faster.
+---------------------------------
+
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano post_INDELible.R
+---------------------------------
+library(ape)
+
+# --- 1. Capture Arguments ---
+args = commandArgs(trailingOnly=TRUE)
+alignment_folder_path <- args[1] # This is $indel_dir from the .sh
+df_path <- args[2]
+df <- read.csv(df_path)
+
+nloci <- length(df[,1])
+
+# Create output directory for modified fasta files
+# We'll use file.path for safety
+final_aln_dir <- file.path(alignment_folder_path, "alignments_final")
+if (!dir.exists(final_aln_dir)) dir.create(final_aln_dir)
+
+# --- 2. Modification Loop ---
+for (f in 1:nloci){
+    # Identify the simulated file from INDELible
+    # Matches the 'mv' command in our bash script: locus_i.phy
+    seqpath <- file.path(alignment_folder_path, paste0("locus_", f, ".phy"))
+
+    if (!file.exists(seqpath)) {
+        message(paste("Warning: File missing for Locus", f))
+        next
+    }
+
+    # Read DNA (Sequential Phylip format)
+    locus <- read.dna(seqpath, format="sequential", as.character = T)
+
+    # Filter for remaining taxa
+    remaining_taxa <- as.character(eval(parse(text=df$remaining_taxa[f])))
+    locus <- locus[rownames(locus) %in% remaining_taxa,]
+
+    # --- Contamination Processing ---
+    # Swaps sequence data between pairs to simulate lab contamination
+    contaminant_tips <- eval(parse(text=df$cont_pairs[f]))
+    lencon <- length(contaminant_tips)
+    if (lencon > 0) {
+        for (t in seq(2, lencon, 2)) {
+            # Taxon t gets the sequence of Taxon t-1
+            locus[which(rownames(locus) == contaminant_tips[t]), ] <-
+                locus[which(rownames(locus) == contaminant_tips[t-1]), ]
+        }
+    }
+
+    # --- Missing Data Simulation ---
+    # Adds gaps (-) to the 5' or 3' ends based on prop and bias in df.csv
+    loclen <- ncol(locus)
+    taxa_vector <- as.character(eval(parse(text=df$taxa_missing_segments[f])))
+    missing_segments_prop_vector <- eval(parse(text=df$missing_segments_prop[f]))
+    missing_segments_bias_vector <- eval(parse(text=df$missing_segments_bias[f]))
+
+    if (length(taxa_vector) > 0) {
+        for (t in 1:length(taxa_vector)) {
+            taxon_name <- taxa_vector[t]
+            taxon_index <- which(rownames(locus) == taxon_name)
+
+            if (length(taxon_index) > 0) {
+                gapLen <- loclen * missing_segments_prop_vector[t]
+                gapLen5 <- round(gapLen * missing_segments_bias_vector[t])
+                gapLen3 <- round(gapLen - gapLen5)
+
+                if (gapLen5 > 0) locus[taxon_index, 1:gapLen5] <- "-"
+                if (gapLen3 > 0) locus[taxon_index, (loclen - gapLen3 + 1):loclen] <- "-"
+            }
+        }
+    }
+
+    # --- Cleanup: Remove empty columns ---
+    # If all taxa have a gap at a site, delete the site
+    badpos <- which(apply(locus, 2, function(col) all(col == "-")))
+    if (length(badpos) > 0) {
+        locus <- locus[, -badpos]
+    }
+
+    # --- Write Result ---
+    # Save as FASTA in the new alignments_final folder
+    locus_bin <- as.DNAbin(locus)
+    write.FASTA(locus_bin, file.path(final_aln_dir, paste0("loc_", f, ".fas")))
+}
+
+message("Post-processing complete. Modified alignments are in: ", final_aln_dir)
+---------------------------------
+
+Install INDELibleV1.03:
+
+cd cd /project/pi_rsschwartz_uri_edu/Biancani/Software/
+git clone https://github.com/kloetzl/indelible.git
+
+/indelible.git
+Cloning into 'indelible'...
+remote: Enumerating objects: 91, done.
+remote: Total 91 (delta 0), reused 0 (delta 0), pack-reused 91 (from 1)
+Receiving objects: 100% (91/91), 1.19 MiB | 14.72 MiB/s, done.
+Resolving deltas: 100% (27/27), done.
+
+cd /project/pi_rsschwartz_uri_edu/Biancani/Software/indelible/src
+g++ -o indelible -O3 -m64 -std=gnu++98 -include unistd.h indelible.cpp -lm
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.3_INDELible.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name=indelible_para
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32        # Number of INDELible instances to run at once
+#SBATCH --mem=32G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --time=24:00:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts"
+Output="$Project/output/mammals"
+# Path to INDELible executable
+indel_exe="/project/pi_rsschwartz_uri_edu/Biancani/Software/indelible/src/indelible"
+
+# Input from 2.0 and 2.2
+tree_file="$Output/2.2_simulated_loci/gene_trees.tre"
+df_file="$Output/2.0_simphy_prep/df.csv"
+
+# Output subdirectory:
+indel_dir="$Output/2.3_indelible"
+mkdir -p "$indel_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+module load parallel/20240822
+# Fix for the C++ library (GLIBCXX) errors:
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+# Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- 1. Prep Control Files ---
+# Ensure your R script creates 'control_1.txt' through 'control_2000.txt' in $indel_dir
+echo "Generating 2,000 INDELible control files..."
+# Passing: [1]tree_file [2]df_file [3]output_dir [4]sim_script_dir
+Rscript "$Scripts/2_simulation_scripts/prep_INDELible.R" \
+    "$tree_file" \
+    "$df_file" \
+    "$indel_dir" \
+    "$Scripts/2_simulation_scripts"
+
+# --- 2. Parallel Execution ---
+echo "Running INDELible in parallel across $SLURM_CPUS_PER_TASK cores..."
+cd "$indel_dir"
+
+# Generate a list of tasks for parallel
+# We create a unique temporary folder for each locus to prevent control.txt collisions
+for i in {1..2000}; do
+    echo "mkdir -p tmp_$i && cp control_$i.txt tmp_$i/control.txt && cd tmp_$i && $indel_exe > /dev/null && mv output_TRUE.phy ../locus_$i.phy && cd .. && rm -rf tmp_$i"
+done > indelible_tasks.txt
+
+# Run the tasks
+parallel --jobs $SLURM_CPUS_PER_TASK < indelible_tasks.txt
+
+# --- 3. Post-Processing ---
+echo "Running post-simulation sequence modification..."
+Rscript "$Scripts/2_simulation_scripts/post_INDELible.R" "$indel_dir" "$df_file"
+
+date
+---------------------------------
+sbatch 2.3_INDELible.sh
+sbatch: INFO: Note that 32 GB per node will require a node with more than 32 GB memory because of overhead. Check https://docs.unity.rc.umass.edu/nodes for an appropriate limit.
+Submitted batch job 50811872
+sacct -j 50811872 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50811872          0:0   00:01:46
+50811872.ba+      0:0   00:01:46    370668K
+50811872.ex+      0:0   00:01:46       256K
+
+Running INDELible in parallel across 32 cores...
+Running post-simulation sequence modification...
+Post-processing complete. Modified alignments are in: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indelible/alignments_final
+Mon Dec 29 06:14:50 AM UTC 2025
+
+Checking...
+# Count raw Phylip files from INDELible
+ls /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indelible/locus_*.phy | wc -l
+2000
+# Count final FASTA files from Post-Processing
+ls /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indelible/alignments_final/*.fas | wc -l
+2000
+# visually inspect a random file:
+head -n 20 /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indelible/alignments_final/loc_500.fas
+(looks good)
+
+Git Commit Message:
+feat: parallelize sequence simulation and modernize INDELible workflow
+
+- Refactor 2.3_INDELible.sh to use GNU Parallel with thread-safe temporary directories.
+- Update prep_INDELible.R to generate 2,000 individual control files and support dynamic script sourcing.
+- Restore Nucleotide Substitution Model switch-case logic to ensure correct INDELible [MODEL] definitions.
+- Update post_INDELible.R to handle the new locus naming convention and output processed FASTA alignments.
+- Optimize I/O by implementing a centralized alignments_final directory for downstream analysis.
