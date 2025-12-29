@@ -1061,7 +1061,7 @@ sbatch 2.0_prep_simphy.sh
 Submitted batch job 50617731
 sacct -j 50617731 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ---------- 
+------------ -------- ---------- ----------
 50617731          0:0   00:00:13
 50617731.ba+      0:0   00:00:13    259484K
 50617731.ex+      0:0   00:00:13          0
@@ -1096,10 +1096,10 @@ Path:
 2025.12.23
 
 Summary of Changes to run_SimPhy.R:
-The refactored run_SimPhy.R has been transformed from an execution script into a dedicated Command Factory. 
-I removed the internal system() calls and the file-cleaning logic to focus strictly on generating simulation parameters. 
-The script now accepts exactly five command-line arguments, allowing it to be fully controlled by a parent Bash script. 
-By utilizing a tidyverse approach with mutate and paste0, it maps the variables from the parameter data frame (df.csv) directly into raw SimPhy shell commands. 
+The refactored run_SimPhy.R has been transformed from an execution script into a dedicated Command Factory.
+I removed the internal system() calls and the file-cleaning logic to focus strictly on generating simulation parameters.
+The script now accepts exactly five command-line arguments, allowing it to be fully controlled by a parent Bash script.
+By utilizing a tidyverse approach with mutate and paste0, it maps the variables from the parameter data frame (df.csv) directly into raw SimPhy shell commands.
 This output is written to a plain-text file, which serves as a "blueprint" for parallel execution, increasing the flexibility and scalability of the pipeline.
 
 nano run_SimPhy.R
@@ -1133,7 +1133,7 @@ nloci <- nrow(df)
 # Using mutate and paste0 for a clean 'tidyverse' approach
 df_cmds <- df %>%
   mutate(command = paste0(
-    simphy, 
+    simphy,
     " -rl f:1",                          # Replicates per locus
     " -sr ", species_tree_path,          # Input species tree
     " -sp f:", Ne,                       # Population size for ILS
@@ -1150,10 +1150,10 @@ cat(paste("Successfully generated  ", nloci, "SimPhy commands in:", output_list_
 ---------------------------------
 
 Summary of Changes to 2.1_simphy_commands.sh:
-The 2.1_simphy_commands.sh script was redesigned to serve as the Bridge between parameter generation and execution. 
-I cleaned up the environment setup by adding cluster-specific fixes, such as the GLIBCXX library path export and the R_LIBS pointer. 
-I replaced the complex "grep-and-split" logic used in older versions with a clean hand-off to the R generator. 
-The script now handles directory infrastructure (creating the 2.1 and 2.2 output folders) and passes absolute paths to the R script to avoid any ambiguity. 
+The 2.1_simphy_commands.sh script was redesigned to serve as the Bridge between parameter generation and execution.
+I cleaned up the environment setup by adding cluster-specific fixes, such as the GLIBCXX library path export and the R_LIBS pointer.
+I replaced the complex "grep-and-split" logic used in older versions with a clean hand-off to the R generator.
+The script now handles directory infrastructure (creating the 2.1 and 2.2 output folders) and passes absolute paths to the R script to avoid any ambiguity.
 This separation ensures that the 2,000 commands are validated and stored safely before a single simulation core is even engaged.
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
@@ -1217,7 +1217,13 @@ Rscript "$Scripts/2_simulation_scripts/run_SimPhy.R" \
 date
 ---------------------------------
 sbatch 2.1_simphy_commands.sh
-
+Submitted batch job 50809439
+sacct -j 50809439 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50809439          0:0   00:00:17
+50809439.ba+      0:0   00:00:17    199912K
+50809439.ex+      0:0   00:00:17          0
 
 Git commit message:
 feat: refactor SimPhy pipeline for modular parallel execution
@@ -1228,12 +1234,165 @@ feat: refactor SimPhy pipeline for modular parallel execution
 - Remove legacy grep/split logic in favor of a unified command list for GNU Parallel.
 - Align Bash-to-R variable hand-off for Ne, seed, and branch length parameters.
 
+Summary of Changes to 2.2_run_simulations.sh:
+The 2.2_run_simulations.sh script has been transformed from an execution script into a self-correcting pipeline.
+Key changes include the integration of GNU Parallel with a --joblog and --progress monitor to maximize CPU efficiency.
+I also implemented a Validation and Auto-Recovery Loop that audits each of the 2,000 expected outputs to ensure files are present and non-zero in size; any failures are automatically extracted from the master command list and re-executed.
+Finally, I replaced the find harvesting method with a Sequential Harvesting Loop.
+This ensures that the final gene_trees.tre file is perfectly ordered from Locus 1 to 2000, creating a reliable 1:1 mapping between the tree data and the simulation metadata (seeds and Ne)
 
-Notes for 2.2:
 
-# Initialize the gene tree log file
-# This clears the file if it already exists
-cat("", file = gene_tree_log)
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
-# Create the parent directory for the simulations
-mkdir -p "$loci_out_dir"
+nano 2.2_run_simulations.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name=simphy_run
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32        # Number of simulations to run in parallel
+#SBATCH --mem=16G                 # Adjust based on node availability
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512       # Required for foss/2024a on this cluster
+#SBATCH --time=12:00:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+# Path to project directory:
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+# Path to project output directory
+Output="$Project/output/mammals"
+
+# Input file (generated by 2.1_simphy_commands.sh):
+cmd_list="$Output/2.1_commands_simphy/simphy_command_list.txt"
+
+# Output subdirectory for the simulations:
+out_dir="$Output/2.2_simulated_loci"
+mkdir -p "$out_dir"
+
+# Output: final combined gene tree file
+master_trees="$out_dir/gene_trees.tre"
+# Initialize/clear the gene tree log file
+> "$master_trees"
+
+# Log: Tracks which simulations succeeded
+job_log="$out_dir/2.2_parallel_joblog.log"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load parallel/20240822
+
+# --- 1. Initial Parallel Execution ---
+echo "Starting initial SimPhy simulations..."
+
+parallel --jobs $SLURM_CPUS_PER_TASK --joblog "$job_log" --progress < "$cmd_list"
+# --jobs $SLURM_CPUS_PER_TASK: Uses the cores requested above
+# --joblog: Records completion; if job fails, re-running will skip finished tasks
+# --progress: Prints a progress bar and ETA to the slurm log
+
+# --- 2. Validation & Auto-Recovery Loop ---
+echo "Verifying simulation integrity..."
+
+# We will loop until all files exist, or set a max number of retry attempts
+MAX_RETRIES=2
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    FAILED_LOCI=()
+
+    # Check each of the 2000 expected tree files
+    for i in {1..2000}; do
+        tree_file="$out_dir/loc_$i/1/g_trees1.trees"
+
+        # If file doesn't exist (-f) OR is empty (! -s)
+        if [[ ! -f "$tree_file" || ! -s "$tree_file" ]]; then
+            FAILED_LOCI+=($i)
+        fi
+    done
+
+    # If no failures, break the loop
+    if [ ${#FAILED_LOCI[@]} -eq 0 ]; then
+        echo "All 2,000 simulations verified successfully."
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "WARNING: ${#FAILED_LOCI[@]} simulations failed. Starting Retry #$RETRY_COUNT..."
+
+        # Log the failures
+        echo "$(date): Attempt $RETRY_COUNT - Failed Loci: ${FAILED_LOCI[*]}" >> "$out_dir/retry_log.txt"
+
+        # Re-run only the failed commands
+        for locus_id in "${FAILED_LOCI[@]}"; do
+            # Extract the specific line from the original command list
+            # Since loci are loc_1 to loc_2000, we pull line $locus_id
+            cmd=$(sed -n "${locus_id}p" "$cmd_list")
+
+            echo "Re-running Locus $locus_id..."
+            eval "$cmd"
+        done
+    fi
+done
+
+echo "Final check after retries..."
+if [ ${#FAILED_LOCI[@]} -gt 0 ]; then
+    echo "CRITICAL: ${#FAILED_LOCI[@]} loci still failing after $MAX_RETRIES retries. Check retry_log.txt"
+    exit 1
+fi
+
+# --- 3. Sequential Harvesting ---
+echo "All simulations verified. Starting sequential harvest into $master_trees..."
+
+# Initialize/clear the master file
+> "$master_trees"
+
+# Loop from 1 to 2000 to ensure perfect numerical order
+# Line 1 in the tree file will correspond to Locus 1 (Row 1 in df.csv)
+for i in {1..2000}
+do
+    # Define the path to the replicate 1 tree file
+    tree_file="$out_dir/loc_$i/1/g_trees1.trees"
+
+    # Append the tree to the master file
+    cat "$tree_file" >> "$master_trees"
+done
+
+echo "Harvesting complete at $(date)"
+
+# --- 4. Final Verification ---
+echo "Performing final audit of $master_trees..."
+
+# Count the number of Newick trees (lines starting with '(')
+actual_count=$(grep -c "(" "$master_trees")
+expected_count=2000
+
+if [ "$actual_count" -eq "$expected_count" ]; then
+    echo "-------------------------------------------------------"
+    echo " SUCCESS: 2.2_run_simulations.sh finished successfully."
+    echo " Total Trees: $actual_count"
+    echo " Order: Sequential (Locus 1 to 2000)"
+    echo " Output file: $master_trees"
+    echo "-------------------------------------------------------"
+else
+    echo "-------------------------------------------------------"
+    echo " ERROR: Final tree count ($actual_count) does not match"
+    echo " expected count ($expected_count)."
+    echo " Please check $out_dir/retry_log.txt for clues."
+    echo "-------------------------------------------------------"
+    exit 1
+fi
+
+date
+---------------------------------
+sbatch 2.2_run_simulations.sh
+
+Git commit message:
+feat: implement auto-recovery and sequential harvesting in 2.2_run_simulations.sh
+
+- Add --constraint=avx512 and specific parallel/20240822 module for cluster compatibility.
+- Implement a while-loop for auto-recovery that detects and re-runs failed/empty simulations.
+- Replace wildcard/find harvesting with a sequential for-loop to preserve locus order (1-2000).
+- Add a final grep-based audit to verify the master tree file contains exactly 2000 Newick strings.
+- Integrate --joblog and --progress flags for better job monitoring and crash resiliency.

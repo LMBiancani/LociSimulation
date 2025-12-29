@@ -1,7 +1,5 @@
 # Loci Simulation Scripts
 
----
-
 ## 0_data_prep
 
 Prepares aligned loci for simulations by concatenating alignments and inferring an empirical tree.
@@ -24,8 +22,6 @@ A custom AMAS wrapper run by `0.0_amas_concat.sh`: processes FASTA alignments in
 sbatch 0.1_iqtree_empirical.sh
 ```
 Runs IQ-Tree to generate an empirical species tree.
-
----
 
 ## 1_prep_empirical_tree
 
@@ -52,11 +48,10 @@ sbatch 1.1_format_tree.sh
 ```
 Reformats empirical tree to produce ultrametric tree with numerical tip labels ahead of simulations.
 
----
 
 ## 2_simulation_setup
 
-Generates simulation parameters, creates the command list for the simulation engine, and executes simulations in parallel.
+Generates simulation parameters, creates the command list, and executes simulations in parallel with built-in error recovery.
 
 ### 2.0_prep_simphy.sh
 
@@ -64,12 +59,11 @@ Generates simulation parameters, creates the command list for the simulation eng
 sbatch 2.0_prep_simphy.sh
 
 ```
-
-Main preparation script that initiates the simulation parameter generation by calling `generate_sim_properties.R` to create the blueprint for 2,000 loci.
+Initiates the simulation parameter generation by calling `generate_sim_properties.R` to create the blueprint for 2,000 loci.
 
 #### generate_sim_properties.R
 
-An R script that generates a CSV file (`df.csv`) containing stochastic parameters for each locus, including Effective Population Size (N_e), substitution rates, heterotachy parameters, and unique random seeds.
+An R script executed by `2.0_prep_simphy.sh`. Generates a CSV file (`df.csv`) containing stochastic parameters for each locus, including Effective Population Size (N_e), substitution rates, heterotachy parameters, and unique random seeds.
 
 ### 2.1_simphy_commands.sh
 
@@ -78,11 +72,11 @@ sbatch 2.1_simphy_commands.sh
 
 ```
 
-The **Command Factory** script. It sets up the HPC environment (loading modules and fixing `GLIBCXX` library paths) and runs `run_SimPhy.R` to translate the CSV parameters into a raw list of terminal commands.
+The **Command Factory** script. Runs `run_SimPhy.R` to translate the CSV parameters into a raw list of 2,000 SimPhy terminal commands (`simphy_command_list.txt`).
 
 #### run_SimPhy.R
 
-A non-executing R script that maps variables from `df.csv` to SimPhy flags. It outputs `simphy_command_list.txt`, a 2,000-line file where each line is a unique, fully-formed SimPhy execution string.
+An R script run by `2.1_simphy_commands.sh`. Maps variables from `df.csv` to SimPhy flags. It outputs `simphy_command_list.txt`, a 2,000-line file where each line is a unique, fully-formed SimPhy execution string.
 
 ### 2.2_run_simulations.sh
 
@@ -91,8 +85,9 @@ sbatch 2.2_run_simulations.sh
 
 ```
 
-The **Executioner** script. This script requests multiple CPU cores and uses **GNU Parallel** to run the 2,000 simulations simultaneously.
+The **Executioner and Harvester** script. The primary workhorse script that executes simulations and ensures data integrity.
 
-* **Parallel Execution:** Reads `simphy_command_list.txt` and distributes tasks to available cores.
-* **Organization:** Each locus is saved into its own subdirectory (`loc_1/`, `loc_2/`, etc.) to prevent file name collisions.
-* **Harvesting:** After all simulations complete, the script collects the resulting gene trees from individual subfolders into a single master file (`gene_trees.tre`) for downstream analysis.
+* **Parallel Execution:** Uses **GNU Parallel** to distribute 2,000 tasks across requested CPU cores. Includes a `--joblog` for resuming interrupted runs.
+* **Auto-Recovery Loop:** Post-simulation, the script audits all 2,000 output folders. If a tree file is missing or 0 bytes, it extracts the original command from the command list and re-runs it (up to 2 retry attempts).
+* **Sequential Harvesting:** Once verified, trees are gathered into a master `gene_trees.tre` file using a strict numerical loop (`1 to 2000`). This ensures that **Line N** in the tree file corresponds exactly to **Row N** in the parameter metadata.
+* **Final Audit:** Performs a grep-count of Newick strings to confirm exactly 2,000 trees were successfully merged.
