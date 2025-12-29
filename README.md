@@ -91,3 +91,44 @@ The **Executioner and Harvester** script. The primary workhorse script that exec
 * **Auto-Recovery Loop:** Post-simulation, the script audits all 2,000 output folders. If a tree file is missing or 0 bytes, it extracts the original command from the command list and re-runs it (up to 2 retry attempts).
 * **Sequential Harvesting:** Once verified, trees are gathered into a master `gene_trees.tre` file using a strict numerical loop (`1 to 2000`). This ensures that **Line N** in the tree file corresponds exactly to **Row N** in the parameter metadata.
 * **Final Audit:** Performs a grep-count of Newick strings to confirm exactly 2,000 trees were successfully merged.
+
+### 2.3_INDELible.sh
+
+```bash
+sbatch 2.3_INDELible.sh
+
+```
+
+The **Sequence Evolution** Engine. This script translates gene trees into DNA sequences using INDELible V1.03 with a custom parallelized architecture.
+
+* Dynamic Parameterization: Calls `prep_INDELible.R` to generate 2,000 unique control files based on the stochastic parameters in `df.csv`.
+
+* Thread-Safe Parallelization: Executes INDELible via GNU Parallel. To bypass INDELible's fixed-input filename requirement (`control.txt`), the script creates 2,000 temporary subdirectories (`tmp_$i`). Each instance runs in isolation to prevent file-access collisions.
+
+* Stochastic Modeling: Supports both Nucleotide and Codon models, implementing site-rate heterogeneity (RVAS), indel power-law distributions, and model-shift logic across the phylogeny.
+
+* Post-Simulation Modification: Executes `post_INDELible.R` to introduce real-world "noise" into the perfect simulations, producing the final experimental dataset.
+
+#### prep_INDELible.R
+
+An R script that acts as the front-end for INDELible. It performs tree surgery (adding paralogy) and defines evolutionary models:
+
+* Paralogy/Signal Logic: Uses `modify_gene_tree.R` to graft paralogous subtrees and adjust phylogenetic signal via lambda rescaling.
+
+* Model Generation: Stochastic assignment of substitution models (GTR, HKY, etc.) and codon parameters.
+
+* Control Factory: Writes unique `control_i.txt` files for every locus, ensuring that partitions and branch-specific models are correctly formatted for the INDELible engine.
+
+##### modify_gene_tree.R
+
+Helper R script run by `prep_INDELible.R` graft paralogous subtrees and adjust phylogenetic signal via lambda rescaling.
+
+#### post_INDELible.R
+
+The Data Dirtying script. Processes raw simulated sequences to mimic empirical dataset challenges:
+
+* Cross-Contamination: Simulates lab/sequencing errors by swapping sequence data between specific taxon pairs identified in the metadata.
+
+* Missing Data: Introduces 5' and 3' truncated segments and internal gaps based on stochastic proportions to simulate degraded DNA or poor sequencing coverage.
+
+* Format Conversion: Trims empty alignment columns and converts Phylip outputs into a standardized FASTA format (`loc_1.fas` through `loc_2000.fas`) inside the `alignments_final` directory.
