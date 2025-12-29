@@ -759,6 +759,9 @@ ggsave(q, file=paste0(format_tree_out, "/tree_um.png"))
 
 # --- 4. Prepare for SimPhy and Write Outputs ---
 
+taxon_map <- data.frame(number = 1:length(tree_um$tip.label), name = tree_um$tip.label)
+write.csv(taxon_map, paste0(format_tree_out, "/taxon_map.csv"), row.names = FALSE)
+
 # Replace labels with numbers, strip node labels, and write out the tree
 tree_um$tip.label <- as.character(1:length(tree_um$tip.label))
 tree_um$node.label <- NULL
@@ -776,11 +779,11 @@ nano 1.1_format_tree.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="process_tree"
-#SBATCH --time=12:00:00                # Walltime limit (HH:MM:SS)
+#SBATCH --time=00:20:00                # Walltime limit (HH:MM:SS)
 #SBATCH --nodes=1                      # Number of nodes
 #SBATCH --ntasks=1                     # Total number of tasks (processes)
-#SBATCH --cpus-per-task=2              # Number of CPU cores per task
-#SBATCH --mem-per-cpu=6G               # Memory per cpu
+#SBATCH --cpus-per-task=1              # Number of CPU cores per task
+#SBATCH --mem-per-cpu=4G               # Memory per cpu
 #SBATCH --mail-user="biancani@uri.edu" # CHANGE TO user email address
 #SBATCH --mail-type=ALL
 #SBATCH -p uri-cpu                     # Partition/queue to submit job to
@@ -828,13 +831,13 @@ Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tre
 date
 ---------------------------------
 sbatch 1.1_format_tree.sh
-Submitted batch job 50606632
-sacct -j 50606632 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50824267
+sacct -j 50824267 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50606632          0:0   00:00:27
-50606632.ba+      0:0   00:00:27    431760K
-50606632.ex+      0:0   00:00:27       256K
+50824267          0:0   00:00:35
+50824267.ba+      0:0   00:00:35    465276K
+50824267.ex+      0:0   00:00:35
 
 2025.12.11
 
@@ -1010,14 +1013,14 @@ nano 2.0_prep_simphy.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="prep_simphy"
-#SBATCH --time=6:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=00:20:00  # walltime limit (HH:MM:SS)
 #SBATCH --nodes=1   # number of nodes
 #SBATCH --ntasks-per-node=1   # processor core(s) per node
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
 #SBATCH --mail-type=ALL
 #SBATCH -p uri-cpu
-#SBATCH -c 2
-#SBATCH --mem-per-cpu=6G
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=2G
 
 # --- Variables ---
 # Path to project directory:
@@ -1058,13 +1061,12 @@ Rscript $Scripts/2_simulation_scripts/generate_sim_properties.R $treefile $param
 date
 ---------------------------------
 sbatch 2.0_prep_simphy.sh
-Submitted batch job 50617731
-sacct -j 50617731 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50824315
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50617731          0:0   00:00:13
-50617731.ba+      0:0   00:00:13    259484K
-50617731.ex+      0:0   00:00:13          0
+50824315          0:0   00:00:17
+50824315.ba+      0:0   00:00:17    290704K
+50824315.ex+      0:0   00:00:17
 
 2025.12.19
 
@@ -1165,9 +1167,9 @@ nano 2.1_simphy_commands.sh
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem=1G
 #SBATCH -p uri-cpu
-#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --time=0:20:00  # walltime limit (HH:MM:SS)
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
 #SBATCH --mail-type=ALL
 
@@ -1217,13 +1219,14 @@ Rscript "$Scripts/2_simulation_scripts/run_SimPhy.R" \
 date
 ---------------------------------
 sbatch 2.1_simphy_commands.sh
-Submitted batch job 50809439
-sacct -j 50809439 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50824346
+sacct -j 50824346 -o JobID,ExitCode,Elapsed,MaxRSS
+sacct -j 50824346 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50809439          0:0   00:00:17
-50809439.ba+      0:0   00:00:17    199912K
-50809439.ex+      0:0   00:00:17          0
+50824346          0:0   00:00:14
+50824346.ba+      0:0   00:00:14    189344K
+50824346.ex+      0:0   00:00:14
 
 Git commit message:
 feat: refactor SimPhy pipeline for modular parallel execution
@@ -1251,10 +1254,10 @@ nano 2.2_run_simulations.sh
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32        # Number of simulations to run in parallel
-#SBATCH --mem=16G                 # Adjust based on node availability
+#SBATCH --mem=8G                 # Adjust based on node availability
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512       # Required for foss/2024a on this cluster
-#SBATCH --time=12:00:00
+#SBATCH --time=00:30:00
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
@@ -1387,13 +1390,13 @@ fi
 date
 ---------------------------------
 sbatch 2.2_run_simulations.sh
-Submitted batch job 50811294
-sacct -j 50811294 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50824418
+sacct -j 50824418 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50811294          0:0   00:00:29
-50811294.ba+      0:0   00:00:29    165104K
-50811294.ex+      0:0   00:00:29       256K
+50824418          0:0   00:00:29
+50824418.ba+      0:0   00:00:29    189884K
+50824418.ex+      0:0   00:00:29
 
 Replicate 1 of 1: Simulating 1 gene trees from 1 locus trees... Done
 All 2,000 simulations verified successfully.
@@ -1417,7 +1420,6 @@ feat: implement auto-recovery and sequential harvesting in 2.2_run_simulations.s
 - Replace wildcard/find harvesting with a sequential for-loop to preserve locus order (1-2000).
 - Add a final grep-based audit to verify the master tree file contains exactly 2000 Newick strings.
 - Integrate --joblog and --progress flags for better job monitoring and crash resiliency.
-
 
 Workflow Check
 
@@ -1621,7 +1623,6 @@ for (f in 1:nloci) {
 # Not sure yet if we strictly need those specific standard deviation metrics for downstream analysis, so leaving it out for now to keep the script faster.
 ---------------------------------
 
-
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano post_INDELible.R
@@ -1712,7 +1713,7 @@ message("Post-processing complete. Modified alignments are in: ", final_aln_dir)
 
 Install INDELibleV1.03:
 
-cd cd /project/pi_rsschwartz_uri_edu/Biancani/Software/
+cd /project/pi_rsschwartz_uri_edu/Biancani/Software/
 git clone https://github.com/kloetzl/indelible.git
 
 /indelible.git
@@ -1734,10 +1735,10 @@ nano 2.3_INDELible.sh
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32        # Number of INDELible instances to run at once
-#SBATCH --mem=32G
+#SBATCH --mem=4G
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512
-#SBATCH --time=24:00:00
+#SBATCH --time=00:20:00
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
@@ -1798,14 +1799,13 @@ Rscript "$Scripts/2_simulation_scripts/post_INDELible.R" "$indel_dir" "$df_file"
 date
 ---------------------------------
 sbatch 2.3_INDELible.sh
-sbatch: INFO: Note that 32 GB per node will require a node with more than 32 GB memory because of overhead. Check https://docs.unity.rc.umass.edu/nodes for an appropriate limit.
-Submitted batch job 50811872
-sacct -j 50811872 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50824809
+sacct -j 50824809 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50811872          0:0   00:01:46
-50811872.ba+      0:0   00:01:46    370668K
-50811872.ex+      0:0   00:01:46       256K
+50824809          0:0   00:01:58
+50824809.ba+      0:0   00:01:58    412352K
+50824809.ex+      0:0   00:01:58
 
 Running INDELible in parallel across 32 cores...
 Running post-simulation sequence modification...
@@ -1822,6 +1822,14 @@ ls /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indeli
 # visually inspect a random file:
 head -n 20 /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indelible/alignments_final/loc_500.fas
 (looks good)
+# Sometimes simulations fail silently for specific loci. This command searches for files that are too small (e.g., under 100 bytes) which might indicate a failed simulation:
+find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/2.3_indelible/alignments_final/ -name "*.fas" -size -100c
+#If this returns nothing, all alignments have substantial data.
+
+INDELible summary:
+Paralogs: Subtrees were swapped as per df.csv.
+Contamination: Taxon sequences were duplicated/overwritten to simulate lab error.
+Trimming: Sequence ends were masked with "-" to simulate degraded or poorly sequenced DNA.
 
 Git Commit Message:
 feat: parallelize sequence simulation and modernize INDELible workflow

@@ -81,6 +81,9 @@ ggsave(q, file=paste0(format_tree_out, "/tree_um.png"))
 
 # --- 4. Prepare for SimPhy and Write Outputs ---
 
+taxon_map <- data.frame(number = 1:length(tree_um$tip.label), name = tree_um$tip.label)
+write.csv(taxon_map, paste0(format_tree_out, "/taxon_map.csv"), row.names = FALSE)
+
 # Replace labels with numbers, strip node labels, and write out the tree
 tree_um$tip.label <- as.character(1:length(tree_um$tip.label))
 tree_um$node.label <- NULL

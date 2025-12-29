@@ -3,10 +3,10 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=32        # Number of INDELible instances to run at once
-#SBATCH --mem=32G
+#SBATCH --mem=4G
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512
-#SBATCH --time=24:00:00
+#SBATCH --time=00:20:00
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
