@@ -1,0 +1,5 @@
+**/simulated_loci/
+**/constraint_trees/
+slurm*
+/output
+.DS_Store
