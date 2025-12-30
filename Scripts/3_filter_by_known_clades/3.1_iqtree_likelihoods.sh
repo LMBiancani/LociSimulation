@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=iqtree
 #SBATCH --partition=uri-cpu
-#SBATCH --time=24:00:00
+#SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=30
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=30G
+#SBATCH --mem=2G
 #SBATCH --constraint=avx512
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
@@ -33,13 +33,13 @@ run_iqtree() {
     out_path=$2
     const_path=$3
     iqtree_exe=$4  # Receive the path variable here
-    
+
     # 1. Unconstrained Run
     $iqtree_exe -s "$locus_fas" -m GTR+G -pre "$out_path/${locus_id}_uncon" -nt 1 -redo
-    
+
     # 2. Constrained Run
     $iqtree_exe -s "$locus_fas" -m GTR+G -g "$const_path/${locus_id}_constraint.newick" -pre "$out_path/${locus_id}_con" -nt 1 -redo
-    
+
     # Cleanup auxiliary files
     rm -f "$out_path/${locus_id}_"*".ckp.gz" "$out_path/${locus_id}_"*".bionj" "$out_path/${locus_id}_"*".mldist"
 }

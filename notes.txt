@@ -2173,11 +2173,11 @@ nano 3.1_iqtree_likelihoods.sh
 #!/bin/bash
 #SBATCH --job-name=iqtree
 #SBATCH --partition=uri-cpu
-#SBATCH --time=24:00:00
+#SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=30
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=30G
+#SBATCH --mem=2G
 #SBATCH --constraint=avx512
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
@@ -2225,12 +2225,160 @@ ls "$Alignments"/*.fas | parallel -j 30 --progress run_iqtree {} "$OutDir" "$Con
 echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
 ---------------------------------
 Submitted batch job 50827835
+sacct -j 50827835 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50827835          0:0   00:10:12
+50827835.ba+      0:0   00:10:12    436328K
+50827835.ex+      0:0   00:10:12
 
 Git commit message:
-feat: implement parallel IQ-TREE inference for LRT filtering
-
+feat: implement parallel IQ-TREE inference for LRT filte h
 - Added 3.1_iqtree_likelihoods.sh to perform dual tree inference per locus.
 - Utilizes GNU Parallel to distribute 4,000 IQ-TREE runs across 30 cores.
 - Compares unconstrained ML searches vs. backbone-constrained searches.
 - Standardized model selection to GTR+G for cross-locus likelihood comparisons.
 - Integrated automated cleanup of auxiliary files to optimize storage.
+
+In Step 3.2, we implemented a Likelihood Ratio Test (LRT) post-processing pipeline to statistically evaluate the phylogenetic signal of each locus against our established mammalian backbone.
+We developed a custom R script, LRT_filter.R, which parses the log-likelihood (lnL) scores from the 4,000 IQ-TREE output files generated in the previous step.
+By calculating the "likelihood penalty"—defined as the difference between the unconstrained ML tree and the constrained backbone tree (ΔlnL)—the script quantifies the degree of topological conflict present in each alignment.
+Using a χ2 distribution with one degree of freedom, we assigned p-values to each locus, identifying those that significantly deviate from known mammalian relationships.
+This step is the "quality control" heart of the workflow, providing a quantitative basis for filtering out simulated noise and high-conflict loci before proceeding to final species tree estimation.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano LRT_filter.R
+---------------------------------
+#!/usr/bin/env Rscript
+
+# --- Load Libraries ---
+library(stringr)
+
+# --- Argument Handling ---
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 2) {
+  stop("Usage: Rscript 3.2_LRT_filter.R <IQ_DIR> <OUT_CSV>")
+}
+
+IQ_DIR  <- args[1]
+OUT_CSV <- args[2]
+
+# Get list of all unconstrained iqtree files
+uncon_files <- list.files(IQ_DIR, pattern = "_uncon.iqtree", full.names = TRUE)
+
+cat("Found", length(uncon_files), "loci to process...\n")
+
+# --- Extraction Function ---
+get_lnl <- function(filepath) {
+  if(!file.exists(filepath)) return(NA)
+  lines <- tryCatch(readLines(filepath), error = function(e) return(NULL))
+  if(is.null(lines)) return(NA)
+
+  # Search for the Likelihood line
+  lnl_line <- lines[grep("Log-likelihood of the tree:", lines)]
+  if(length(lnl_line) == 0) return(NA)
+
+  # Extract numeric value using regex (matches number before the space/bracket)
+  val <- str_extract(lnl_line, "-?[0-9.]+(?= \\()")
+  return(as.numeric(val))
+}
+
+# --- Build Results Table ---
+results <- data.frame(
+  Locus = gsub("_uncon.iqtree", "", basename(uncon_files)),
+  lnL_Uncon = sapply(uncon_files, get_lnl),
+  stringsAsFactors = FALSE
+)
+
+cat("Extracting constrained likelihoods...\n")
+results$lnL_Con <- sapply(results$Locus, function(x) {
+  get_lnl(file.path(IQ_DIR, paste0(x, "_con.iqtree")))
+})
+
+# --- Statistics ---
+# Calculate Delta lnL (Likelihood Penalty)
+results$delta_lnL <- results$lnL_Uncon - results$lnL_Con
+
+# Calculate LRT p-value (df=1 for a simple topological constraint)
+results$LRT_stat <- 2 * results$delta_lnL
+results$p_value <- pchisq(results$LRT_stat, df = 1, lower.tail = FALSE)
+
+# Sort by delta_lnL (highest penalty at the top)
+results <- results[order(results$delta_lnL, decreasing = TRUE), ]
+
+# --- Save Output ---
+write.csv(results, OUT_CSV, row.names = FALSE)
+
+cat("\n--- Summary ---\n")
+cat("Total loci processed:", nrow(results), "\n")
+cat("Loci failing backbone (p < 0.05):", sum(results$p_value < 0.05, na.rm=TRUE), "\n")
+cat("Results saved to:", OUT_CSV, "\n")
+---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano 3.2_LRT_filter.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name=3.2_LRT_filter
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:10:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts/3_filter_by_known_clades"
+Output="$Project/output/mammals"
+
+# input (generate by 3.1_iqtree_likelihoods.sh)
+IQ_DIR="$Output/3.1_likelihoods"
+
+OutDir="$Output/3.2_lrt_results"
+mkdir -p "$OutDir"
+OUT_FILE="$OutDir/lrt_results.csv"
+
+# --- Environment Setup (Proven Unity Config) ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute ---
+Rscript $Scripts/LRT_filter.R "$IQ_DIR" "$OUT_FILE"
+---------------------------------
+sbatch 3.2_LRT_filter.sh
+Submitted batch job 50834337
+sacct -j 50834337 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50834337          0:0   00:00:18
+50834337.ba+      0:0   00:00:18    199604K
+50834337.ex+      0:0   00:00:18
+
+--- Summary ---
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1367
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/lrt_results.csv
+
+1,367 out of 2,000 loci (~68%) failed the backbone constraint at p<0.05
+this confirms that the "noise" or mutations we introduced in Step 2.3 successfully created significant phylogenetic conflict.
+
+Git commit message:
+feat: implement LRT statistical filtering and likelihood extraction
+
+- Added LRT_filter.R to parse log-likelihoods from IQ-TREE output files.
+- Implemented Delta lnL calculation to quantify topological conflict.
+- Applied Chi-square test (df=1) to assign p-values for backbone adherence.
+- Created 3.2_LRT_filter.sh wrapper.
+- Generated ranked results CSV for downstream locus selection and QC.
