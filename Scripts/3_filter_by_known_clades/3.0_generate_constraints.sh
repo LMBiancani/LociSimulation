@@ -7,6 +7,8 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
 #SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
 
 # --- Variables ---
 # Paths to project directories:
