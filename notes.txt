@@ -1953,3 +1953,203 @@ feat: add Step 2.4 taxon name restoration script
 - Adds 2.4_restore_names.sh and restore_names.R to the pipeline.
 - Implements 1:1 mapping of numerical labels back to empirical species names.
 - Uses taxon_map.csv from Step 1.1 to ensure naming integrity.
+
+Phase 3: Filter_by_Known_Clades
+Filter all loci for support for Established Clades
+
+Clone the 01_iqtree directory while preserving specific commit history (via git subtree):
+# 1. Navigate to root of current repository:
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation
+# 2. Add the external repo as a "Remote"
+# This tells your local Git where to look for the source code without actually downloading everything yet.
+git remote add filter_repo https://github.com/LMBiancani/FilterByKnownClades.git
+git fetch filter_repo
+# 3. Pull the directory in as a Subtree
+# This command "slices" the 01_iqtree folder out of the external history and grafts it into a new folder in your repo.
+# --prefix Scripts/3_filter_by_known_clades: This names the new folder in your current repo
+# filter_repo main: This specifies the remote name and the branch you are pulling from.
+git subtree add --prefix Scripts/3_filter_by_known_clades filter_repo main
+
+
+The requires a taxon-to-group correspondence table, groups.csv, is a csv file with the following format:
+Group,Taxa
+group1,taxonName1
+group1,taxonName2
+group2,taxonName3
+group2,taxonName4
+
+copy that file from my PlacentalPolytomy directory:
+cp /project/pi_rsschwartz_uri_edu/Biancani/PlacentalPolytomy/01_FilterByTaxa/groups.csv /scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/
+
+less /scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/groups.csv
+
+Group,Taxa
+Afrotheria,Amblysomus_hottentotus_longiceps
+Afrotheria,Chrysochloris_asiatica
+Afrotheria,Echinops_telfairi
+Afrotheria,Elephantulus_edwardii
+Afrotheria,Hydrodamalis_gigas
+Afrotheria,Loxodonta_africana
+Afrotheria,Microgale_talazaci
+Afrotheria,Orycteropus_afer
+Afrotheria,Procavia_capensis
+Afrotheria,Trichechus_manatus_latirostris
+Boreoeutheria,Ceratotherium_simum
+Boreoeutheria,Condylura_cristata
+Boreoeutheria,Galeopterus_variegatus
+Boreoeutheria,Hippopotamus_amphibius
+Boreoeutheria,Manis_javanica
+Boreoeutheria,Odobenus_rosmarus_divergens
+Boreoeutheria,Pan_troglodytes
+Boreoeutheria,Pteropus_vampyrus
+Boreoeutheria,Rattus_norvegicus
+Boreoeutheria,Tupaia_tana
+Metatheria,Didelphis_virginiana
+Metatheria,Gymnobelideus_leadbeateri
+Metatheria,Phalanger_gymnotis
+Metatheria,Phascolarctos_cinereus
+Metatheria,Potorous_gilbertii
+Metatheria,Pseudochirops_corinnae
+Metatheria,Sarcophilus_harrisii
+Metatheria,Thylacinus_cynocephalus
+Metatheria,Vombatus_ursinus
+Metatheria,Wallabia_bicolor
+Xenarthra,Chaetophractus_vellerosus
+Xenarthra,Choloepus_didactylus
+Xenarthra,Dasypus_novemcinctus
+Xenarthra,Mylodon_darwinii
+Xenarthra,Myrmecophaga_tridactyla
+Xenarthra,Tamandua_tetradactyla
+Xenarthra,Tolypeutes_matacus
+
+In Step 3.0, we developed a portable framework to generate topological constraints for the mammal simulation dataset.
+We created a generic R engine, generate_constraints.R, which utilizes the ape library to ingest a standardized clade definition file (groups.csv) and a directory of alignments.
+For each of the 2,000 loci, the script dynamically identifies which taxa are present and prunes the "established clades" accordingly, ensuring that a constraint is only generated if a clade contains at least two representative taxa.
+These pruned clades are then nested into a multifurcating Newick string—representing our "known" mammalian backbone—and saved as individual .newick files.
+This step is critical for our experimental validation, as it provides the necessary "Skeleton" trees for the subsequent constrained IQ-TREE inferences, ultimately allowing us to filter loci based on their statistical support for biologically certain nodes.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano generate_constraints.R
+---------------------------------
+library(ape)
+
+# Capture arguments from shell
+args <- commandArgs(trailingOnly = TRUE)
+ALN_DIR     <- args[1]
+OUTPUT_DIR  <- args[2]
+CLADE_FILE  <- args[3]
+
+dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
+
+# Load Clade Definitions (Group, Taxa)
+clade_df <- read.csv(CLADE_FILE, header = TRUE)
+all_clades <- split(clade_df$Taxa, clade_df$Group)
+
+# Process all alignments
+loci_files <- list.files(ALN_DIR, pattern = "\\.fas$")
+
+for (f in loci_files) {
+  locus_path <- file.path(ALN_DIR, f)
+  fasta <- read.FASTA(locus_path)
+  present_taxa <- names(fasta)
+
+  # Intersect defined clades with what is actually in this locus
+  pruned_clades <- lapply(all_clades, function(x) intersect(x, present_taxa))
+  valid_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+
+  if (length(valid_clades) > 0) {
+    # Create the constraint string
+    clade_strings <- sapply(valid_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
+    final_constraint <- paste0("(", paste(clade_strings, collapse = ","), ");")
+
+    # Save as locus_i_constraint.newick
+    out_name <- gsub("\\.fas$", "_constraint.newick", f)
+    write(final_constraint, file = file.path(OUTPUT_DIR, out_name))
+  }
+}
+cat(paste("Generated", length(list.files(OUTPUT_DIR)), "constraint files.\n"))
+---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano 3.0_generate_constraints.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name=constraints
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --constraint=avx512
+
+# --- Variables ---
+# Paths to project directories:
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts"
+Output="$Project/output/mammals"
+
+# Input alignment (generated by 2.4_restore_names.sh):
+Alignments=$Output/2.4_final_named_alignments
+
+# Input clades:
+clades=/scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/groups.csv
+# a taxon-to-group correspondence CSV table with the following format:
+# Group,Taxa
+# group1,taxonName1
+# group1,taxonName2
+# group2,taxonName3
+# group2,taxonName4
+
+# Output subdirectory for the constraint tree:
+out_dir="$Output/3.0_constraint_trees"
+mkdir -p "$out_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute ---
+Rscript $Scripts/3_filter_by_known_clades/generate_constraints.R "$Alignments" "$out_dir" "$clades"
+
+# --- Audit & Confirmation ---
+echo "------------------------------------------------"
+echo "Post-Processing Audit:"
+expected_count=$(ls -1 "$Alignments"/*.fas | wc -l)
+actual_count=$(ls -1 "$out_dir"/*_constraint.newick 2>/dev/null | wc -l)
+
+echo "Expected constraints: $expected_count"
+echo "Generated constraints: $actual_count"
+
+if [ "$expected_count" -eq "$actual_count" ]; then
+    echo "SUCCESS: All constraint files were generated correctly."
+else
+    echo "WARNING: Count mismatch! Some loci may not have enough taxa to form a constraint."
+fi
+echo "------------------------------------------------"
+---------------------------------
+sbatch 3.0_generate_constraints.sh
+Submitted batch job 50827749
+sacct -j 50827749 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50827749          0:0   00:00:13
+50827749.ba+      0:0   00:00:13    195460K
+50827749.ex+      0:0   00:00:13
+
+git commit message:
+feat: implement automated topological constraint generation for LRT filtering
+
+- Added generate_constraints.R to dynamically build Newick constraints.
+- Integrated groups.csv to define established mammalian clades (Afrotheria, etc.).
+- Added 3.0_generate_constraints.sh
+- Logic automatically prunes constraints for loci with missing taxa.
+- Added post-processing audit to verify 1:1 alignment-to-constraint ratio.
