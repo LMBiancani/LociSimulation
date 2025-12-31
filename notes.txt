@@ -104,8 +104,8 @@ fasta_folder = sys.argv[1]
 total_cores = sys.argv[2]
 amas = sys.argv[3]
 
-# --- Collect all fasta files ---
-files = glob.glob(os.path.join(fasta_folder, "*.fasta"))
+# --- Collect all fasta files (.fasta or .fas) ---
+files = [f for f in glob.glob(os.path.join(fasta_folder, "*")) if f.endswith((".fasta", ".fas"))]
 files.sort()  # ensure consistent, reproducible order
 
 batch_size = 1000
@@ -2383,10 +2383,10 @@ feat: implement LRT statistical filtering and likelihood extraction
 - Created 3.2_LRT_filter.sh wrapper.
 - Generated ranked results CSV for downstream locus selection and QC.
 
-In Step 3.3, we finalized the locus-filtering pipeline by implementing a dual-collection assembly strategy that categorized all 2,000 candidate loci based on their statistical adherence to the mammalian backbone. 
-Using a custom R script, collect_filtered_loci.R, we applied a significance threshold of P≥0.05 to bin the alignments into two distinct subsets: 
-a "pass" group containing 633 loci with high-fidelity evolutionary signal and a "fail" group containing 1,367 loci where simulated noise significantly obscured the biological relationships. 
-By automating the migration of these files into structured subdirectories (pass_0.05 and fail_0.05), we secured a curated "Golden Set" for high-confidence species tree inference while simultaneously preserving the conflicting data as a negative control for future sensitivity analyses. 
+In Step 3.3, we finalized the locus-filtering pipeline by implementing a dual-collection assembly strategy that categorized all 2,000 candidate loci based on their statistical adherence to the mammalian backbone.
+Using a custom R script, collect_filtered_loci.R, we applied a significance threshold of P≥0.05 to bin the alignments into two distinct subsets:
+a "pass" group containing 633 loci with high-fidelity evolutionary signal and a "fail" group containing 1,367 loci where simulated noise significantly obscured the biological relationships.
+By automating the migration of these files into structured subdirectories (pass_0.05 and fail_0.05), we secured a curated "Golden Set" for high-confidence species tree inference while simultaneously preserving the conflicting data as a negative control for future sensitivity analyses.
 This bifurcation ensures that the final phylogenomic results are derived from statistically validated signal rather than stochastic simulation artifacts.
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
@@ -2484,11 +2484,11 @@ Rscript $Scripts/collect_filtered_loci.R "$LRT_CSV" "$Alignments" "$FinalDir" "$
 sbatch 3.3_collect_filtered_loci.sh
 Submitted batch job 50835403
 sacct -j 50835403 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-50835403          0:0   00:00:24            
-50835403.ba+      0:0   00:00:24    261340K 
-50835403.ex+      0:0   00:00:24            
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50835403          0:0   00:00:24
+50835403.ba+      0:0   00:00:24    261340K
+50835403.ex+      0:0   00:00:24
 
 git commit message:
 feat: implement dual-category locus collection for pass/fail subsets
@@ -2498,3 +2498,77 @@ feat: implement dual-category locus collection for pass/fail subsets
 - Isolated high-signal loci for downstream species tree inference.
 - Preserved conflicting loci as a negative control for sensitivity analysis.
 - Optimized 3.3_collect_filtered_loci.sh with finalized directory paths and thresholds.
+
+2025.12.30
+
+Starting Module 4: branch length correlation
+
+step 4.0:
+
+Purpose: To construct a comprehensive Maximum Likelihood "unfiltered" reference species tree using the total pool of simulated data.
+This tree serves as the topological and branch-length baseline for the Module 4 Branch Length Correlation filter.
+Methods: All 2,000 loci from Step 2.4 (containing 37 taxa each) were concatenated into a single phylogenomic super-matrix using a batch-processing Python wrapper for AMAS.
+The resulting matrix (2,205,174 bp) was analyzed in IQ-TREE 2.1.2 using an unpartitioned model.
+Model selection was performed via ModelFinder Plus (-m MFP), and branch support was assessed using 1,000 replicates of both UltraFast Bootstraps (-bb) and SH-aLRT.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.0_concat_tree.sh
+---------------------------------
+#!/bin/bash
+#SBATCH --job-name="unfiltered_tree"
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=64G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts"
+Output="$Project/output/mammals/"
+# Path to AMAS executable:
+AMAS="/project/pi_rsschwartz_uri_edu/Biancani/Software/AMAS/amas/AMAS.py"
+# Path to run_amas.py (from step 0.0)
+amas_py="$Scripts/0_data_prep/run_amas.py"
+# Path to IQTREE executable:
+IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+
+# Input
+Data="$Output/2.4_final_named_alignments"
+
+# Output directory
+OutDir="$Output/4.0_unfiltered_concat_tree"
+mkdir -p ${OutDir}
+cd ${OutDir}
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+# 1. Run the universal AMAS script
+python3 $amas_py ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
+
+# 2. Run IQ-TREE on the result
+$IQTREE -s concatenated.fasta \
+    -m MFP \
+    -bb 1000 \
+    -alrt 1000 \
+    -nt AUTO \
+    -ntmax ${SLURM_CPUS_PER_TASK} \
+    -pre 2000_loci_ref_tree
+---------------------------------
+sbatch 4.0_concat_tree.sh
+Submitted batch job 50841624
+sacct -j 50841624 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Git commit message:
+feat: build 2,000-locus unfiltered reference tree (Step 4.0)
+
+- Edited AMAS Python wrapper (from step 0.0) to handle .fas/.fasta extensions.
+- Concatenated all Step 2.4 simulated loci into a single 2.2M bp super-matrix.
+- Configured IQ-TREE 2.1.2 ML search with MFP and 1000 UFB/SH-aLRT replicates.
+- Established baseline branch lengths for downstream correlation filtering.
