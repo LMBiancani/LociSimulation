@@ -21,8 +21,8 @@ fasta_folder = sys.argv[1]
 total_cores = sys.argv[2]
 amas = sys.argv[3]
 
-# --- Collect all fasta files ---
-files = glob.glob(os.path.join(fasta_folder, "*.fasta"))
+# --- Collect all fasta files (.fasta or .fas) ---
+files = [f for f in glob.glob(os.path.join(fasta_folder, "*")) if f.endswith((".fasta", ".fas"))]
 files.sort()  # ensure consistent, reproducible order
 
 batch_size = 1000
