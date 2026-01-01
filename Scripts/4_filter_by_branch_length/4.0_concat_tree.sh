@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name="unfiltered_tree"
-#SBATCH --time=24:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
-#SBATCH --mem=64G
+#SBATCH --mem=62G
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512
 #SBATCH --mail-user="biancani@uri.edu"
@@ -38,8 +38,13 @@ python3 $amas_py ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
 # 2. Run IQ-TREE on the result
 $IQTREE -s concatenated.fasta \
     -m MFP \
-    -bb 1000 \
-    -alrt 1000 \
-    -nt AUTO \
-    -ntmax ${SLURM_CPUS_PER_TASK} \
+    -nt ${SLURM_CPUS_PER_TASK} \
     -pre 2000_loci_ref_tree
+    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
+
+# 2. (Alt) Run IQ-TREE on the result (with model specified)
+#$IQTREE -s concatenated.fasta \
+#    -m GTR+F+R8 \
+#    -nt ${SLURM_CPUS_PER_TASK} \
+#    -pre 2000_loci_ref_tree
+#    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)

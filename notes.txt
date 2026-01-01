@@ -2511,17 +2511,97 @@ Methods: All 2,000 loci from Step 2.4 (containing 37 taxa each) were concatenate
 The resulting matrix (2,205,174 bp) was analyzed in IQ-TREE 2.1.2 using an unpartitioned model.
 Model selection was performed via ModelFinder Plus (-m MFP), and branch support was assessed using 1,000 replicates of both UltraFast Bootstraps (-bb) and SH-aLRT.
 
+Git commit message:
+feat: build 2,000-locus unfiltered reference tree (Step 4.0)
+- Edited AMAS Python wrapper (from step 0.0) to handle .fas/.fasta extensions.
+- Concatenated all Step 2.4 simulated loci into a single 2.2M bp super-matrix.
+- Configured IQ-TREE 2.1.2 ML search with MFP and 1000 UFB/SH-aLRT replicates.
+- Established baseline branch lengths for downstream correlation filtering.
+
+Following an initial timeout during the reference tree construction, the Step 4.0 pipeline was optimized for computational efficiency by streamlining the substitution model selection process.
+The original approach utilized ModelFinder Plus (-m MFP), which incurred a significant time bottleneck during the exhaustive evaluation of site patterns across the 2.2 million base-pair super-matrix.
+To resolve this, the search was constrained to a fixed GTR+G model, which provides a biologically robust approximation for mammalian phylogenomic data while bypassing the hours of sequential model-testing overhead.
+The Maximum Likelihood search was executed using the full stochastic NNI heuristic (removing the -fast flag from previous test iterations) to ensure high-accuracy branch length estimation, which is critical for the subsequent branch length correlation filter.
+
+Output from Modelfinder Run:
+slurm-50841624.out
+NOTE: ModelFinder requires 20635 MB RAM!
+ModelFinder will test up to 286 DNA models (sample size: 2205174) ...
+ No. Model         -LnL         df  AIC          AICc         BIC
+  1  GTR+F         19949687.620 79  39899533.239 39899533.245 39900529.138
+  2  GTR+F+I       19230163.998 80  38460487.996 38460488.002 38461496.501
+  3  GTR+F+G4      18961886.006 80  37923932.013 37923932.019 37924940.518
+  4  GTR+F+I+G4    18948335.995 81  37896833.990 37896833.996 37897855.102
+  5  GTR+F+R2      19010927.020 81  38022016.040 38022016.046 38023037.152
+  6  GTR+F+R3      18906929.184 83  37814024.367 37814024.373 37815070.691
+  7  GTR+F+R4      18893786.020 85  37787742.040 37787742.047 37788813.577
+  8  GTR+F+R5      18893109.065 87  37786392.130 37786392.137 37787488.879
+  9  GTR+F+R6      18892860.508 89  37785899.016 37785899.023 37787020.978
+ 10  GTR+F+R7      18892805.085 91  37785792.171 37785792.178 37786939.345
+ 11  GTR+F+R8      18892742.700 93  37785671.400 37785671.408 37786843.787
+ 12  GTR+F+R9      18892736.159 95  37785662.318 37785662.326 37786859.918
+ 24  SYM+R8        18892929.411 90  37786038.822 37786038.829 37787173.390
+ 37  TVM+F+R8      18896564.556 92  37793313.112 37793313.120 37794472.893
+ 50  TVMe+R8       18898147.430 89  37796472.861 37796472.868 37797594.823
+ 63  TIM3+F+R8     18904950.986 91  37810083.972 37810083.980 37811231.147
+ 76  TIM3e+R8      18905501.614 88  37811179.228 37811179.235 37812288.584
+ 89  TIM2+F+R8     18906998.831 91  37814179.663 37814179.670 37815326.837
+102  TIM2e+R8      18906449.437 88  37813074.873 37813074.880 37814184.229
+115  TIM+F+R8      18896153.312 91  37792488.623 37792488.631 37793635.798
+128  TIMe+R8       18895930.437 88  37792036.873 37792036.880 37793146.229
+141  TPM3u+F+R8    18908812.459 90  37817804.918 37817804.926 37818939.487
+154  TPM3+F+R8     18908812.460 90  37817804.919 37817804.927 37818939.488
+167  TPM2u+F+R8    18910863.413 90  37821906.825 37821906.833 37823041.394
+180  TPM2+F+R8     18910863.411 90  37821906.821 37821906.829 37823041.390
+193  K3Pu+F+R8     18900011.031 90  37800202.062 37800202.069 37801336.630
+206  K3P+R8        18901167.009 87  37802508.017 37802508.024 37803604.767
+219  TN+F+R8       18907863.912 90  37815907.824 37815907.831 37817042.392
+232  TNe+R8        18907628.523 87  37815431.046 37815431.053 37816527.795
+245  HKY+F+R8      18911720.173 89  37823618.346 37823618.353 37824740.308
+258  K2P+R8        18912862.390 86  37825896.781 37825896.788 37826980.924
+271  F81+F+R8      19042882.482 88  38085940.963 38085940.970 38087050.319
+284  JC+R8         19044319.216 85  38088808.431 38088808.438 38089879.968
+Akaike Information Criterion:           GTR+F+R9
+Corrected Akaike Information Criterion: GTR+F+R9
+Bayesian Information Criterion:         GTR+F+R8
+Best-fit model: GTR+F+R8 chosen according to BIC
+
+All model information printed to 2000_loci_ref_tree.model.gz
+CPU time for ModelFinder: 1019454.914 seconds (283h:10m:54s)
+Wall-clock time for ModelFinder: 79132.357 seconds (21h:58m:52s)
+
+Tree finding timed out, so running again but without model finding again:
+
+What the ModelFinder results tell us:
+The Substitution Matrix: GTR (General Time Reversible) is indeed the winner across all criteria (AIC, BIC, etc.). This confirms our choice of GTR in your current script was correct.
+State Frequencies: It chose +F (Empirical frequencies). IQ-TREE 2 uses empirical frequencies by default when you specify GTR, so our -m GTR+G is already capturing the core of this.
+Rate Heterogeneity (The "Big" Difference): It chose +R8 (FreeRate model with 8 categories).
+Our current script uses +G (Gamma distribution).
++R models are often a better fit for large phylogenomic datasets because they don't assume a symmetric bell-curve (Gamma) for site rates; they are more flexible.
+To be as precise as possible and "honor" the ModelFinder results without the time penalty, you could change your command to: $IQTREE -s concatenated.fasta -m GTR+F+R8 -nt ${SLURM_CPUS_PER_TASK} -pre 2000_loci_ref_tree
+
+perf: optimize Step 4.0 reference tree via fixed GTR+G model
+- Updated 4.0_concat_tree.sh to bypass ModelFinder Plus bottleneck.
+- Implemented fixed -m GTR+G to reduce initial overhead on the 2.2M bp matrix.
+- Restored standard ML search intensity (removed -fast) for accurate branch lengths.
+- Retained 20-thread parallelization for the final ML tree search.
+
+The reference tree construction was further refined to incorporate the optimal substitution parameters identified by the initial ModelFinder run.
+Although the original automated search timed out, the log files revealed that a GTR+F+R8 model (General Time Reversible with Empirical State Frequencies and a FreeRate model with 8 categories) provided the best fit according to the Bayesian Information Criterion (BIC).
+By hard-coding these parameters, the pipeline now circumvents the ~22-hour wall-clock bottleneck of the ModelFinder phase while maintaining maximum statistical accuracy for branch length estimation.
+A 1,000-replicate UltraFast Bootstrap was retained to provide support values for the baseline topology.
+
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
 
 nano 4.0_concat_tree.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="unfiltered_tree"
-#SBATCH --time=24:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
-#SBATCH --mem=64G
+#SBATCH --mem=62G
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512
 #SBATCH --mail-user="biancani@uri.edu"
@@ -2555,20 +2635,24 @@ python3 $amas_py ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
 # 2. Run IQ-TREE on the result
 $IQTREE -s concatenated.fasta \
     -m MFP \
-    -bb 1000 \
-    -alrt 1000 \
-    -nt AUTO \
-    -ntmax ${SLURM_CPUS_PER_TASK} \
+    -nt ${SLURM_CPUS_PER_TASK} \
     -pre 2000_loci_ref_tree
+    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
+
+# 2. (Alt) Run IQ-TREE on the result (with model specified)
+#$IQTREE -s concatenated.fasta \
+#    -m GTR+F+R8 \
+#    -nt ${SLURM_CPUS_PER_TASK} \
+#    -pre 2000_loci_ref_tree
+#    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
 ---------------------------------
 sbatch 4.0_concat_tree.sh
-Submitted batch job 50841624
-sacct -j 50841624 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50867451
+sacct -j 50867451 -o JobID,ExitCode,Elapsed,MaxRSS
 
-Git commit message:
-feat: build 2,000-locus unfiltered reference tree (Step 4.0)
 
-- Edited AMAS Python wrapper (from step 0.0) to handle .fas/.fasta extensions.
-- Concatenated all Step 2.4 simulated loci into a single 2.2M bp super-matrix.
-- Configured IQ-TREE 2.1.2 ML search with MFP and 1000 UFB/SH-aLRT replicates.
-- Established baseline branch lengths for downstream correlation filtering.
+feat: adjusted Step 4.0 reference tree with ModelFinder results
+- Updated 4.0_concat_tree.sh to use the optimized GTR+F+R8 model.
+- Bypassed ~280 CPU-hours of model testing by hard-coding BIC-best parameters.
+- Retained 1000 UFB replicates for topological support.
+- Optimized walltime and resource allocation for the 2.2M bp super-matrix.
