@@ -22,7 +22,7 @@ cd /scratch4/workspace/biancani_uri_edu-LociSimulation
 copy mammal loci to scratch space:
 
 transfer.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="tar_transfer"
 #SBATCH --time=48:00:00  # walltime limit (HH:MM:SS)
@@ -46,7 +46,7 @@ echo "Started at $(date)"
 tar -cf - -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")" | pv | tar -xf - -C "$DEST_DIR"
 
 echo "Finished at $(date)"
----------------------------------
+#---------------------------------
 sbatch transfer.sh
 Submitted batch job 45655769
 
@@ -80,7 +80,7 @@ partitions.txt
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
 
 nano run_amas.py
----------------------------------
+#---------------------------------
 #!/usr/bin/env python3
 """
 run_amas.py
@@ -180,7 +180,7 @@ print("\n=== run_amas.py execution completed. ===")
 print("Output files:")
 print(" - concatenated.fasta")
 print(" - partitions.txt\n")
----------------------------------
+#---------------------------------
 
 0.0_amas_concat.sh runs AMAS on an empirical dataset to concatenate input fasta files and prepare partitions ahead of IQTree run.
 Uses a helper Python script (run_amas.py), which wraps around the AMAS.py concat command.
@@ -188,7 +188,7 @@ Uses a helper Python script (run_amas.py), which wraps around the AMAS.py concat
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
 
 nano 0.0_amas_concat.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="AMAS"
 #SBATCH --time=2:00:00  # walltime limit (HH:MM:SS)
@@ -225,7 +225,7 @@ cd ${Output}/0.0_concatenated
 python3 ${Scripts}/0_data_prep/run_amas.py ${Data} ${Cores} ${AMAS}
 
 date
----------------------------------
+#---------------------------------
 sbatch 0.0_amas_concat.sh
 Submitted batch job 49112018
 sacct -j 49112018 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -240,7 +240,7 @@ cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_
 0.1_iqtree_empirical.sh will use iqtree to infer an empirical tree.
 
 nano 0.1_iqtree_empirical.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="IQTREE"
 #SBATCH --time=96:00:00  # walltime limit (HH:MM:SS)
@@ -293,7 +293,7 @@ ${IQTREE} -nt ${Threads} \
     -m MFP -bb 1000 -alrt 1000
 
 date
----------------------------------
+#---------------------------------
 sbatch 0.1_iqtree_empirical.sh
 Submitted batch job 47065851
 sacct -j 47065851 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -308,7 +308,7 @@ JobID        ExitCode    Elapsed     MaxRSS
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
 
 nano install.packages.R
----------------------------------
+#---------------------------------
 # Capture command-line arguments (package names to check and install)
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -337,7 +337,7 @@ install_and_load <- function(pkg) {
 
 # Apply the function to the list of packages
 invisible(sapply(packages_to_install, install_and_load))
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
 
@@ -619,7 +619,7 @@ Making updates scripts...
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
 
 nano 1.0_prep_R_env.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="R_pkgs"
 #SBATCH --time=72:00:00                # Walltime limit (HH:MM:SS)
@@ -659,7 +659,7 @@ export R_LIBS=~/R-packages
 Rscript ${Scripts}/1_prep_empirical_tree/install.packages.R $R_packages
 
 date
----------------------------------
+#---------------------------------
 sbatch 1.0_prep_R_env.sh
 Submitted batch job 50606562
 sacct -j 50606562 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -675,7 +675,7 @@ Replaces single-taxon rooting with support for multi-taxa outgroups. Uses ape::g
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
 
 nano empirical_tree_processor.R
----------------------------------
+#---------------------------------
 ## Capture Command Line Arguments
 
 # Arguments must be passed in the following order:
@@ -771,12 +771,12 @@ write.tree(tree_um, paste0(format_tree_out, "/s_tree.trees"), digits=8)
 write(c(simphy_seed1, simphy_seed2), paste0(format_tree_out, "/generate_params.txt"))
 
 print("Tree processing complete and output files saved.")
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
 
 nano 1.1_format_tree.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="process_tree"
 #SBATCH --time=00:20:00                # Walltime limit (HH:MM:SS)
@@ -829,7 +829,7 @@ export R_LIBS=~/R-packages
 Rscript $Scripts/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tree2 $treefile $format_tree_out $outgroup $tree_depth $gen_time $simphy_seed1 $simphy_seed2
 
 date
----------------------------------
+#---------------------------------
 sbatch 1.1_format_tree.sh
 Submitted batch job 50824267
 sacct -j 50824267 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -858,7 +858,7 @@ Streamlined the `2.0_prep_simphy.sh` bash script and `generate_sim_properties.R`
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano generate_sim_properties.R
----------------------------------
+#---------------------------------
 # generate_sim_properties.R
 # Purpose: Generate stochastic evolutionary parameters for 2000 simulated loci
 # based on an empirical species tree and mammalian rate ranges.
@@ -1005,12 +1005,12 @@ df$remaining_taxa <- gsub("\n", " ", as.character(df$remaining_taxa))
 df_out <- apply(df, 2, as.character)
 
 write.csv(df_out, "df.csv", row.names = FALSE)
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano 2.0_prep_simphy.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="prep_simphy"
 #SBATCH --time=00:20:00  # walltime limit (HH:MM:SS)
@@ -1059,7 +1059,7 @@ export R_LIBS=~/R-packages
 Rscript $Scripts/2_simulation_scripts/generate_sim_properties.R $treefile $params $mod_write_tree2
 
 date
----------------------------------
+#---------------------------------
 sbatch 2.0_prep_simphy.sh
 Submitted batch job 50824315
 JobID        ExitCode    Elapsed     MaxRSS
@@ -1105,7 +1105,7 @@ By utilizing a tidyverse approach with mutate and paste0, it maps the variables 
 This output is written to a plain-text file, which serves as a "blueprint" for parallel execution, increasing the flexibility and scalability of the pipeline.
 
 nano run_SimPhy.R
----------------------------------
+#---------------------------------
 # ==============================================================================
 # Script: Run_SimPhy.R
 # Purpose: Generate a list of SimPhy commands based on generated parameters.
@@ -1149,7 +1149,7 @@ df_cmds <- df %>%
 writeLines(df_cmds$command, con = output_list_path)
 
 cat(paste("Successfully generated  ", nloci, "SimPhy commands in:", output_list_path, "\n"))
----------------------------------
+#---------------------------------
 
 Summary of Changes to 2.1_simphy_commands.sh:
 The 2.1_simphy_commands.sh script was redesigned to serve as the Bridge between parameter generation and execution.
@@ -1161,7 +1161,7 @@ This separation ensures that the 2,000 commands are validated and stored safely 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano 2.1_simphy_commands.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=simphy_cmd
 #SBATCH --nodes=1
@@ -1217,7 +1217,7 @@ Rscript "$Scripts/2_simulation_scripts/run_SimPhy.R" \
     "$simphy_exe"
 
 date
----------------------------------
+#---------------------------------
 sbatch 2.1_simphy_commands.sh
 Submitted batch job 50824346
 sacct -j 50824346 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -1248,7 +1248,7 @@ This ensures that the final gene_trees.tre file is perfectly ordered from Locus 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano 2.2_run_simulations.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=simphy_run
 #SBATCH --nodes=1
@@ -1388,7 +1388,7 @@ else
 fi
 
 date
----------------------------------
+#---------------------------------
 sbatch 2.2_run_simulations.sh
 Submitted batch job 50824418
 sacct -j 50824418 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -1446,7 +1446,7 @@ I updated the column-removal logic and ensured the final output is saved in a st
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano prep_INDELible.R
----------------------------------
+#---------------------------------
 library(ape)
 library(geiger)
 library(extraDistr)
@@ -1621,12 +1621,12 @@ for (f in 1:nloci) {
 # (Optional: df2.csv logging logic remains here) # logging simulated model params: the original script, was tracking things like modelkappasd and modelratesd.
 # Since we are now using a loop, keeping that log would require initialize a data frame before the loop and fill it as you go.
 # Not sure yet if we strictly need those specific standard deviation metrics for downstream analysis, so leaving it out for now to keep the script faster.
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano post_INDELible.R
----------------------------------
+#---------------------------------
 library(ape)
 
 # --- 1. Capture Arguments ---
@@ -1709,7 +1709,7 @@ for (f in 1:nloci){
 }
 
 message("Post-processing complete. Modified alignments are in: ", final_aln_dir)
----------------------------------
+#---------------------------------
 
 Install INDELibleV1.03:
 
@@ -1729,7 +1729,7 @@ g++ -o indelible -O3 -m64 -std=gnu++98 -include unistd.h indelible.cpp -lm
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano 2.3_INDELible.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=indelible_para
 #SBATCH --nodes=1
@@ -1797,7 +1797,7 @@ echo "Running post-simulation sequence modification..."
 Rscript "$Scripts/2_simulation_scripts/post_INDELible.R" "$indel_dir" "$df_file"
 
 date
----------------------------------
+#---------------------------------
 sbatch 2.3_INDELible.sh
 Submitted batch job 50824809
 sacct -j 50824809 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -1852,7 +1852,7 @@ By iterating through the 2,000 final alignments and performing a 1:1 string repl
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano restore_names.R
----------------------------------
+#---------------------------------
 library(ape)
 
 # --- 1. Capture Arguments ---
@@ -1887,12 +1887,12 @@ for (f in fas_files) {
 }
 
 message("All names restored successfully.")
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
 nano 2.4_restore_names.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=restore_names
 #SBATCH --nodes=1
@@ -1937,7 +1937,7 @@ Rscript "$Scripts/2_simulation_scripts/restore_names.R" \
 
 echo "Process complete. Final alignments located in: $Final_Aln"
 date
----------------------------------
+#---------------------------------
 sbatch 2.4_restore_names.sh
 Submitted batch job 50825498
 sacct -j 50825498 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -2031,7 +2031,7 @@ This step is critical for our experimental validation, as it provides the necess
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano generate_constraints.R
----------------------------------
+#---------------------------------
 library(ape)
 
 # Capture arguments from shell
@@ -2069,12 +2069,12 @@ for (f in loci_files) {
   }
 }
 cat(paste("Generated", length(list.files(OUTPUT_DIR)), "constraint files.\n"))
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano 3.0_generate_constraints.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=constraints
 #SBATCH --partition=uri-cpu
@@ -2137,7 +2137,7 @@ else
     echo "WARNING: Count mismatch! Some loci may not have enough taxa to form a constraint."
 fi
 echo "------------------------------------------------"
----------------------------------
+#---------------------------------
 sbatch 3.0_generate_constraints.sh
 Submitted batch job 50827749
 sacct -j 50827749 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -2169,7 +2169,7 @@ To manage the high volume of output data, the script includes automated cleanup 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano 3.1_iqtree_likelihoods.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=iqtree
 #SBATCH --partition=uri-cpu
@@ -2223,7 +2223,7 @@ export -f run_iqtree
 ls "$Alignments"/*.fas | parallel -j 30 --progress run_iqtree {} "$OutDir" "$Constraints" "$IQTREE"
 
 echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
----------------------------------
+#---------------------------------
 Submitted batch job 50827835
 sacct -j 50827835 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
@@ -2249,7 +2249,7 @@ This step is the "quality control" heart of the workflow, providing a quantitati
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano LRT_filter.R
----------------------------------
+#---------------------------------
 #!/usr/bin/env Rscript
 
 # --- Load Libraries ---
@@ -2314,12 +2314,12 @@ cat("\n--- Summary ---\n")
 cat("Total loci processed:", nrow(results), "\n")
 cat("Loci failing backbone (p < 0.05):", sum(results$p_value < 0.05, na.rm=TRUE), "\n")
 cat("Results saved to:", OUT_CSV, "\n")
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano 3.2_LRT_filter.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=3.2_LRT_filter
 #SBATCH --partition=uri-cpu
@@ -2356,7 +2356,7 @@ export R_LIBS=~/R-packages
 
 # --- Execute ---
 Rscript $Scripts/LRT_filter.R "$IQ_DIR" "$OUT_FILE"
----------------------------------
+#---------------------------------
 sbatch 3.2_LRT_filter.sh
 Submitted batch job 50834337
 sacct -j 50834337 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -2392,7 +2392,7 @@ This bifurcation ensures that the final phylogenomic results are derived from st
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano collect_filtered_loci.R
----------------------------------
+#---------------------------------
 #!/usr/bin/env Rscript
 
 # --- Setup ---
@@ -2439,12 +2439,12 @@ cat("  Pass folder:", PASS_DIR, "\n")
 cat(length(passing_loci), " loci passed.\n")
 cat("  Fail folder:", FAIL_DIR, "\n")
 cat(length(failing_loci), " loci failed.\n")
----------------------------------
+#---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano 3.3_collect_filtered_loci.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name=filter_loci
 #SBATCH --partition=uri-cpu
@@ -2480,7 +2480,7 @@ export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
 # --- Execute ---
 # Arguments: <CSV> <SourceDir> <DestDir> <P-Threshold>
 Rscript $Scripts/collect_filtered_loci.R "$LRT_CSV" "$Alignments" "$FinalDir" "$Pvalue"
----------------------------------
+#---------------------------------
 sbatch 3.3_collect_filtered_loci.sh
 Submitted batch job 50835403
 sacct -j 50835403 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -2594,7 +2594,7 @@ A 1,000-replicate UltraFast Bootstrap was retained to provide support values for
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
 
 nano 4.0_concat_tree.sh
----------------------------------
+#---------------------------------
 #!/bin/bash
 #SBATCH --job-name="unfiltered_tree"
 #SBATCH --time=24:00:00
@@ -2643,7 +2643,7 @@ $IQTREE -s concatenated.fasta \
 #    -m GTR+F+R8 \
 #    -nt ${SLURM_CPUS_PER_TASK} \
 #    -pre 2000_loci_ref_tree
----------------------------------
+#---------------------------------
 sbatch 4.0_concat_tree.sh
 Submitted batch job 50867451
 sacct -j 50867451 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -2671,3 +2671,163 @@ refactor: remove bootstrap calculation from Step 4.0 reference tree
 - Removed -bb 1000 flag to significantly reduce wall-clock time on 2.2M bp matrix.
 - Confirmed baseline topology and branch lengths are sufficient for downstream
   Branch Length Correlation (BLC) filtering without support values.
+
+2026.01.01
+
+BLC step 4.1:
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+trimConstraintTree.R: Prunes the 37-taxa reference tree to match the taxa actually present in each locus.
+4.1_constrained_gtree.sh: The Slurm wrapper to run IQ-TREE for each locus.
+
+4.1
+The R Script: trimConstraintTree.R
+This script ensures that if a locus is missing a taxon
+(e.g., if a simulation step removed a species),
+the reference tree is "pruned" to match that locus before IQ-TREE tries to use it as a constraint.
+
+Step 4.1 Project Notes
+Purpose: To perform high-throughput, constrained branch length estimation across 2,000 simulated loci.
+By forcing each gene tree to match the "unfiltered" genomic reference topology (Step 4.0),
+we isolate rate variation (branch lengths) as the primary variable for downstream correlation filtering.
+Methods: * Dynamic Pruning: An R script (trimConstraintTree.R) utilized the ape library to programmatically prune the 37-taxon reference tree to match the specific taxon occupancy of each individual locus alignment.
+Model Synchronization: To ensure mathematical consistency, the substitution model (GTR+F+R8) was dynamically extracted from the Step 4.0 .iqtree report and passed to all 2,000 IQ-TREE 2.1.2 runs.
+Parallel Execution: Distributed the workload across 64 cores using GNU Parallel. A staggered start (sleep) was implemented within the command factory to prevent resource contention during R library loading.
+Performance: The optimized pipeline completed 2,000 Maximum Likelihood inferences in 4 minutes and 19 seconds, demonstrating high scaling efficiency on the Unity cluster.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano trimConstraintTree.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# trimConstraintTree.R
+# Purpose: Prune a reference species tree to match the taxa present in a specific locus alignment.
+
+library(ape)
+
+# Capture command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 3) {
+  stop("Usage: Rscript trimConstraintTree.R <alignment.fas> <reference.treefile> <output.tre>")
+}
+
+# 1. Load the alignment to see which taxa are present
+alignment <- read.dna(args[1], format="fasta")
+taxapresent <- rownames(alignment)
+
+# 2. Load the Reference Species Tree (from Step 4.0)
+tree <- read.tree(args[2])
+treetips <- tree$tip.label
+
+# 3. Identify tips in the tree that are NOT in the alignment
+tipstoremove <- treetips[!(treetips %in% taxapresent)]
+
+# 4. Prune the tree and write to file
+# drop.tip removes the missing taxa while maintaining the relative branch lengths of the rest
+outtree <- drop.tip(tree, tipstoremove)
+write.tree(outtree, args[3])
+
+cat("Successfully pruned tree to", length(outtree$tip.label), "taxa.\n")
+#---------------------------------
+
+4.1_constrained_gtrees.sh
+This script uses a Command Factory function to handle the R-pruning and the IQ-TREE inference in one go, distributed across your CPU cores.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.1_constrained_gtrees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=BLC_gtrees
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=32
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts/"
+Scripts4="$Scripts/4_filter_by_branch_length"
+Output="$Project/output/mammals/"
+# Path to IQTREE executable:
+IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+
+# Inputs
+Alignments="$Output/2.4_final_named_alignments"
+# The Reference Tree from Step 4.0:
+RefTree="$Output/4.0_unfiltered_concat_tree/2000_loci_ref_tree.treefile"
+
+# Output
+OutDir="$Output/4.1_constrained_gtrees"
+mkdir -p "$OutDir"
+
+# --- Extract the Model Name from 4.0 output ---
+MODEL_FILE="$Output/4.0_unfiltered_concat_tree/2000_loci_ref_tree.iqtree"
+GEN_MODEL=$(grep "Model of substitution:" "$MODEL_FILE" | cut -d ":" -f 2 | tr -d '[:space:]')
+
+# Verify we actually got a model string
+if [ -z "$GEN_MODEL" ]; then echo "Error: Model extraction failed"; exit 1; fi
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+module load parallel/20240822
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Command Factory Logic ---
+run_constrained_inference() {
+    locus_fas=$1
+    locus_id=$(basename "$locus_fas" .fas)
+    out_path=$2
+    ref_tree=$3
+    iqtree_exe=$4
+    script_dir=$5
+    model_name=$6
+
+    # Optional: add this right before the Rscript line to stagger starts (preventing library loading issues)
+    sleep $(( (RANDOM % 5) + 1 ))
+
+    # 1. Prune the reference tree to match this locus
+    Rscript "$script_dir/trimConstraintTree.R" "$locus_fas" "$ref_tree" "$out_path/${locus_id}.constraint.tre"
+
+    # 2. Run IQ-TREE constrained to that pruned topology
+    $iqtree_exe -s "$locus_fas" -m "$model_name" -g "$out_path/${locus_id}.constraint.tre" -pre "$out_path/${locus_id}" -nt 1 -redo
+
+    # Cleanup auxiliary files
+    rm -f "$out_path/${locus_id}."{ckp.gz,bionj,mldist,log}
+}
+
+export -f run_constrained_inference
+
+# --- Execute with GNU Parallel ---
+echo "Starting constrained branch length estimation..."
+# Added --no-notice to silence the tty warning
+find "$Alignments" -name "*.fas" | parallel -j 32 --no-notice --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$Scripts4" "$GEN_MODEL"
+echo "Step 4.1 complete. Constrained trees are in $OutDir"
+#---------------------------------
+sbatch 4.1_constrained_gtrees.sh
+Submitted batch job 50868336
+sacct -j 50868336 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50868336          0:0   00:04:19
+50868336.ba+      0:0   00:04:19   2057536K
+50868336.ex+      0:0   00:04:19
+
+feat: implement high-throughput constrained branch length estimation (Step 4.1)
+- Automated per-locus reference tree pruning via trimConstraintTree.R.
+- Implemented dynamic model extraction from Step 4.0 logs to ensure model consistency.
+- Scaled inference to 32 cores using GNU Parallel for a shorter execution time.
+- Integrated staggered start logic to manage concurrent R namespace loading.
+- Standardized output structure for subsequent Branch Length Correlation (BLC) analysis.
