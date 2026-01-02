@@ -3008,7 +3008,187 @@ Fri Jan  2 02:59:19 AM UTC 2026
 
 feat: implement Branch Length Correlation (BLC) filter (Step 4.2)
 
-- Added treescreen.R to calculate Pearson R2 correlation per locus.
+- Added treescreen.R to calculate Pearson R^2 correlation per locus.
 - Automated thresholding using Mean +/- 1.96 SD (Simion et al. 2017).
 - Developed Slurm wrapper to sort alignments into pass/fail directories.
 - Ensured robustness against missing taxa via tip-label intersection logic.
+
+Skipping module 5 for now (will be another filtering step later)
+
+Module 6 - Infer and Compare Trees
+
+mkdir /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+Step 6.0: Unfiltered Reference Tree Inference
+Purpose: To establish a high-confidence, "unfiltered" phylogenetic baseline for the entire 2,000-locus simulated dataset.
+This tree serves as the control group against which all subsequent filtered datasets (Module 6.1 and 6.2) will be compared to measure the impact of noise reduction.
+Methods:
+Concatenation: The 2,000 individual alignments (Step 2.4) were concatenated into a single super-matrix using AMAS.
+This resulted in a massive alignment of approximately 2.2 million base pairs across 37 taxa.
+Phylogenetic Inference: Maximum Likelihood (ML) inference was performed using IQ-TREE 2.1.2.
+Model Selection: The GTR+F+R8 substitution model (General Time Reversible with empirical base frequencies and FreeRate model with 8 categories) was utilized.
+This model was chosen based on previous ModelFinder (MFP) results to maximize accuracy while reducing computational overhead.
+Support Estimation: 1,000 UltraFast Bootstrap (UFB) replicates were calculated to provide nodal support.
+Unlike Step 4.0, this step allowed for full topological search during bootstrapping, providing a statistically robust measure of clade stability.
+Reasoning for Baseline: By running the full dataset under optimized ML settings, we capture the raw signal—including any potential biases from heterotachous or noisy sites.
+Comparing the bootstrap support and topology of this tree to the filtered versions will reveal whether filtering increases phylogenetic resolution (higher support) or alters the branching order (topology).
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.0_unfiltered_tree.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="unfiltered_tree"
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=62G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts"
+Output="$Project/output/mammals/"
+# Path to AMAS executable:
+AMAS="/project/pi_rsschwartz_uri_edu/Biancani/Software/AMAS/amas/AMAS.py"
+# Path to run_amas.py (from step 0.0)
+amas_py="$Scripts/0_data_prep/run_amas.py"
+# Path to IQTREE executable:
+IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+
+# Input
+Data="$Output/2.4_final_named_alignments"
+
+# Output directory
+OutDir="$Output/6.0_unfiltered_tree"
+mkdir -p ${OutDir}
+cd ${OutDir}
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+# 1. Run the universal AMAS script
+python3 $amas_py ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
+
+# 2. Run IQ-TREE on the result (with model search - will require more time!)
+#$IQTREE -s concatenated.fasta \
+#    -m MFP \
+#    -nt ${SLURM_CPUS_PER_TASK} \
+#    -pre 2000_loci_ref_tree \
+#    -bb 1000
+
+# 2. (Alt) Run IQ-TREE on the result (with model specified)
+$IQTREE -s concatenated.fasta \
+    -m GTR+F+R8 \
+    -nt ${SLURM_CPUS_PER_TASK} \
+    -pre 2000_loci_ref_tree \
+    -bb 1000
+#---------------------------------
+sbatch 6.0_unfiltered_tree.sh
+Submitted batch job 50869128
+sacct -j 50869128 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Step 6.1: Intersection Dataset Generation
+Purpose: To isolate the most reliable "Elite" loci and the most problematic "Bottom-Tier" loci by identifying the intersection of results from two independent quality control filters.
+Methods:
+Intersection Logic: Using the comm -12 command on sorted lists of filenames, the script identifies loci that appears in both "Pass" directories (Step 3.3 and Step 4.2) and both "Fail" directories.
+Categorization: * All-Pass (Elite): Loci that passed the clade-based p-value screening (noise filter) and the Branch Length Correlation test (rate filter).
+All-Fail (Bottom-Tier): Loci that were rejected by both the clade-based screening and the BLC test.
+Data Integrity: The script copies the raw .fas files from the original named alignments directory to ensure that downstream tree building starts from clean, un-modified sequence data.
+Significance: This step creates the polarized datasets necessary for a robust sensitivity analysis. By comparing trees built from "Elite" loci against those built from "Bottom-Tier" loci, you can quantify how much phylogenetic signal is lost or distorted by specific types of genomic noise.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.1_create_intersections.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.1_intersection"
+#SBATCH --time=00:15:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=1G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Output="$Project/output/mammals"
+Original_Alignments="$Output/2.4_final_named_alignments"
+
+# Input Directories
+S3_Pass="$Output/3.3_loci_filtered_by_known_clades/pass_0.05"
+S3_Fail="$Output/3.3_loci_filtered_by_known_clades/fail_0.05"
+S4_Pass="$Output/4.2_BLC_filtered/pass_loci"
+S4_Fail="$Output/4.2_BLC_filtered/fail_loci"
+
+# Output Directory
+OutDir="$Output/6.1_intersection_data"
+mkdir -p "$OutDir/all_pass" "$OutDir/all_fail"
+
+# Move to output directory to generate lists
+cd "$OutDir"
+
+# Temporary list files for matching
+ls "$S3_Pass" | sort > s3_pass_list.txt
+ls "$S3_Fail" | sort > s3_fail_list.txt
+ls "$S4_Pass" | sort > s4_pass_list.txt
+ls "$S4_Fail" | sort > s4_fail_list.txt
+
+# 1. Intersection: ALL PASS (Passed Clade Test AND BLC Test)
+comm -12 s3_pass_list.txt s4_pass_list.txt > all_pass_names.txt
+
+# 2. Intersection: ALL FAIL (Failed Clade Test AND BLC Test)
+comm -12 s3_fail_list.txt s4_fail_list.txt > all_fail_names.txt
+
+# Function to copy files based on the generated lists
+copy_loci() {
+    list=$1
+    dest=$2
+    if [ -s "$list" ]; then
+        count=$(wc -l < "$list")
+        echo "Copying $count loci to $dest..."
+        while read locus; do
+            cp "$Original_Alignments/$locus" "$dest/"
+        done < "$list"
+    else
+        echo "Warning: No loci found for $dest"
+    fi
+}
+
+# Execute copies
+copy_loci all_pass_names.txt "all_pass"
+copy_loci all_fail_names.txt "all_fail"
+
+# Cleanup temp files
+rm s3_pass_list.txt s3_fail_list.txt s4_pass_list.txt s4_fail_list.txt
+
+echo "Step 6.1 Complete. Intersection datasets are ready."
+#---------------------------------
+sbatch 6.1_create_intersections.sh
+Submitted batch job 50869167
+sacct -j 50869167 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50869167          0:0   00:00:01
+50869167.ba+      0:0   00:00:01     21184K
+50869167.ex+      0:0   00:00:01
+
+output:
+Copying 529 loci to all_pass...
+Copying 28 loci to all_fail...
+Step 6.1 Complete. Intersection datasets are ready.
+
+feat: establish unfiltered baseline and generate intersection datasets (Module 6)
+
+- Step 6.0: Implemented full 2,000-locus concatenation and ML inference.
+- Configured IQ-TREE with GTR+F+R8 model and 1000 UFBs for high-resolution baseline support.
+- Step 6.1: Automated the isolation of "All-Pass" (Elite) and "All-Fail" (Bottom-Tier) subsets.
+- Used filename intersection (comm -12) to synchronize clade-based (S3) and rate-based (S4) filter results.
+- Standardized data structure for downstream comparative phylogenomics.
