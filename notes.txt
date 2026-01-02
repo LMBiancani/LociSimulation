@@ -2812,18 +2812,17 @@ export -f run_constrained_inference
 
 # --- Execute with GNU Parallel ---
 echo "Starting constrained branch length estimation..."
-# Added --no-notice to silence the tty warning
-find "$Alignments" -name "*.fas" | parallel -j 32 --no-notice --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$Scripts4" "$GEN_MODEL"
+find "$Alignments" -name "*.fas" | parallel -j 32 --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$Scripts4" "$GEN_MODEL"
 echo "Step 4.1 complete. Constrained trees are in $OutDir"
 #---------------------------------
 sbatch 4.1_constrained_gtrees.sh
-Submitted batch job 50868336
-sacct -j 50868336 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50868479
+sacct -j 50868479 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50868336          0:0   00:04:19
-50868336.ba+      0:0   00:04:19   2057536K
-50868336.ex+      0:0   00:04:19
+50868479          0:0   00:06:00
+50868479.ba+      0:0   00:06:00    690092K
+50868479.ex+      0:0   00:06:00
 
 feat: implement high-throughput constrained branch length estimation (Step 4.1)
 - Automated per-locus reference tree pruning via trimConstraintTree.R.
@@ -2831,3 +2830,185 @@ feat: implement high-throughput constrained branch length estimation (Step 4.1)
 - Scaled inference to 32 cores using GNU Parallel for a shorter execution time.
 - Integrated staggered start logic to manage concurrent R namespace loading.
 - Standardized output structure for subsequent Branch Length Correlation (BLC) analysis.
+
+4.2
+Step 4.2: Branch Length Correlation (BLC) Filtering
+Purpose: To identify and remove "heterotachous" loci or those with highly discordant evolutionary rates compared to the genomic average.
+This filter ensures that the loci used for final species tree inference follow a consistent rate distribution,
+reducing noise caused by potential alignment errors or extreme rate variation.
+
+Methods:
+Statistical Proxy: The terminal branch lengths (tips) of each constrained gene tree from Step 4.1 were compared against the terminal branch lengths of the Step 4.0 "unfiltered" species tree.
+Correlation Analysis: A linear regression was performed for each of the 2,000 loci using the lm() function in R.
+The Pearson correlation coefficient (R^2) and slope were calculated to measure how well each gene's relative terminal rates matched the species tree proxy.
+Taxon Alignment: To handle missing data, the script utilized tip-label intersection,
+ensuring the regression only compared taxa present in both the specific locus and the reference tree.
+Filtering Threshold: Following Simion et al. (2017), a statistical cutoff was established at mean R^2±1.96×SD.
+Pass: Loci within the 95% confidence interval of the mean correlation.
+Fail: Outlier loci with R^2 values significantly lower (discordant) or higher than the average distribution.
+Results & Assembly:
+The treescreen.R script generated a master summary (blc_results.csv) containing the R^2, slope, and Pass/Fail status for every locus.
+A downstream bash script automated the sorting of the original .fas alignments, copying "Pass" loci into a clean directory for final analysis and isolating "Fail" loci for auditing.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano treescreen.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# treescreen.R
+# Purpose: Calculate Pearson correlation (R2) between gene trees and reference tree.
+
+library(ape)
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 3) {
+  stop("Usage: Rscript treescreen.R <ref_tree.treefile> <gtrees_dir> <output.csv>")
+}
+
+ref_tree_path <- args[1]
+gtrees_dir    <- args[2]
+output_csv    <- args[3]
+
+# 1. Extract reference terminal branch lengths
+ref_tree <- read.tree(ref_tree_path)
+ref_bl <- setNames(ref_tree$edge.length[sapply(1:length(ref_tree$tip.label),
+                  function(x,y) which(y==x), y=ref_tree$edge[,2])],
+                  ref_tree$tip.label)
+
+# 2. Identify all constrained treefiles
+tree_files <- list.files(gtrees_dir, pattern = "\\.treefile$", full.names = TRUE)
+
+# 3. Process each locus
+results_list <- list()
+
+for (f in tree_files) {
+    locus_id <- gsub("\\.treefile$", "", basename(f))
+    gtree    <- read.tree(f)
+
+    # Extract gene tree branch lengths
+    gtree_bl <- setNames(gtree$edge.length[sapply(1:length(gtree$tip.label),
+                         function(x,y) which(y==x), y=gtree$edge[,2])],
+                         gtree$tip.label)
+
+    # Align tips (handles cases where gene trees have fewer taxa)
+    common_tips <- intersect(names(ref_bl), names(gtree_bl))
+
+    if (length(common_tips) > 2) {
+        # Regression: Reference Lengths ~ Gene Tree Lengths
+        regress  <- lm(gtree_bl[common_tips] ~ ref_bl[common_tips])
+        rsq      <- summary(regress)$r.squared
+        slope    <- coef(regress)[2]
+        results_list[[locus_id]] <- data.frame(Locus=locus_id, Slope=slope, Rsq=rsq)
+    }
+}
+
+results <- do.call(rbind, results_list)
+
+# 4. Calculate filtering thresholds (Simion et al. 2017: Mean +/- 1.96 * SD)
+mean_rsq <- mean(results$Rsq, na.rm=TRUE)
+sd_rsq   <- sd(results$Rsq, na.rm=TRUE)
+lower_limit <- mean_rsq - (1.96 * sd_rsq)
+upper_limit <- mean_rsq + (1.96 * sd_rsq)
+
+results$Status <- ifelse(results$Rsq >= lower_limit & results$Rsq <= upper_limit, "Pass", "Fail")
+
+# 5. Save output
+write.csv(results, output_csv, row.names = FALSE)
+
+cat("\n--- BLC Screening Summary ---\n")
+cat("Mean Rsq:    ", round(mean_rsq, 4), "\n")
+cat("SD Rsq:      ", round(sd_rsq, 4), "\n")
+cat("Lower Limit: ", round(lower_limit, 4), "\n")
+cat("Loci Passed: ", sum(results$Status == "Pass"), "\n")
+cat("Loci Failed: ", sum(results$Status == "Fail"), "\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.2_treescreen.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=BLC_screen
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:20:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Scripts="$Project/LociSimulation/Scripts/"
+Scripts4="$Scripts/4_filter_by_branch_length"
+Output="$Project/output/mammals"
+
+# Inputs
+RefTree="$Output/4.0_unfiltered_concat_tree/2000_loci_ref_tree.treefile"
+Gtrees="$Output/4.1_constrained_gtrees"
+Alignments="$Output/2.4_final_named_alignments"
+
+# Output subdirectories
+OutDir="$Output/4.2_BLC_filtered"
+mkdir -p "$OutDir/pass_loci"
+mkdir -p "$OutDir/fail_loci"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute R Screening ---
+echo "Calculating Branch Length Correlations..."
+Rscript "$Scripts4/treescreen.R" "$RefTree" "$Gtrees" "$OutDir/blc_results.csv"
+
+# --- Assemble Filtered Datasets ---
+echo "Sorting alignments into pass/fail directories..."
+
+# Use tail to skip CSV header, IFS to parse columns
+while IFS=, read -r locus slope rsq status; do
+    # Remove possible carriage returns or quotes
+    locus=$(echo $locus | tr -d '"\r')
+    status=$(echo $status | tr -d '"\r')
+
+    if [ "$status" == "Pass" ]; then
+        cp "$Alignments/${locus}.fas" "$OutDir/pass_loci/"
+    elif [ "$status" == "Fail" ]; then
+        cp "$Alignments/${locus}.fas" "$OutDir/fail_loci/"
+    fi
+done < <(tail -n +2 "$OutDir/blc_results.csv")
+
+echo "Process complete. Final alignments are in $OutDir/pass_loci"
+date
+#---------------------------------
+sbatch 4.2_treescreen.sh
+Submitted batch job 50868590
+sacct -j 50868590 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50868590          0:0   00:00:29
+50868590.ba+      0:0   00:00:29    211164K
+50868590.ex+      0:0   00:00:29
+
+--- BLC Screening Summary ---
+Mean Rsq:     0.1382
+SD Rsq:       0.1704
+Lower Limit:  -0.1958
+Loci Passed:  1868
+Loci Failed:  132
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/pass_loci
+Fri Jan  2 02:59:19 AM UTC 2026
+
+feat: implement Branch Length Correlation (BLC) filter (Step 4.2)
+
+- Added treescreen.R to calculate Pearson R2 correlation per locus.
+- Automated thresholding using Mean +/- 1.96 SD (Simion et al. 2017).
+- Developed Slurm wrapper to sort alignments into pass/fail directories.
+- Ensured robustness against missing taxa via tip-label intersection logic.
