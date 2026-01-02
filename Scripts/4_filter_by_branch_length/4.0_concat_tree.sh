@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="unfiltered_tree"
-#SBATCH --time=2-00:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
@@ -40,11 +40,9 @@ $IQTREE -s concatenated.fasta \
     -m MFP \
     -nt ${SLURM_CPUS_PER_TASK} \
     -pre 2000_loci_ref_tree
-    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
 
 # 2. (Alt) Run IQ-TREE on the result (with model specified)
 #$IQTREE -s concatenated.fasta \
 #    -m GTR+F+R8 \
 #    -nt ${SLURM_CPUS_PER_TASK} \
 #    -pre 2000_loci_ref_tree
-#    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
