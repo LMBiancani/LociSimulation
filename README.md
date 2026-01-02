@@ -132,3 +132,84 @@ The Taxon Restorer. The final step in the simulation pipeline. It bridges the ga
 #### restore_names.R
 
 Uses the `taxon_map.csv` created in Step 1.1 to perform a 1:1 replacement of numerical headers (e.g., `>1`) with original species names (e.g., ``>Homo_sapiens`). This ensures the final FASTA alignments in `2.4_final_named_alignments` are ready for downstream phylogenetic tools.
+
+## 3_filter_by_known_clades
+
+Filters loci by comparing the likelihood of trees constrained to "Uncontested Clades" versus unconstrained trees.
+
+### 3.0_generate_constraints.sh
+```Bash
+sbatch 3.0_generate_constraints.sh
+```
+Uses `generate_constraints.R` to create Newick constraint files for specific clades of interest.
+
+### 3.1_iqtree_likelihoods.sh
+```Bash
+sbatch 3.1_iqtree_likelihoods.sh
+```
+Runs IQ-TREE on each locus under two conditions: unconstrained and constrained to known clades.
+
+### 3.2_LRT_filter.sh
+```Bash
+sbatch 3.2_LRT_filter.sh
+```
+Executes `LRT_filter.R` to perform Likelihood Ratio Tests, identifying loci where the constraint significantly worsens the fit (p < 0.05).
+
+### 3.3_collect_filtered_loci.sh
+```Bash
+sbatch 3.3_collect_filtered_loci.sh
+```
+Uses collect_filtered_loci.R to sort loci into pass_0.05 and fail_0.05 directories based on LRT results.
+
+## 4_filter_by_branch_length
+
+Filters loci based on evolutionary rate consistency using Branch Length Correlation (BLC).
+
+### 4.0_concat_tree.sh
+```Bash
+sbatch 4.0_concat_tree.sh
+```
+Builds a 2,000-locus reference tree to serve as the "genomic average" rate proxy.
+
+### 4.1_constrained_gtrees.sh
+```Bash
+sbatch 4.1_constrained_gtrees.sh
+```
+Uses `trimConstraintTree.R` to prepare the reference topology, then runs IQ-TREE to estimate gene-specific branch lengths on that fixed topology.
+
+### 4.2_treescreen.sh
+```Bash
+sbatch 4.2_treescreen.sh
+```
+Executes `treescreen.R` to calculate Pearson correlation (R^2) between gene trees and the reference tree, sorting them into `pass_loci` and `fail_loci`.
+
+## 5_future_filtering_step
+
+## 6_infer_and_compare_trees
+
+Module comparing the impact of filtering on the species tree.
+
+### 6.0_unfiltered_tree.sh
+```Bash
+sbatch 6.0_unfiltered_tree.sh
+```
+Infers the baseline reference tree from all 2,000 loci using GTR+F+R8 and 1,000 UltraFast Bootstraps.
+
+### 6.1_create_intersections.sh
+```Bash
+sbatch 6.1_create_intersections.sh
+```
+Identifies the intersection of filters to create the All-Pass (Elite) and All-Fail (Bottom-Tier) datasets.
+
+### 6.2_infer_subset_trees.sh
+```Bash
+sbatch 6.2_infer_subset_trees.sh
+```
+A parallel Slurm Job Array (indices 0-5) that infers trees for six subsets: All-Pass, All-Fail, S3-Pass/Fail, and S4-Pass/Fail.
+
+### 6.3_compare_trees.sh
+```Bash
+sbatch 6.3_compare_trees.sh
+```
+Compares the resulting trees against the 6.0 baseline to quantify topological shifts and support changes.
+
