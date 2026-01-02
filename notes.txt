@@ -2597,7 +2597,7 @@ nano 4.0_concat_tree.sh
 ---------------------------------
 #!/bin/bash
 #SBATCH --job-name="unfiltered_tree"
-#SBATCH --time=2-00:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
@@ -2637,22 +2637,37 @@ $IQTREE -s concatenated.fasta \
     -m MFP \
     -nt ${SLURM_CPUS_PER_TASK} \
     -pre 2000_loci_ref_tree
-    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
 
 # 2. (Alt) Run IQ-TREE on the result (with model specified)
 #$IQTREE -s concatenated.fasta \
 #    -m GTR+F+R8 \
 #    -nt ${SLURM_CPUS_PER_TASK} \
 #    -pre 2000_loci_ref_tree
-#    -bb 1000 #remove if necessary for speed (bootstraps not needed for BLC filtering)
 ---------------------------------
 sbatch 4.0_concat_tree.sh
 Submitted batch job 50867451
 sacct -j 50867451 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50867451        127:0   03:27:18
+50867451.ba+    127:0   03:27:18  15444080K
+50867451.ex+      0:0   03:27:18
+(ExitCode 127 due to error in bootstrap line. bootstrap analysis subsequently removed so ouptputs are fine)
+
+Output:
+2000_loci_ref_tree.bionj   2000_loci_ref_tree.mldist    concatenated.fasta.model.gz
+2000_loci_ref_tree.ckp.gz  2000_loci_ref_tree.treefile  partitions.txt
+2000_loci_ref_tree.iqtree  concatenated.fasta
+2000_loci_ref_tree.log     concatenated.fasta.log
 
 
 feat: adjusted Step 4.0 reference tree with ModelFinder results
 - Updated 4.0_concat_tree.sh to use the optimized GTR+F+R8 model.
 - Bypassed ~280 CPU-hours of model testing by hard-coding BIC-best parameters.
-- Retained 1000 UFB replicates for topological support.
 - Optimized walltime and resource allocation for the 2.2M bp super-matrix.
+
+refactor: remove bootstrap calculation from Step 4.0 reference tree
+- Streamlined IQ-TREE command to focus exclusively on ML branch length estimation.
+- Removed -bb 1000 flag to significantly reduce wall-clock time on 2.2M bp matrix.
+- Confirmed baseline topology and branch lengths are sufficient for downstream
+  Branch Length Correlation (BLC) filtering without support values.
