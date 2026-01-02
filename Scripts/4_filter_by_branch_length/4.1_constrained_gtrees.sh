@@ -23,7 +23,7 @@ Alignments="$Output/2.4_final_named_alignments"
 # The Reference Tree from Step 4.0:
 RefTree="$Output/4.0_unfiltered_concat_tree/2000_loci_ref_tree.treefile"
 
-# Output 
+# Output
 OutDir="$Output/4.1_constrained_gtrees"
 mkdir -p "$OutDir"
 
@@ -54,10 +54,10 @@ run_constrained_inference() {
     iqtree_exe=$4
     script_dir=$5
     model_name=$6
-    
+
     # Optional: add this right before the Rscript line to stagger starts (preventing library loading issues)
     sleep $(( (RANDOM % 5) + 1 ))
-    
+
     # 1. Prune the reference tree to match this locus
     Rscript "$script_dir/trimConstraintTree.R" "$locus_fas" "$ref_tree" "$out_path/${locus_id}.constraint.tre"
 
@@ -72,6 +72,5 @@ export -f run_constrained_inference
 
 # --- Execute with GNU Parallel ---
 echo "Starting constrained branch length estimation..."
-# Added --no-notice to silence the tty warning
-find "$Alignments" -name "*.fas" | parallel -j 32 --no-notice --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$Scripts4" "$GEN_MODEL"
+find "$Alignments" -name "*.fas" | parallel -j 32 --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$Scripts4" "$GEN_MODEL"
 echo "Step 4.1 complete. Constrained trees are in $OutDir"
