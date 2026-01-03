@@ -25,6 +25,10 @@ amas = sys.argv[3]
 files = [f for f in glob.glob(os.path.join(fasta_folder, "*")) if f.endswith((".fasta", ".fas"))]
 files.sort()  # ensure consistent, reproducible order
 
+if not files:
+    print(f"ERROR: No .fasta or .fas files found in {fasta_folder}")
+    sys.exit(1)
+
 batch_size = 1000
 batch_outputs = []
 batch_parts = []

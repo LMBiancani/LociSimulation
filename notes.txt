@@ -108,6 +108,10 @@ amas = sys.argv[3]
 files = [f for f in glob.glob(os.path.join(fasta_folder, "*")) if f.endswith((".fasta", ".fas"))]
 files.sort()  # ensure consistent, reproducible order
 
+if not files:
+    print(f"ERROR: No .fasta or .fas files found in {fasta_folder}")
+    sys.exit(1)
+
 batch_size = 1000
 batch_outputs = []
 batch_parts = []
@@ -3092,6 +3096,11 @@ $IQTREE -s concatenated.fasta \
 sbatch 6.0_unfiltered_tree.sh
 Submitted batch job 50869128
 sacct -j 50869128 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50869128          0:0   03:59:14
+50869128.ba+      0:0   03:59:14  20556308K
+50869128.ex+      0:0   03:59:14
 
 Step 6.1: Intersection Dataset Generation
 Purpose: To isolate the most reliable "Elite" loci and the most problematic "Bottom-Tier" loci by identifying the intersection of results from two independent quality control filters.
@@ -3222,7 +3231,7 @@ nano 6.2_infer_subset_trees.sh
 #SBATCH --mem=62G
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512
-#SBATCH --array=0-5              # 6 jobs total (0, 1, 2, 3, 4, 5)
+#SBATCH --array=0-5
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
@@ -3234,54 +3243,81 @@ AMAS="/project/pi_rsschwartz_uri_edu/Biancani/Software/AMAS/amas/AMAS.py"
 amas_py="$Scripts/0_data_prep/run_amas.py"
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
 
-# --- 1. Define Arrays (Indices must align) ---
-GROUPS=("All_pass" "All_fail" "S3_Clades_pass" "S3_Clades_fail" "S4_BLC_pass" "S4_BLC_fail")
+# --- 1. Robust Mapping via Case Statement ---
+case $SLURM_ARRAY_TASK_ID in
+    0) current_name="All_pass";       current_input="$Output/6.1_intersection_data/all_pass" ;;
+    1) current_name="All_fail";       current_input="$Output/6.1_intersection_data/all_fail" ;;
+    2) current_name="S3_Clades_pass"; current_input="$Output/3.3_loci_filtered_by_known_clades/pass_0.05" ;;
+    3) current_name="S3_Clades_fail"; current_input="$Output/3.3_loci_filtered_by_known_clades/fail_0.05" ;;
+    4) current_name="S4_BLC_pass";    current_input="$Output/4.2_BLC_filtered/pass_loci" ;;
+    5) current_name="S4_BLC_fail";    current_input="$Output/4.2_BLC_filtered/fail_loci" ;;
+esac
 
-PATHS=(
-    "$Output/6.1_intersection_data/all_pass"
-    "$Output/6.1_intersection_data/all_fail"
-    "$Output/3.3_loci_filtered_by_known_clades/pass_0.05"
-    "$Output/3.3_loci_filtered_by_known_clades/fail_0.05"
-    "$Output/4.2_BLC_filtered/pass_loci"
-    "$Output/4.2_BLC_filtered/fail_loci"
-)
+WORK_DIR="$Output/6.2_subset_trees/$current_name"
 
-# --- 2. Select the specific group and path for this Task ID ---
-NAME=${GROUPS[$SLURM_ARRAY_TASK_ID]}
-INPUT_DIR=${PATHS[$SLURM_ARRAY_TASK_ID]}
-WORK_DIR="$Output/6.2_subset_trees/$NAME"
+# --- 2. Enhanced Safety Check ---
+if [ -z "$current_name" ]; then
+    echo "ERROR: current_name is empty for Task ID $SLURM_ARRAY_TASK_ID"
+    exit 1
+fi
 
-# --- 3. Safety Check ---
-if [ ! -d "$INPUT_DIR" ] || [ -z "$(ls -A "$INPUT_DIR" 2>/dev/null)" ]; then
-    echo "ERROR: Task $SLURM_ARRAY_TASK_ID ($NAME) failed. Input directory $INPUT_DIR is missing or empty."
+if [ ! -d "$current_input" ]; then
+    echo "ERROR: Input directory $current_input not found."
     exit 1
 fi
 
 mkdir -p "$WORK_DIR"
-cd "$WORK_DIR"
+cd "$WORK_DIR" || exit
 
 module purge
 module load uri/main Python/3.7.4-GCCcore-8.3.0
 
-echo "Task ID $SLURM_ARRAY_TASK_ID: Processing $NAME from $INPUT_DIR"
+echo "Task ID $SLURM_ARRAY_TASK_ID: Processing $current_name"
 
-# 4. Run Concatenation (using the wrapper script)
-python3 "$amas_py" "$INPUT_DIR" "${SLURM_CPUS_PER_TASK}" "${AMAS}"
+# --- 3. Run AMAS with absolute pathing ---
+# We use -f fasta -d dna to ensure AMAS knows what it's looking at
+python3 "$amas_py" "$current_input" "${SLURM_CPUS_PER_TASK}" "${AMAS}" > amas_concat.log 2>&1
 
-# 5. Run IQ-TREE (GTR+F+R8 + 1000 UFBs)
+# Check if concatenation actually produced the file
+if [ ! -f "concatenated.fasta" ]; then
+    echo "ERROR: AMAS failed to create concatenated.fasta in $WORK_DIR"
+    cat amas_concat.log
+    exit 1
+fi
+
+# --- 4. Run IQ-TREE ---
 "$IQTREE" -s concatenated.fasta \
           -m GTR+F+R8 \
           -nt "${SLURM_CPUS_PER_TASK}" \
-          -pre "${NAME}_tree" \
+          -pre "${current_name}_tree" \
           -bb 1000 \
           -redo
 
-echo "Task $NAME complete. Results in $WORK_DIR"
+echo "Task $current_name complete."
 #---------------------------------
 sbatch 6.2_infer_subset_trees.sh
-Submitted batch job 50869238
-sacct -j 50869238 -o JobID,ExitCode,Elapsed,MaxRSS
-
+Submitted batch job 50881077
+sacct -j 50881077 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50881077_0        0:0   00:34:11
+50881077_0.+      0:0   00:34:11   5558464K
+50881077_0.+      0:0   00:34:12
+50881077_1        0:0   00:01:53
+50881077_1.+      0:0   00:01:53    357480K
+50881077_1.+      0:0   00:01:53
+50881077_2        0:0   01:07:19
+50881077_2.+      0:0   01:07:19   6806436K
+50881077_2.+      0:0   01:07:19
+50881077_3        0:0   03:09:56
+50881077_3.+      0:0   03:09:56  13829628K
+50881077_3.+      0:0   03:09:56
+50881077_4        0:0   04:33:14
+50881077_4.+      0:0   04:33:14  18939944K
+50881077_4.+      0:0   04:33:14
+50881077_5        0:0   00:12:30
+50881077_5.+      0:0   00:12:30   1644908K
+50881077_5.+      0:0   00:12:30
 
 feat: parallelize comparative tree inference via Job Array (Step 6.2)
 
@@ -3289,3 +3325,317 @@ feat: parallelize comparative tree inference via Job Array (Step 6.2)
 - Standardized inference with GTR+F+R8 and 1000 UFBs for all subsets.
 - Included directory existence and content validation to ensure script robustness.
 - Integrated AMAS batch concatenation wrapper to handle large locus counts.
+
+6.3
+
+Step 6.3: Ultrametric Tree Transformation
+Purpose: The goal of this step is to transform the "raw" phylograms (where branch lengths represent the number of substitutions per site) inferred in Step 6.2 into ultrametric trees (where all tips are equidistant from the root).
+This standardization is necessary for a fair topological and branch-length comparison against the original simulation backbone, which was also ultrametric.
+Methods:
+Rooting: Trees are rooted using a pre-defined outgroup string consistent with the empirical tree rooting performed in Step 1.1. This ensures that the orientation of the clades is identical across all experimental subsets.
+Transformation: The script utilizes the chronos function from the ape package, which applies a penalized likelihood approach to estimate relative divergence times.
+Output Management: The workflow uses a "flat" directory structure in a centralized output folder (6.3_ultrametric_trees), simplifying the downstream automation for accuracy calculations.
+Key Features:
+Label Preservation: Unlike the simulation prep in Step 1.1, this step retains the species names (tip labels) in the Newick strings. This allows the accuracy script to match taxa between the "Truth" and "Test" trees automatically.
+Batch Processing: A Bash loop iterates through the six subset groups (All_pass, All_fail, etc.) and the unfiltered baseline, ensuring a consistent transformation parameters across the entire study.
+Research Logic: By converting all inferred trees to an ultrametric format, we remove the "noise" of varying substitution rates across the tree. This isolates the topology and the relative timing of nodes, allowing Step 6.4 to calculate a precise Robinson-Foulds distance. It ensures that any detected error is truly due to incorrect clade placement rather than differences in how IQ-TREE and SimPhy handle branch length scaling.
+
+/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees
+
+nano make_ultrametric.R
+#---------------------------------
+#!/usr/bin/env Rscript
+library(ape)
+library(geiger)
+
+# Arguments: [1] input_tree [2] output_tree [3] outgroup_string
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) < 3) {
+  stop("Usage: Rscript make_ultrametric.R <input_tree> <output_tree> <outgroup_taxa_comma_sep>")
+}
+
+input_path  <- args[1]
+output_path <- args[2]
+outgroup    <- args[3]
+
+# 1. Load Tree
+tree <- read.tree(input_path)
+
+# 2. Root Tree
+outgroup_taxa <- unlist(strsplit(outgroup, ","))
+if (!all(outgroup_taxa %in% tree$tip.label)) {
+    missing <- setdiff(outgroup_taxa, tree$tip.label)
+    stop(paste("Outgroup taxa missing from tree:", paste(missing, collapse=", ")))
+}
+
+outgroup_node <- getMRCA(phy = tree, tip = outgroup_taxa)
+tree <- root(tree, node = outgroup_node, resolve.root = TRUE)
+
+# 3. Transform to Ultrametric
+# chronos uses penalized likelihood to make the tree ultrametric
+tree_um <- chronos(tree)
+class(tree_um) <- "phylo"
+
+# 4. Write Output (keeping original tip labels)
+write.tree(tree_um, file = output_path)
+
+cat("Ultrametric transformation complete for:", basename(input_path), "\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees
+
+nano 6.3_make_ultrametric.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.3_ultrametric"
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Output="$Project/output/mammals"
+Scripts="$Project/LociSimulation/Scripts"
+Scripts6="$Scripts/6_infer_and_compare_trees"
+
+# Output directory
+OutDir="$Output/6.3_ultrametric_trees"
+mkdir -p ${OutDir}
+
+# Outgroup (same as 1.1)
+outgroup="Wallabia_bicolor,Potorous_gilbertii,Pseudochirops_corinnae,Gymnobelideus_leadbeateri,Phalanger_gymnotis,Vombatus_ursinus,Phascolarctos_cinereus,Thylacinus_cynocephalus,Sarcophilus_harrisii,Didelphis_virginiana"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Process all trees in 6.0 and 6.2 ---
+
+# 1. Process Unfiltered Baseline
+Rscript $Scripts6/make_ultrametric.R \
+    "$Output/6.0_unfiltered_tree/2000_loci_ref_tree.treefile" \
+    "$OutDir/unfiltered_ultrametric.tre" \
+    "$outgroup"
+
+# 2. Process Subset Trees from 6.2
+SubsetGroups=("All_pass" "All_fail" "S3_Clades_pass" "S3_Clades_fail" "S4_BLC_pass" "S4_BLC_fail")
+
+for TargetSubset in "${SubsetGroups[@]}"; do
+    echo "DEBUG: TargetSubset is currently: $TargetSubset"
+    # This path must match exactly where 6.2 is currently writing its output
+    INPUT_TREE="$Output/6.2_subset_trees/$TargetSubset/${TargetSubset}_tree.treefile"
+    OUTPUT_TREE="$OutDir/${TargetSubset}_ultrametric.tre"
+
+    if [ -f "$INPUT_TREE" ]; then
+        echo "Processing $TargetSubset..."
+        Rscript $Scripts6/make_ultrametric.R "$INPUT_TREE" "$OUTPUT_TREE" "$outgroup"
+    else
+        echo "Warning: $INPUT_TREE not found. Check if 6.2 has finished for this group."
+    fi
+done
+
+echo "6.3: All trees converted to ultrametric format."
+#---------------------------------
+Submitted batch job 50889424
+sacct -j 50889424 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50889424          0:0   00:00:21
+50889424.ba+      0:0   00:00:21    206020K
+50889424.ex+      0:0   00:00:21
+
+ls -lh /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_ultrametric_trees/
+
+ls -lh /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_ultrametric_trees/
+total 67K
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:57 All_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:57 All_pass_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:57 S3_Clades_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:57 S3_Clades_pass_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:58 S4_BLC_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:58 S4_BLC_pass_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  2 22:57 unfiltered_ultrametric.tre
+
+
+6.4
+Notes:
+1. for the truth tree, I want to use the ultrametric tree from 1.1:
+/scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/1.1_formatted_empirical_tree/s_tree.trees
+2. I want to compare that to all the ultrametric trees from 6.3
+3. I want to compare using Robinson Folds Distance AND Weighted Robinson Folds Distance
+
+6.4_compare_trees.sh completes the simulation loop by quantifying phylogenetic error.
+By comparing the "Inferred" trees from filtered genomic subsets against the "Known Truth" simulation backbone, we can statistically determine if specific filtering criteria (Step 3 and Step 4) successfully enrich for loci with higher phylogenetic signal and lower noise.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano compare_trees.R
+#---------------------------------
+#!/usr/bin/env Rscript
+library(ape)
+library(phangorn)
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 5) {
+  stop("Usage: Rscript compare_trees.R <truth_tree> <taxon_map> <output_csv> <test_tree1> <label1> ...")
+}
+
+truth_path <- args[1]
+map_path   <- args[2]
+out_csv    <- args[3]
+
+# 1. Load Truth Tree and Taxon Map
+truth_tree <- read.tree(truth_path)
+taxon_map  <- read.csv(map_path)
+
+# 2. Rename Truth Tree tips from numbers to names
+truth_tree$tip.label <- taxon_map$name[match(truth_tree$tip.label, taxon_map$number)]
+
+# 3. Setup Results dataframe
+results <- data.frame(Dataset = character(),
+                      RF_Distance = numeric(),
+                      Weighted_RF = numeric(),
+                      stringsAsFactors = FALSE)
+
+# 4. Iterate through test trees
+tree_args <- args[4:length(args)]
+for (i in seq(1, length(tree_args), by = 2)) {
+  tree_path <- tree_args[i]
+  label     <- tree_args[i+1]
+
+  if (file.exists(tree_path)) {
+    test_tree <- read.tree(tree_path)
+
+    # Ensure tip labels match exactly
+    test_tree <- keep.tip(test_tree, truth_tree$tip.label)
+
+    # Standard RF (Topological mismatch count)
+    rf_dist <- RF.dist(truth_tree, test_tree)
+
+    # Weighted RF (Branch length + Topology)
+    wrf_dist <- wRF.dist(truth_tree, test_tree)
+
+    results <- rbind(results, data.frame(Dataset = label,
+                                         RF_Distance = rf_dist,
+                                         Weighted_RF = wrf_dist))
+  }
+}
+
+# 5. Generate Quantitative Report Summary
+# We assume the first tree passed (index 1) is the Unfiltered Baseline
+baseline_rf  <- results$RF_Distance[1]
+baseline_wrf <- results$Weighted_RF[1]
+
+results$RF_Improvement_Pct <- round(((baseline_rf - results$RF_Distance) / baseline_rf) * 100, 2)
+results$WRF_Improvement_Pct <- round(((baseline_wrf - results$Weighted_RF) / baseline_wrf) * 100, 2)
+
+# Handle cases where baseline is 0 or NaN to avoid division by zero errors
+results[is.na(results)] <- 0
+
+# 6. Write and Print
+write.csv(results, out_csv, row.names = FALSE)
+
+cat("\n==========================================================================\n")
+cat("            PHYLOGENETIC ACCURACY QUANTITATIVE REPORT             \n")
+cat("==========================================================================\n")
+# Updated Header to include wRF_Gain%
+cat(sprintf("%-25s %-8s %-10s %-12s %-12s\n", "Dataset", "RF", "wRF", "RF_Gain%", "wRF_Gain%"))
+cat("--------------------------------------------------------------------------\n")
+for(i in 1:nrow(results)){
+  cat(sprintf("%-25s %-8.1f %-10.4f %-12.2f%% %-12.2f%%\n",
+              results$Dataset[i],
+              results$RF_Distance[i],
+              results$Weighted_RF[i],
+              results$RF_Improvement_Pct[i],
+              results$WRF_Improvement_Pct[i]))
+}
+cat("==========================================================================\n")
+cat("Note: Positive Gain% indicates higher accuracy than Unfiltered_Baseline.\n")
+cat("RF = Topology only | wRF = Topology + Branch Lengths (Divergence Times)\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.4_compare_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="RF_compare"
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=8G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# --- Variables ---
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+Output="$Project/output/mammals"
+Scripts="$Project/LociSimulation/Scripts"
+Scripts6="$Scripts/6_infer_and_compare_trees"
+
+# 1. Paths to Truth (The formatted backbone from 1.1)
+Truth="$Output/1.1_formatted_empirical_tree/s_tree.trees"
+TaxonMap="$Output/1.1_formatted_empirical_tree/taxon_map.csv"
+
+# 2. Path to the Ultrametric test trees from 6.3
+UltraDir="$Output/6.3_ultrametric_trees"
+
+# Output
+ResultsCSV="RF_WeightedRF_Results.csv"
+FinalOut="$Output/6.4_comparisons"
+mkdir -p "$FinalOut"
+cd "$FinalOut"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute Comparison ---
+Rscript "$Scripts6/compare_trees.R" "$Truth" "$TaxonMap" "$ResultsCSV" \
+    "$UltraDir/unfiltered_ultrametric.tre" "Unfiltered_Baseline" \
+    "$UltraDir/All_pass_ultrametric.tre"    "All_Pass" \
+    "$UltraDir/All_fail_ultrametric.tre"    "All_Fail" \
+    "$UltraDir/S3_Clades_pass_ultrametric.tre" "S3_Clades_Pass" \
+    "$UltraDir/S3_Clades_fail_ultrametric.tre" "S3_Clades_Fail" \
+    "$UltraDir/S4_BLC_pass_ultrametric.tre"    "S4_BLC_Pass" \
+    "$UltraDir/S4_BLC_fail_ultrametric.tre"    "S4_BLC_Fail"
+
+echo "6.4 Comparison complete. Results located in $FinalOut/$ResultsCSV"
+#---------------------------------
+sbatch 6.4_compare_trees.sh
+Submitted batch job 50889485
+sacct -j 50889485 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50889485          0:0   00:00:10
+50889485.ba+      0:0   00:00:10    210504K
+50889485.ex+      0:0   00:00:10
+
+feat: implement ultrametric transformation and multi-metric tree accuracy pipeline
+
+Changes:
+- run_amas.py: Added file-existence validation and safety exits to prevent empty concatenations.
+- 6.2_infer_subset_trees.sh: Refactored with descriptive variable names (TargetSubset) and robust case-mapping to fix task-array naming issues.
+- 6.3_make_ultrametric.sh & make_ultrametric.R: New pipeline step to root trees and transform phylograms to ultrametric chronograms using penalized likelihood (ape::chronos).
+- 6.4_compare_trees.sh & compare_trees.R: New accuracy assessment suite calculating both Robinson-Foulds (RF) and Weighted Robinson-Foulds (wRF) distances against the simulation backbone.
+
+This update completes the simulation-to-assessment loop, providing quantitative reports on topological and branch-length accuracy across all filtered genomic subsets.
