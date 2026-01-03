@@ -22,7 +22,7 @@ TaxonMap="$Output/1.1_formatted_empirical_tree/taxon_map.csv"
 UltraDir="$Output/6.3_ultrametric_trees"
 
 # Output
-ResultsCSV="RF_WeightedRF_Results.csv"
+ResultsCSV="High_Sensitivity_Accuracy_Report.csv"
 FinalOut="$Output/6.4_comparisons"
 mkdir -p "$FinalOut"
 cd "$FinalOut"
@@ -37,14 +37,32 @@ export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
 export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
 export R_LIBS=~/R-packages
 
-# --- Execute Comparison ---
-Rscript "$Scripts6/compare_trees.R" "$Truth" "$TaxonMap" "$ResultsCSV" \
-    "$UltraDir/unfiltered_ultrametric.tre" "Unfiltered_Baseline" \
-    "$UltraDir/All_pass_ultrametric.tre"    "All_Pass" \
-    "$UltraDir/All_fail_ultrametric.tre"    "All_Fail" \
-    "$UltraDir/S3_Clades_pass_ultrametric.tre" "S3_Clades_Pass" \
-    "$UltraDir/S3_Clades_fail_ultrametric.tre" "S3_Clades_Fail" \
-    "$UltraDir/S4_BLC_pass_ultrametric.tre"    "S4_BLC_Pass" \
-    "$UltraDir/S4_BLC_fail_ultrametric.tre"    "S4_BLC_Fail"
+# --- Dynamic Argument Builder ---
+CMD_ARGS=("$Truth" "$TaxonMap" "$ResultsCSV")
 
-echo "6.4 Comparison complete. Results located in $FinalOut/$ResultsCSV"
+GROUPS=(
+    "unfiltered_ultrametric.tre|Unfiltered_Baseline"
+    "All_pass_ultrametric.tre|Elite_Both_Pass"
+    "All_fail_ultrametric.tre|Noisy_Both_Fail"
+    "S3_Clades_pass_ultrametric.tre|S3_Clades_Pass"
+    "S3_Clades_fail_ultrametric.tre|S3_Clades_Fail"
+    "S4_BLC_pass_ultrametric.tre|S4_BLC_Pass"
+    "S4_BLC_fail_ultrametric.tre|S4_BLC_Fail"
+    "S3_pass_S4_fail_ultrametric.tre|S3p_S4f_Discordant"
+    "S4_pass_S3_fail_ultrametric.tre|S4p_S3f_Discordant"
+    "Fail_at_least_one_ultrametric.tre|Liberal_Filter"
+    "Pass_at_least_one_ultrametric.tre|Conservative_Filter"
+)
+
+for entry in "${GROUPS[@]}"; do
+    FILE="${entry%%|*}"
+    LABEL="${entry##*|}"
+    if [ -f "$UltraDir/$FILE" ]; then
+        CMD_ARGS+=("$UltraDir/$FILE" "$LABEL")
+    fi
+done
+
+# --- Execute Comparison ---
+Rscript "$Scripts6/compare_trees.R" "${CMD_ARGS[@]}"
+
+echo "6.4 Comparison complete. Results in $FinalOut/$ResultsCSV"
