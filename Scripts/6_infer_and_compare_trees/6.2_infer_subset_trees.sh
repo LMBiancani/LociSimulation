@@ -7,7 +7,7 @@
 #SBATCH --mem=62G
 #SBATCH -p uri-cpu
 #SBATCH --constraint=avx512
-#SBATCH --array=0-5
+#SBATCH --array=0-9
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
@@ -19,26 +19,34 @@ AMAS="/project/pi_rsschwartz_uri_edu/Biancani/Software/AMAS/amas/AMAS.py"
 amas_py="$Scripts/0_data_prep/run_amas.py"
 IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
 
-# --- 1. Robust Mapping via Case Statement ---
+# --- 1. Mapping via Case Statement ---
 case $SLURM_ARRAY_TASK_ID in
-    0) current_name="All_pass";       current_input="$Output/6.1_intersection_data/all_pass" ;;
-    1) current_name="All_fail";       current_input="$Output/6.1_intersection_data/all_fail" ;;
-    2) current_name="S3_Clades_pass"; current_input="$Output/3.3_loci_filtered_by_known_clades/pass_0.05" ;;
-    3) current_name="S3_Clades_fail"; current_input="$Output/3.3_loci_filtered_by_known_clades/fail_0.05" ;;
-    4) current_name="S4_BLC_pass";    current_input="$Output/4.2_BLC_filtered/pass_loci" ;;
-    5) current_name="S4_BLC_fail";    current_input="$Output/4.2_BLC_filtered/fail_loci" ;;
+    0) name="All_pass";          in="$Output/6.1_intersection_data/all_pass" ;;
+    1) name="All_fail";          in="$Output/6.1_intersection_data/all_fail" ;;
+    2) name="S3_Clades_pass";    in="$Output/3.3_loci_filtered_by_known_clades/pass_0.05" ;;
+    3) name="S3_Clades_fail";    in="$Output/3.3_loci_filtered_by_known_clades/fail_0.05" ;;
+    4) name="S4_BLC_pass";       in="$Output/4.2_BLC_filtered/pass_loci" ;;
+    5) name="S4_BLC_fail";       in="$Output/4.2_BLC_filtered/fail_loci" ;;
+    # New Intersection Groups
+    6) name="S3_pass_S4_fail";   in="$Output/6.1_intersection_data/S3_pass_S4_fail" ;;
+    7) name="S4_pass_S3_fail";   in="$Output/6.1_intersection_data/S4_pass_S3_fail" ;;
+    8) name="Fail_at_least_one"; in="$Output/6.1_intersection_data/fail_at_least_one" ;;
+    9) name="Pass_at_least_one"; in="$Output/6.1_intersection_data/pass_at_least_one" ;;
 esac
 
-WORK_DIR="$Output/6.2_subset_trees/$current_name"
+WORK_DIR="$Output/6.2_subset_trees/$name"
+FINAL_TREE="$WORK_DIR/${name}_tree.treefile"
 
-# --- 2. Enhanced Safety Check ---
-if [ -z "$current_name" ]; then
-    echo "ERROR: current_name is empty for Task ID $SLURM_ARRAY_TASK_ID"
-    exit 1
+# --- 2. Check for Existing Output ---
+if [ -f "$FINAL_TREE" ]; then
+    echo "Task ID $SLURM_ARRAY_TASK_ID ($name): Final tree found at $FINAL_TREE."
+    echo "Skipping to avoid re-running."
+    exit 0
 fi
 
-if [ ! -d "$current_input" ]; then
-    echo "ERROR: Input directory $current_input not found."
+# --- 3. Safety Checks ---
+if [ ! -d "$in" ]; then
+    echo "ERROR: Input directory $in not found."
     exit 1
 fi
 
@@ -48,25 +56,22 @@ cd "$WORK_DIR" || exit
 module purge
 module load uri/main Python/3.7.4-GCCcore-8.3.0
 
-echo "Task ID $SLURM_ARRAY_TASK_ID: Processing $current_name"
+echo "Task ID $SLURM_ARRAY_TASK_ID: Starting inference for $name"
 
-# --- 3. Run AMAS with absolute pathing ---
-# We use -f fasta -d dna to ensure AMAS knows what it's looking at
-python3 "$amas_py" "$current_input" "${SLURM_CPUS_PER_TASK}" "${AMAS}" > amas_concat.log 2>&1
+# --- 4. Run AMAS ---
+python3 "$amas_py" "$in" "${SLURM_CPUS_PER_TASK}" "${AMAS}" > amas_concat.log 2>&1
 
-# Check if concatenation actually produced the file
 if [ ! -f "concatenated.fasta" ]; then
     echo "ERROR: AMAS failed to create concatenated.fasta in $WORK_DIR"
-    cat amas_concat.log
     exit 1
 fi
 
-# --- 4. Run IQ-TREE ---
+# --- 5. Run IQ-TREE ---
 "$IQTREE" -s concatenated.fasta \
           -m GTR+F+R8 \
           -nt "${SLURM_CPUS_PER_TASK}" \
-          -pre "${current_name}_tree" \
+          -pre "${name}_tree" \
           -bb 1000 \
           -redo
 
-echo "Task $current_name complete."
+echo "Task $name complete."

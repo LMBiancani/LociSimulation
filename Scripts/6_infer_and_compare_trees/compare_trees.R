@@ -1,7 +1,10 @@
 #!/usr/bin/env Rscript
+# Required libraries
 library(ape)
 library(phangorn)
+library(Quartet)
 
+# Capture arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 5) {
   stop("Usage: Rscript compare_trees.R <truth_tree> <taxon_map> <output_csv> <test_tree1> <label1> ...")
@@ -19,9 +22,12 @@ taxon_map  <- read.csv(map_path)
 truth_tree$tip.label <- taxon_map$name[match(truth_tree$tip.label, taxon_map$number)]
 
 # 3. Setup Results dataframe
-results <- data.frame(Dataset = character(), 
-                      RF_Distance = numeric(), 
-                      Weighted_RF = numeric(),
+# We are adding Path_Dist and Quartet_Dist for increased sensitivity
+results <- data.frame(Dataset = character(),
+                      RF = numeric(),
+                      wRF = numeric(),
+                      Path_Dist = numeric(),
+                      Quartet_Dist = numeric(),
                       stringsAsFactors = FALSE)
 
 # 4. Iterate through test trees
@@ -29,53 +35,58 @@ tree_args <- args[4:length(args)]
 for (i in seq(1, length(tree_args), by = 2)) {
   tree_path <- tree_args[i]
   label     <- tree_args[i+1]
-  
+
   if (file.exists(tree_path)) {
     test_tree <- read.tree(tree_path)
-    
-    # Ensure tip labels match exactly
+
+    # Ensure tip labels match exactly and are pruned to match truth
     test_tree <- keep.tip(test_tree, truth_tree$tip.label)
     
-    # Standard RF (Topological mismatch count)
-    rf_dist <- RF.dist(truth_tree, test_tree)
+    # --- Metric 1: Standard RF (Topological mismatch count) ---
+    rf_val <- phangorn::RF.dist(truth_tree, test_tree)
+
+    # --- Metric 2: Weighted RF (Branch length + Topology) ---
+    wrf_val <- phangorn::wRF.dist(truth_tree, test_tree)
+
+    # --- Metric 3: Path Distance (Sensitive to relative positions) ---
+    # Measures the difference in the number of edges between all pairs of taxa.
+    path_val <- phangorn::path.dist(truth_tree, test_tree)
+
+    # --- Metric 4: Quartet Distance (Highest sensitivity) ---
+    # Calculates the number of four-taxon subtrees (quartets) that differ.
+    # QuartetStatus returns a matrix; we subtract the 's' (same) from 'N' (total).
+    q_status <- Quartet::QuartetStatus(truth_tree, test_tree)
+    quart_val <- q_status[,'N'] - q_status[,'s']
+
+    results <- rbind(results, data.frame(Dataset = label,
+                                         RF = rf_val,
+                                         wRF = wrf_val,
+                                         Path_Dist = path_val,
+                                         Quartet_Dist = quart_val))
     
-    # Weighted RF (Branch length + Topology)
-    wrf_dist <- wRF.dist(truth_tree, test_tree)
-    
-    results <- rbind(results, data.frame(Dataset = label, 
-                                         RF_Distance = rf_dist, 
-                                         Weighted_RF = wrf_dist))
+    cat("Compared:", label, "\n")
+  } else {
+    cat("Warning: File not found -", tree_path, "\n")
   }
 }
 
-# 5. Generate Quantitative Report Summary
-# We assume the first tree passed (index 1) is the Unfiltered Baseline
-baseline_rf  <- results$RF_Distance[1]
-baseline_wrf <- results$Weighted_RF[1]
-
-results$RF_Improvement_Pct <- round(((baseline_rf - results$RF_Distance) / baseline_rf) * 100, 2)
-results$WRF_Improvement_Pct <- round(((baseline_wrf - results$Weighted_RF) / baseline_wrf) * 100, 2)
-
-# Handle cases where baseline is 0 or NaN to avoid division by zero errors
-results[is.na(results)] <- 0
-
-# 6. Write and Print
+# 5. Write and Print Results
 write.csv(results, out_csv, row.names = FALSE)
 
-cat("\n==========================================================================\n")
-cat("            PHYLOGENETIC ACCURACY QUANTITATIVE REPORT             \n")
-cat("==========================================================================\n")
-# Updated Header to include wRF_Gain%
-cat(sprintf("%-25s %-8s %-10s %-12s %-12s\n", "Dataset", "RF", "wRF", "RF_Gain%", "wRF_Gain%"))
-cat("--------------------------------------------------------------------------\n")
+cat("\n====================================================================================\n")
+cat("                PHYLOGENETIC ACCURACY HIGH-SENSITIVITY REPORT                \n")
+cat("====================================================================================\n")
+cat(sprintf("%-25s %-6s %-10s %-12s %-12s\n", "Dataset", "RF", "wRF", "Path_Dist", "Quartet_Dist"))
+cat("------------------------------------------------------------------------------------\n")
 for(i in 1:nrow(results)){
-  cat(sprintf("%-25s %-8.1f %-10.4f %-12.2f%% %-12.2f%%\n", 
-              results$Dataset[i], 
-              results$RF_Distance[i], 
-              results$Weighted_RF[i],
-              results$RF_Improvement_Pct[i],
-              results$WRF_Improvement_Pct[i]))
+  cat(sprintf("%-25s %-6.1f %-10.4f %-12.2f %-12.0f\n",
+              results$Dataset[i],
+              results$RF[i],
+              results$wRF[i],
+              results$Path_Dist[i],
+              results$Quartet_Dist[i]))
 }
-cat("==========================================================================\n")
-cat("Note: Positive Gain% indicates higher accuracy than Unfiltered_Baseline.\n")
-cat("RF = Topology only | wRF = Topology + Branch Lengths (Divergence Times)\n")
+cat("====================================================================================\n")
+cat("Note: Lower values indicate higher accuracy (closer to truth).\n")
+cat("Path_Dist: Sensitive to taxon displacement | Quartet_Dist: Sensitive to local clades.\n")
+cat("====================================================================================\n")

@@ -15,7 +15,7 @@ Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 # Path to scripts directory:
 Scripts="$Project/LociSimulation/Scripts"
 # List of necessary R packages (separated by spaces)
-R_packages="igraph phangorn MASS clusterGeneration ape ggplot2 phytools geiger MultiRNG EnvStats extraDistr tidyverse castor"
+R_packages="igraph phangorn MASS clusterGeneration ape ggplot2 phytools geiger MultiRNG EnvStats extraDistr tidyverse castor Quartet"
 
 module purge
 module load uri/main
