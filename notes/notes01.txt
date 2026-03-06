@@ -3213,11 +3213,11 @@ echo "Step 6.1 Complete. Intersection datasets are ready."
 sbatch 6.1_create_intersections.sh
 Submitted batch job 50912376
 sacct -j 50912376 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-50912376          0:0   00:00:12            
-50912376.ba+      0:0   00:00:12    229748K 
-50912376.ex+      0:0   00:00:12       
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50912376          0:0   00:00:12
+50912376.ba+      0:0   00:00:12    229748K
+50912376.ex+      0:0   00:00:12
 
 output:
 ------------------------------------------------
@@ -3353,9 +3353,41 @@ echo "Task $name complete."
 #---------------------------------
 sbatch 6.2_infer_subset_trees.sh
 Submitted batch job 50912453
+sacct -j 50912453 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50912453_0        0:0   00:00:00
+50912453_0.+      0:0   00:00:00      6312K
+50912453_0.+      0:0   00:00:00
+50912453_1        0:0   00:00:00
+50912453_1.+      0:0   00:00:00      6312K
+50912453_1.+      0:0   00:00:00
+50912453_2        0:0   00:00:01
+50912453_2.+      0:0   00:00:01      5988K
+50912453_2.+      0:0   00:00:01
+50912453_3        0:0   00:00:01
+50912453_3.+      0:0   00:00:01      6420K
+50912453_3.+      0:0   00:00:01
+50912453_4        0:0   00:00:01
+50912453_4.+      0:0   00:00:01      6156K
+50912453_4.+      0:0   00:00:01
+50912453_5        0:0   00:00:00
+50912453_5.+      0:0   00:00:00      6588K
+50912453_5.+      0:0   00:00:00
+50912453_6        0:0   00:08:07
+50912453_6.+      0:0   00:08:07   1323720K
+50912453_6.+      0:0   00:08:07
+50912453_7        0:0   03:24:02
+50912453_7.+      0:0   03:24:02  13549204K
+50912453_7.+      0:0   03:24:02
+50912453_8        0:0   04:31:23
+50912453_8.+      0:0   04:31:23  15078012K
+50912453_8.+      0:0   04:31:23
+50912453_9        0:0   04:46:59
+50912453_9.+      0:0   04:46:59  20312912K
+50912453_9.+      0:0   04:46:59
 
-
-previous run (did not remove output because updated run only adds groups and will skip previously completed trees)
+previous run (updated run only adds groups and will skip previously completed trees)
 sbatch 6.2_infer_subset_trees.sh
 Submitted batch job 50881077
 sacct -j 50881077 -o JobID,ExitCode,Elapsed,MaxRSS
@@ -3403,7 +3435,7 @@ Research Logic: By converting all inferred trees to an ultrametric format, we re
 
 make_ultrametric.R is using penalized likelihood to smooth rate variation across branches, which is essential for a fair comparison against the ultrametric "Truth" tree.
 
-/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees
 
 nano make_ultrametric.R
 #---------------------------------
@@ -3497,11 +3529,11 @@ fi
 
 # 2. Updated SubsetGroups Array (Now 10 Groups)
 SubsetGroups=(
-    "All_pass" 
-    "All_fail" 
-    "S3_Clades_pass" 
-    "S3_Clades_fail" 
-    "S4_BLC_pass" 
+    "All_pass"
+    "All_fail"
+    "S3_Clades_pass"
+    "S3_Clades_fail"
+    "S4_BLC_pass"
     "S4_BLC_fail"
     "S3_pass_S4_fail"
     "S4_pass_S3_fail"
@@ -3529,13 +3561,36 @@ done
 echo "6.3: Ultrametric Transformation process complete."
 #---------------------------------
 sbatch 6.3_make_ultrametric.sh
+Submitted batch job 50922247
+sacct -j 50922247 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50922247          0:0   00:00:14
+50922247.ba+      0:0   00:00:14    204152K
+50922247.ex+      0:0   00:00:14
+
+ls -lh /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_ultrametric_trees/
+total 105K
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 All_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 All_pass_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  4 02:35 Fail_at_least_one_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  4 02:35 Pass_at_least_one_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 S3_Clades_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 S3_Clades_pass_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 S3_pass_S4_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 S4_BLC_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 S4_BLC_pass_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  4 02:35 S4_pass_S3_fail_ultrametric.tre
+-rw-rw-r-- 1 biancani_uri_edu pi_rsschwartz_uri_edu 1.9K Jan  3 20:18 unfiltered_ultrametric.tre
+
+sbatch 6.3_make_ultrametric.sh
 Submitted batch job 50913007
 sacct -j 50913007 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-50913007          0:0   00:00:20            
-50913007.ba+      0:0   00:00:20    205972K 
-50913007.ex+      0:0   00:00:20          
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+50913007          0:0   00:00:20
+50913007.ba+      0:0   00:00:20    205972K
+50913007.ex+      0:0   00:00:20
 
 ls -lh /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_ultrametric_trees/
 total 76K
@@ -3605,7 +3660,7 @@ for (i in seq(1, length(tree_args), by = 2)) {
 
     # Ensure tip labels match exactly and are pruned to match truth
     test_tree <- keep.tip(test_tree, truth_tree$tip.label)
-    
+
     # --- Metric 1: Standard RF (Topological mismatch count) ---
     rf_val <- phangorn::RF.dist(truth_tree, test_tree)
 
@@ -3627,7 +3682,7 @@ for (i in seq(1, length(tree_args), by = 2)) {
                                          wRF = wrf_val,
                                          Path_Dist = path_val,
                                          Quartet_Dist = quart_val))
-    
+
     cat("Compared:", label, "\n")
   } else {
     cat("Warning: File not found -", tree_path, "\n")
@@ -3661,7 +3716,7 @@ cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_
 nano 6.4_compare_trees.sh
 #---------------------------------
 #!/bin/bash
-#SBATCH --job-name="RF_compare"
+#SBATCH --job-name="6.4_RF_compare"
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -3673,70 +3728,103 @@ nano 6.4_compare_trees.sh
 # --- Variables ---
 Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
 Output="$Project/output/mammals"
-Scripts="$Project/LociSimulation/Scripts"
-Scripts6="$Scripts/6_infer_and_compare_trees"
+Scripts6="$Project/LociSimulation/Scripts/6_infer_and_compare_trees"
 
-# 1. Paths to Truth (The formatted backbone from 1.1)
+# 1. Paths to Truth
 Truth="$Output/1.1_formatted_empirical_tree/s_tree.trees"
 TaxonMap="$Output/1.1_formatted_empirical_tree/taxon_map.csv"
-
-# 2. Path to the Ultrametric test trees from 6.3
 UltraDir="$Output/6.3_ultrametric_trees"
-
-# Output
 ResultsCSV="High_Sensitivity_Accuracy_Report.csv"
 FinalOut="$Output/6.4_comparisons"
+
 mkdir -p "$FinalOut"
 cd "$FinalOut"
+
+# --- 2. Safety Check for Required Files ---
+echo "--- Initializing Safety Checks ---"
+if [ ! -f "$Truth" ]; then echo "ERROR: Truth tree not found at $Truth"; exit 1; fi
+if [ ! -f "$TaxonMap" ]; then echo "ERROR: Taxon map not found at $TaxonMap"; exit 1; fi
+if [ ! -d "$UltraDir" ]; then echo "ERROR: Directory $UltraDir does not exist"; exit 1; fi
 
 # --- Environment ---
 module purge
 module load uri/main
-module load foss/2024a
+# Use the toolchain that R was built with (gfbf/2023a)
 module load R/4.3.2-gfbf-2023a
 
+# Maintain your library and library-path exports
 export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
 export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
 export R_LIBS=~/R-packages
 
-# --- Dynamic Argument Builder ---
+# --- 3. Dynamic Argument Builder (Bulletproof Version) ---
 CMD_ARGS=("$Truth" "$TaxonMap" "$ResultsCSV")
+found_count=0
 
-GROUPS=(
-    "unfiltered_ultrametric.tre|Unfiltered_Baseline"
-    "All_pass_ultrametric.tre|Elite_Both_Pass"
-    "All_fail_ultrametric.tre|Noisy_Both_Fail"
-    "S3_Clades_pass_ultrametric.tre|S3_Clades_Pass"
-    "S3_Clades_fail_ultrametric.tre|S3_Clades_Fail"
-    "S4_BLC_pass_ultrametric.tre|S4_BLC_Pass"
-    "S4_BLC_fail_ultrametric.tre|S4_BLC_Fail"
-    "S3_pass_S4_fail_ultrametric.tre|S3p_S4f_Discordant"
-    "S4_pass_S3_fail_ultrametric.tre|S4p_S3f_Discordant"
-    "Fail_at_least_one_ultrametric.tre|Liberal_Filter"
-    "Pass_at_least_one_ultrametric.tre|Conservative_Filter"
+# Define filenames
+FILES=(
+    "unfiltered_ultrametric.tre"
+    "All_pass_ultrametric.tre"
+    "All_fail_ultrametric.tre"
+    "S3_Clades_pass_ultrametric.tre"
+    "S3_Clades_fail_ultrametric.tre"
+    "S4_BLC_pass_ultrametric.tre"
+    "S4_BLC_fail_ultrametric.tre"
+    "S3_pass_S4_fail_ultrametric.tre"
+    "S4_pass_S3_fail_ultrametric.tre"
+    "Fail_at_least_one_ultrametric.tre"
+    "Pass_at_least_one_ultrametric.tre"
 )
 
-for entry in "${GROUPS[@]}"; do
-    FILE="${entry%%|*}"
-    LABEL="${entry##*|}"
-    if [ -f "$UltraDir/$FILE" ]; then
-        CMD_ARGS+=("$UltraDir/$FILE" "$LABEL")
+# Define labels in the EXACT same order
+LABELS=(
+    "Unfiltered_Baseline"
+    "Elite_Both_Pass"
+    "Noisy_Both_Fail"
+    "S3_Clades_Pass"
+    "S3_Clades_Fail"
+    "S4_BLC_Pass"
+    "S4_BLC_Fail"
+    "S3p_S4f_Discordant"
+    "S4p_S3f_Discordant"
+    "Liberal_Filter"
+    "Conservative_Filter"
+)
+
+# Iterate using an index
+for i in "${!FILES[@]}"; do
+    FILE="${FILES[$i]}"
+    LABEL="${LABELS[$i]}"
+    FULL_PATH="$UltraDir/$FILE"
+
+    if [ -f "$FULL_PATH" ]; then
+        echo "Adding to comparison: $LABEL"
+        CMD_ARGS+=("$FULL_PATH" "$LABEL")
+        ((found_count++))
+    else
+        echo "MISSING: $FILE"
     fi
 done
 
-# --- Execute Comparison ---
+if [ "$found_count" -eq 0 ]; then
+    echo "FATAL ERROR: No trees found. Paths checked: $UltraDir"
+    exit 1
+fi
+
+# --- 4. Execute Comparison ---
+echo "--- Running R Comparison Script with $found_count trees ---"
 Rscript "$Scripts6/compare_trees.R" "${CMD_ARGS[@]}"
 
-echo "6.4 Comparison complete. Results in $FinalOut/$ResultsCSV"
+echo "6.4 Comparison complete."
 #---------------------------------
 sbatch 6.4_compare_trees.sh
-Submitted batch job 50889485
-sacct -j 50889485 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 50925217
+sacct -j 50925217 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-50889485          0:0   00:00:10
-50889485.ba+      0:0   00:00:10    210504K
-50889485.ex+      0:0   00:00:10
+50925217          0:0   00:00:17
+50925217.ba+      0:0   00:00:17    288792K
+50925217.ex+      0:0   00:00:17
 
 feat: implement ultrametric transformation and multi-metric tree accuracy pipeline
 
@@ -3752,8 +3840,8 @@ This update completes the simulation-to-assessment loop, providing quantitative 
 
 Updating 6.1 (above)
 Summary of Changes to 6.1_create_intersections.sh
-1. Expansion of Test Groups (from 2 to 6) 
-Originally, we only looked at the extremes (Elite and Noisy). 
+1. Expansion of Test Groups (from 2 to 6)
+Originally, we only looked at the extremes (Elite and Noisy).
 We have now expanded the logic to capture the full spectrum:
 Discordant Groups added:
 S3_pass_S4_fail (Biologically good/Statistically noisy)
@@ -3774,9 +3862,9 @@ Clean Workspace: Added a cleanup section to remove all 11 temporary text files a
 
 Updating 6.2 (above)
 Summary of Key Changes to 6.2_infer_subset_trees.sh
-1. Expansion to 10 Analytical Groups The script was scaled from 6 to 10 tasks to accommodate the new intersection categories from Step 6.1. 
+1. Expansion to 10 Analytical Groups The script was scaled from 6 to 10 tasks to accommodate the new intersection categories from Step 6.1.
 This allows us to compare single-filter results directly against complex multi-filter intersections.
-Added: 
+Added:
 S3_pass_S4_fail
 S4_pass_S3_fail
 Fail_at_least_one
@@ -3795,22 +3883,37 @@ Updating 6.3 (above)
 Summary of Key changes to 6.3:
 1. Expanded Analytical Scope: Updated the SubsetGroups array to include all 10 categories (up from 6)
 2. Resource Optimization: Reduced the memory request from to 2GB. This aligns better with the actual usage of the R environment (~206MB).
-3. Implementation of "Skip Logic": Added a nested conditional check (if [ ! -f "$OUTPUT_TREE" ]). 
+3. Implementation of "Skip Logic": Added a nested conditional check (if [ ! -f "$OUTPUT_TREE" ]).
 The script now verifies if a tree has already been converted before running the R script, preventing redundant computation.
-4. Robust Input Validation: Added an existence check for the input .treefile. 
+4. Robust Input Validation: Added an existence check for the input .treefile.
 If a group is still being processed by the 36-hour IQ-TREE array (Step 6.2), the script now issues a clear warning and moves to the next group rather than crashing.
 
 Updating 6.4 (above)
 Summary of Key changes to 6.4:
-Multi-Metric Sensitivity: We replaced the basic topological check with a "four-lens" approach. 
+Multi-Metric Sensitivity: We replaced the basic topological check with a "four-lens" approach.
 The script now calculates Standard RF (backbone), Weighted RF (divergence times), Path Distance (taxon displacement), and Quartet Distance (fine-scale sub-clades).
-Dynamic Argument Handling: We implemented a Bash-based Dynamic Argument Builder. 
+Dynamic Argument Handling: We implemented a Bash-based Dynamic Argument Builder.
 The script now automatically detects which of the 10 experimental trees are actually finished and passes only those to R, preventing job crashes if long-running IQ-TREE tasks are still in the queue.
 Enhanced Precision: Added the Quartet and phangorn libraries to the R environment to capture subtle improvements in accuracy that were previously "invisible" to the standard RF metric.
 Standardized the display labels (e.g., Elite_Both_Pass, S3p_S4f_Discordant) in the results CSV, making the output immediately ready for tables and presentation slides.
 
 refactor: modernize Step 6 pipeline for high-sensitivity analysis
-- 6.1: Expanded to 10 experimental groups using Set Theory (`comm`) for faster intersection/discordant locus sorting.
-- 6.2/6.3: Implemented "Skip Logic" (idempotency) to avoid re-running finished trees and optimized memory usage.
+
+- 6.1: Expanded to 10 experimental groups using Set Theory (comm) for faster intersection/discordant locus sorting.
+- 6.2/6.3: Implemented Skip Logic (idempotency) to avoid re-running finished trees and optimized memory usage.
 - 6.4: Upgraded accuracy metrics to include Path and Quartet distances for increased sensitivity to local topological changes.
 - Pipeline: Added dynamic argument handling to allow 6.4 to run on partially completed tree sets.
+
+Fixing Error in 6.4:
+refactor(pipeline): implement bulletproof array logic for 6.4 comparison
+- Resolved Bash string-parsing errors (Process IDs appearing in logs) by replacing
+  pipe-separated strings with two synchronized indexed arrays (FILES and LABELS).
+- Switched from 'read' subshells to internal Bash index mapping for argument building.
+- Hardened environmental loads with 'module purge' to prevent toolchain conflicts.
+- Verified final output for High-Sensitivity Accuracy Report including
+  Quartet and Path distances.
+
+Module 7: SCFs
+mkdir -p /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_calc_sCF/
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_calc_sCF/
