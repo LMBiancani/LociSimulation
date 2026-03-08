@@ -2,7 +2,7 @@
 """
 run_amas.py
 ------------
-Concatenates FASTA alignments in batches using AMAS (to avoid overloading AMAS input limitations).
+Concatenates FASTA alignments using AMAS (in batches of 1000 to avoid overloading AMAS input limitations).
 Creates a concatenated alignment file and a corresponding partition file:
 concatenated.fasta
 partitions.txt
@@ -10,11 +10,12 @@ partitions.txt
 Usage:
     python run_amas.py <fasta_folder> <num_cores> <path_to_AMAS.py>
 """
-
 import sys
 import glob
 import subprocess
 import os
+
+batch_size = 1000
 
 # --- Input arguments ---
 fasta_folder = sys.argv[1]
@@ -29,7 +30,6 @@ if not files:
     print(f"ERROR: No .fasta or .fas files found in {fasta_folder}")
     sys.exit(1)
 
-batch_size = 1000
 batch_outputs = []
 batch_parts = []
 
