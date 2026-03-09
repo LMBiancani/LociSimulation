@@ -9,28 +9,25 @@
 #SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
 #SBATCH --mail-type=ALL
 
-# --- Variables ---
-# Path to project directory:
-Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
-# Path to output directory
-Output="$Project/output/mammals"
-# Path to IQTREE executable:
-IQTREE="/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
-# Path to output files from 0.0_amas_concat.sh
-Input="$Output/0.0_concatenated"
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
 # Number of cpus per task:
 Threads=${SLURM_CPUS_PER_TASK}
 
 module purge
 
 date
-mkdir -p ${Output}/0.1_empirical_tree
-cd ${Output}/0.1_empirical_tree
+mkdir -p $out0_1
+cd $out0_1
 
 # --- Check for input files produced by 0.0_amas_concat.sh---
 
-if [[ ! -f "$Input/concatenated.fasta" || ! -f "$Input/partitions.txt" ]]; then
-    echo "Error: concatenated.fasta or partitions.txt not found in ${Input}"
+if [[ ! -f "$out0_0/concatenated.fasta" || ! -f "$out0_0/partitions.txt" ]]; then
+    echo "Error: concatenated.fasta or partitions.txt not found in ${out0_0}"
     exit 1
 fi
 
@@ -43,9 +40,9 @@ fi
 #   -bb: ultrafast bootstrap replicates
 #   -alrt: SH-like approximate likelihood test replicates
 
-${IQTREE} -nt ${Threads} \
-    -s $Input/concatenated.fasta \
-    -spp $Input/partitions.txt \
+${IQTREE} -nt AUTO -ntmax ${Threads} \
+    -s "$out0_0/concatenated.fasta" \
+    -spp "$out0_0/partitions.txt" \
     -pre inferenceEmpirical \
     -m MFP -bb 1000 -alrt 1000
 
