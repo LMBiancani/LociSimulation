@@ -1,3 +1,9 @@
+# ==============================================================================
+# Script: install.packages.R
+# Description: Automated CRAN package installer and loader for CLI environments.
+# Usage: Rscript install.packages.R pkg1 pkg2 pkg3
+# ==============================================================================
+
 # Capture command-line arguments (package names to check and install)
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -5,7 +11,6 @@ if (length(args) == 0) {
   stop("Error: No package names provided as arguments. Exiting.", call. = FALSE)
 }
 
-# The packages to install are now in the 'args' vector
 packages_to_install <- args
 
 # Function to check, install, and load packages

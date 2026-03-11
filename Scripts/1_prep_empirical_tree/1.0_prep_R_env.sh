@@ -1,21 +1,19 @@
 #!/bin/bash
 #SBATCH --job-name="R_pkgs"
-#SBATCH --time=72:00:00                # Walltime limit (HH:MM:SS)
+#SBATCH --time=8:00:00                 # Walltime limit (HH:MM:SS)
 #SBATCH --nodes=1                      # Number of nodes
 #SBATCH --ntasks=1                     # Total number of tasks (processes)
-#SBATCH --cpus-per-task=1              # Number of CPU cores per task
-#SBATCH --mem-per-cpu=6G               # Memory per cpu
+#SBATCH --cpus-per-task=4              # Number of CPU cores per task
+#SBATCH --mem-per-cpu=16G              # Memory per cpu
 #SBATCH --mail-user="biancani@uri.edu" # CHANGE TO user email address
 #SBATCH --mail-type=ALL
 #SBATCH -p uri-cpu                     # Partition/queue to submit job to
 
-# --- Variables ---
-# Path to project directory:
-Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
-# Path to scripts directory:
-Scripts="$Project/LociSimulation/Scripts"
-# List of necessary R packages (separated by spaces)
-R_packages="igraph phangorn MASS clusterGeneration ape ggplot2 phytools geiger MultiRNG EnvStats extraDistr tidyverse castor Quartet"
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
 
 module purge
 module load uri/main
@@ -30,10 +28,10 @@ export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
 ## Install R packages
 
 # add local space for R packages (won't ask about install location):
-mkdir -p ~/R-packages
-export R_LIBS=~/R-packages
+mkdir -p ${R_package_DIR}
+export R_LIBS=${R_package_DIR}
 
 # install R packages
-Rscript ${Scripts}/1_prep_empirical_tree/install.packages.R $R_packages
+Rscript ${SCRIPTS}/1_prep_empirical_tree/install.packages.R $R_packages
 
 date
