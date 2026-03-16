@@ -576,7 +576,7 @@ nano generate_sim_properties.R
 #              containing evolutionary parameters for simulated loci.
 #              Simulates biological realism including substitution rates (ABL),
 #              heterotachy (VBL), ILS (Ne), and complex data loss patterns.
-# Usage: Rscript generate_sim_properties.R <treefile> <Ne> <mod_script> <seed> <n_loci>
+# Usage: Rscript generate_sim_properties.R <22 parameters>
 # ==============================================================================
 # --- 1. Capture Command Line Arguments ---
 # Arguments must be passed in the following order:
@@ -595,7 +595,7 @@ nano generate_sim_properties.R
 # [12] VBLmin          (minimum Variance in Branch Length (VBL) - models heterotachy)
 # [13] VBLmax          (maximum Variance in Branch Length (VBL) - models heterotachy)
 # [14] MissTaxa        (maximum proportion of missing taxa per locus)
-# [15] PartTaxa        (proportion of non-missing taxa exhibiting partial data loss per locus)
+# [15] PartLoss        (proportion of non-missing taxa exhibiting partial data loss per locus)
 # [16] MissPropMIN     (minimum proportion of locus sequence removed (for taxa exhibiting partial loss))
 # [17] MissPropMAX     (maximum proportion of locus sequence removed (for taxa exhibiting partial loss))
 # [18] PropCoding      (proportion of loci to be protein coding - CODON model (vs. NUCLEOTIDE))
@@ -609,7 +609,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 # Check if the correct number of arguments was provided
 if (length(args) < 22) {
-  stop("Error: Missing arguments. Expected: [1] treefile [2] mod_write_tree2 [3] random_seed [4] n_loci [5] Ne [6] ABLmin [7] Ablmax [8] LLmin [9] LLmax [10] lambdaPSmin [11] lambdaPSmax [12] VBLmin [13] VBLmax [14] MissTaxa [15] PartTaxa [16] MissPropMIN [17] MissPropMAX [18] PropCoding [19] NoParalogy [20] ParalogyIntensity [21] NoContaminant [22] ContaminantIntensity", call. = FALSE)
+  stop("Error: Missing arguments. Expected: [1] treefile [2] mod_write_tree2 [3] random_seed [4] n_loci [5] Ne [6] ABLmin [7] ABLmax [8] LLmin [9] LLmax [10] lambdaPSmin [11] lambdaPSmax [12] VBLmin [13] VBLmax [14] MissTaxa [15] PartLoss [16] MissPropMIN [17] MissPropMAX [18] PropCoding [19] NoParalogy [20] ParalogyIntensity [21] NoContaminant [22] ContaminantIntensity", call. = FALSE)
 }
 
 # Assign arguments to variables
@@ -627,7 +627,7 @@ lambdaPSmax     <- as.numeric(args[11])
 VBLmin          <- as.numeric(args[12])
 VBLmax          <- as.numeric(args[13])
 MissTaxa        <- as.numeric(args[14])
-PartTaxa        <- as.numeric(args[15])
+PartLoss        <- as.numeric(args[15])
 MissPropMIN     <- as.numeric(args[16])
 MissPropMAX     <- as.numeric(args[17])
 PropCoding      <- as.numeric(args[18])
@@ -718,7 +718,7 @@ df$remaining_taxa <- remaining_taxa
 df$taxa_missing <- taxa_missing
 
 # Partially missing segments within remaining taxa
-taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x, round(length(x)*PartTaxa)))
+taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x, round(length(x)*PartLoss)))
 df$taxa_missing_segments <- taxa_missing_segments
 df$missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x), MissPropMIN, MissPropMAX), 3))
 df$missing_segments_bias <- lapply(taxa_missing_segments, function(x) round(runif(length(x), 0, 1), 2))
@@ -752,10 +752,87 @@ write.csv(df_out, "df.csv", row.names = FALSE)
 #---------------------------------
 
 git commit message:
-refactor: replace hardcoded params with CLI arguments
+refactor: generate_sim_properties.R - replace hardcoded params with CLI arguments
 Transitioned all simulation parameters to a CLI argument system
 Implemented weighted probability for protein-coding status
 Scaled paralogy and contamination intensity to taxon count
 Fixed contamination math to account for pair-wise swaps
 Added pmax(1, ...) safeguards for Poisson error events
 Enforced numeric data types for all incoming R arguments
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.0_prep_simphy.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="prep_simphy"
+#SBATCH --time=00:20:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+#SBATCH -p uri-cpu
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=2G
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Module Management ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+# --- Critical Environment Fixes ---
+# 1. Fix for the C++ library (GLIBCXX) errors
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+
+# 2. Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- generate_sim_properties.R ---
+
+# create output subdirectory:
+mkdir -p $out2_0
+cd $out2_0
+
+# loop through random number $seeds and generate a set of simulation properties for each seed:
+
+sets=$(echo $seeds | wc -w)
+echo "Generating simulation properties for $sets set(s) of $nloci loci"
+for random_seed in $seeds;
+  do
+  echo "Generating simulation properties for random seed: $random_seed";
+  set_dir="set_$random_seed"
+  mkdir -p "$set_dir"
+  cd "$set_dir" || exit # Exit if directory change fails
+  Rscript $GSP $input2_0 $mod_write_tree2 $random_seed $nloci $Ne $ABLmin $ABLmax $LLmin $LLmax $lambdaPSmin $lambdaPSmax $VBLmin $VBLmax $MissTaxa $PartLoss $MissPropMIN $MissPropMAX $PropCoding $NoParalogy $ParalogyIntensity $NoContaminant $ContaminantIntensity
+  cd .. 
+  echo "Simulation properties for $set_dir have been generated."
+  done
+
+date
+#---------------------------------
+sbatch 2.0_prep_simphy.sh
+Submitted batch job 53693684
+sacct -j 53693684 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53693684          0:0   00:00:36            
+53693684.ba+      0:0   00:00:36    283284K 
+53693684.ex+      0:0   00:00:36     
+
+git commit message: 
+feat: refactor 2.0_prep_simphy.sh to support multi-seed loops and centralized variables
+Replaced local variable definitions with centralized variables.sh sourcing
+Implemented a for loop to iterate through multiple random number seeds (generating multiple simulation sets)
+Added automated subdirectory creation (set_dir) for each simulation set
+Updated Rscript call to pass all 22 evolutionary and error parameters
+Enhanced directory safety with cd exit checks and mkdir -p
+Cleaned up variable naming for consistency with downstream scripts
+Fixed variable errors in generate_sim_properties.R

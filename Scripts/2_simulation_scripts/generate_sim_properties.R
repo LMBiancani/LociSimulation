@@ -4,7 +4,7 @@
 #              containing evolutionary parameters for simulated loci.
 #              Simulates biological realism including substitution rates (ABL),
 #              heterotachy (VBL), ILS (Ne), and complex data loss patterns.
-# Usage: Rscript generate_sim_properties.R <treefile> <Ne> <mod_script> <seed> <n_loci>
+# Usage: Rscript generate_sim_properties.R <22 parameters>
 # ==============================================================================
 # --- 1. Capture Command Line Arguments ---
 # Arguments must be passed in the following order:
@@ -23,7 +23,7 @@
 # [12] VBLmin          (minimum Variance in Branch Length (VBL) - models heterotachy)
 # [13] VBLmax          (maximum Variance in Branch Length (VBL) - models heterotachy)
 # [14] MissTaxa        (maximum proportion of missing taxa per locus)
-# [15] PartTaxa        (proportion of non-missing taxa exhibiting partial data loss per locus)
+# [15] PartLoss        (proportion of non-missing taxa exhibiting partial data loss per locus)
 # [16] MissPropMIN     (minimum proportion of locus sequence removed (for taxa exhibiting partial loss))
 # [17] MissPropMAX     (maximum proportion of locus sequence removed (for taxa exhibiting partial loss))
 # [18] PropCoding      (proportion of loci to be protein coding - CODON model (vs. NUCLEOTIDE))
@@ -37,7 +37,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 # Check if the correct number of arguments was provided
 if (length(args) < 22) {
-  stop("Error: Missing arguments. Expected: [1] treefile [2] mod_write_tree2 [3] random_seed [4] n_loci [5] Ne [6] ABLmin [7] Ablmax [8] LLmin [9] LLmax [10] lambdaPSmin [11] lambdaPSmax [12] VBLmin [13] VBLmax [14] MissTaxa [15] PartTaxa [16] MissPropMIN [17] MissPropMAX [18] PropCoding [19] NoParalogy [20] ParalogyIntensity [21] NoContaminant [22] ContaminantIntensity", call. = FALSE)
+  stop("Error: Missing arguments. Expected: [1] treefile [2] mod_write_tree2 [3] random_seed [4] n_loci [5] Ne [6] ABLmin [7] ABLmax [8] LLmin [9] LLmax [10] lambdaPSmin [11] lambdaPSmax [12] VBLmin [13] VBLmax [14] MissTaxa [15] PartLoss [16] MissPropMIN [17] MissPropMAX [18] PropCoding [19] NoParalogy [20] ParalogyIntensity [21] NoContaminant [22] ContaminantIntensity", call. = FALSE)
 }
 
 # Assign arguments to variables
@@ -55,7 +55,7 @@ lambdaPSmax     <- as.numeric(args[11])
 VBLmin          <- as.numeric(args[12])
 VBLmax          <- as.numeric(args[13])
 MissTaxa        <- as.numeric(args[14])
-PartTaxa        <- as.numeric(args[15])
+PartLoss        <- as.numeric(args[15])
 MissPropMIN     <- as.numeric(args[16])
 MissPropMAX     <- as.numeric(args[17])
 PropCoding      <- as.numeric(args[18])
@@ -146,7 +146,7 @@ df$remaining_taxa <- remaining_taxa
 df$taxa_missing <- taxa_missing
 
 # Partially missing segments within remaining taxa
-taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x, round(length(x)*PartTaxa)))
+taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x, round(length(x)*PartLoss)))
 df$taxa_missing_segments <- taxa_missing_segments
 df$missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x), MissPropMIN, MissPropMAX), 3))
 df$missing_segments_bias <- lapply(taxa_missing_segments, function(x) round(runif(length(x), 0, 1), 2))
