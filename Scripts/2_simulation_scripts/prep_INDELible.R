@@ -9,15 +9,15 @@ library(tidyverse)
 
 # --- 1. Capture Arguments ---
 args = commandArgs(trailingOnly=TRUE)
-gene_trees_path <- args[1]
-df_path         <- args[2]
-out_dir         <- args[3]
-script_dir      <- args[4] # This is the $Scripts/2_simulation_scripts path
+gene_trees_path   <- args[1]
+df_path           <- args[2]
+out_dir           <- args[3]
+mod_write_tree2   <- args[4]
+modify_gene_tree  <- args[5]
 
 # --- 2. Dynamic Sourcing ---
-# Use file.path for cross-platform compatibility
-source(file.path(script_dir, "modified.write.tree2.R"))
-source(file.path(script_dir, "modify_gene_tree.R"))
+source(mod_write_tree2)
+source(modify_gene_tree)
 
 # Apply the custom tree-writing function to the ape namespace
 assignInNamespace(".write.tree2", .write.tree2, "ape")

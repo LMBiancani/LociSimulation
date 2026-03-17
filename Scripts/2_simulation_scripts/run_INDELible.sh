@@ -10,19 +10,23 @@
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
-# --- Variables ---
-Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
-Scripts="$Project/LociSimulation/Scripts"
-Output="$Project/output/mammals"
-# Path to INDELible executable
-indel_exe="/project/pi_rsschwartz_uri_edu/Biancani/Software/indelible/src/indelible"
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
 
-# Input from 2.0 and 2.2
-tree_file="$Output/2.2_simulated_loci/gene_trees.tre"
-df_file="$Output/2.0_simphy_prep/df.csv"
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input from 2.2:
+tree_file="$out2_2/$dir_name/gene_trees.tre"
+# Input from 2.0
+df_file="$out2_0/$dir_name/df.csv"
 
 # Output subdirectory:
-indel_dir="$Output/2.3_indelible"
+indel_dir="$out2_3/$dir_name"
 mkdir -p "$indel_dir"
 
 # --- Environment Setup ---
@@ -40,12 +44,13 @@ export R_LIBS=~/R-packages
 # --- 1. Prep Control Files ---
 # Ensure your R script creates 'control_1.txt' through 'control_2000.txt' in $indel_dir
 echo "Generating 2,000 INDELible control files..."
-# Passing: [1]tree_file [2]df_file [3]output_dir [4]sim_script_dir
-Rscript "$Scripts/2_simulation_scripts/prep_INDELible.R" \
+# Passing: [1]tree_file [2]df_file [3]output_dir [4]mod_write_tree2 [5]modify_gene_tree
+Rscript "$prepIND" \
     "$tree_file" \
     "$df_file" \
     "$indel_dir" \
-    "$Scripts/2_simulation_scripts"
+    "$mod_write_tree2" \
+    "$modify_gene_tree"
 
 # --- 2. Parallel Execution ---
 echo "Running INDELible in parallel across $SLURM_CPUS_PER_TASK cores..."
@@ -62,6 +67,6 @@ parallel --jobs $SLURM_CPUS_PER_TASK < indelible_tasks.txt
 
 # --- 3. Post-Processing ---
 echo "Running post-simulation sequence modification..."
-Rscript "$Scripts/2_simulation_scripts/post_INDELible.R" "$indel_dir" "$df_file"
+Rscript "$postIND" "$indel_dir" "$df_file"
 
 date

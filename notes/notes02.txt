@@ -992,11 +992,11 @@ done
 sbatch 2.2_submit_sim_jobs.sh
 Submitted batch job 53703017
 sacct -j 53703017 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53703017          0:0   00:00:00            
-53703017.ba+      0:0   00:00:00      5560K 
-53703017.ex+      0:0   00:00:00  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53703017          0:0   00:00:00
+53703017.ba+      0:0   00:00:00      5560K
+53703017.ex+      0:0   00:00:00
 
 Submitting simulation job for random seed: 12345
 Submitted batch job 53703018
@@ -1159,47 +1159,47 @@ date
 Submitting simulation job for random seed: 12345
 Submitted batch job 53703018
 sacct -j 53703018 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53703018          0:0   00:00:37            
-53703018.ba+      0:0   00:00:37    196232K 
-53703018.ex+      0:0   00:00:37        
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53703018          0:0   00:00:37
+53703018.ba+      0:0   00:00:37    196232K
+53703018.ex+      0:0   00:00:37
 
 Submitting simulation job for random seed: 67890
 Submitted batch job 53703019
 sacct -j 53703019 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53703019          0:0   00:00:35            
-53703019.ba+      0:0   00:00:35    191412K 
-53703019.ex+      0:0   00:00:35         
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53703019          0:0   00:00:35
+53703019.ba+      0:0   00:00:35    191412K
+53703019.ex+      0:0   00:00:35
 
 Submitting simulation job for random seed: 23456
 Submitted batch job 53703020
 sacct -j 53703020 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53703020          0:0   00:00:38            
-53703020.ba+      0:0   00:00:38    199664K 
-53703020.ex+      0:0   00:00:38     
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53703020          0:0   00:00:38
+53703020.ba+      0:0   00:00:38    199664K
+53703020.ex+      0:0   00:00:38
 
 Submitting simulation job for random seed: 78901
 Submitted batch job 53703021
 sacct -j 53703021 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53703021          0:0   00:00:37            
-53703021.ba+      0:0   00:00:37    167440K 
-53703021.ex+      0:0   00:00:37    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53703021          0:0   00:00:37
+53703021.ba+      0:0   00:00:37    167440K
+53703021.ex+      0:0   00:00:37
 
 Submitting simulation job for random seed: 34567
 Submitted batch job 53703022
 sacct -j 53703022 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53703022          0:0   00:00:23            
-53703022.ba+      0:0   00:00:23    148548K 
-53703022.ex+      0:0   00:00:23  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53703022          0:0   00:00:23
+53703022.ba+      0:0   00:00:23    148548K
+53703022.ex+      0:0   00:00:23
 
 Git Commit Message:
 feat: refactor 2.2 for automation of multiple simulation sets
@@ -1208,3 +1208,529 @@ Added sleep 10 safeguard to prevent filesystem metadata lag during verification
 Increased MAX_RETRIES to 5 and doubled memory allocation to 16GB
 Suppressed parallel terminal warnings with --no-notice
 Improved directory logic to support nested set_$seed output structures
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano prep_INDELible.R
+#---------------------------------
+library(ape)
+library(geiger)
+library(extraDistr)
+library(MultiRNG)
+library(EnvStats)
+library(castor)
+library(phangorn)
+library(tidyverse)
+
+# --- 1. Capture Arguments ---
+args = commandArgs(trailingOnly=TRUE)
+gene_trees_path   <- args[1]
+df_path           <- args[2]
+out_dir           <- args[3]
+mod_write_tree2   <- args[4]
+modify_gene_tree  <- args[5]
+
+# --- 2. Dynamic Sourcing ---
+source(mod_write_tree2)
+source(modify_gene_tree)
+
+# Apply the custom tree-writing function to the ape namespace
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+options(scipen = 999)
+
+# --- 3. Data Loading ---
+gene_trees <- read.tree(gene_trees_path)
+df <- read.csv(df_path)
+nloci <- length(df[,1])
+
+# --- 4. Main Processing Loop ---
+# We loop through each locus and create a UNIQUE control file for it
+df2_list <- list()
+
+for (f in 1:nloci) {
+  # Define the specific control file for this locus
+  locus_control <- file.path(out_dir, paste0("control_", f, ".txt"))
+
+  # Set seed for model parameters
+  set.seed(df$modelseed[f])
+
+  # --- Model Block Initialization ---
+  if (df$proteinCoding[f] == "TRUE") {
+    write("[TYPE] CODON 1", file=locus_control)
+    write("[SETTINGS]", file=locus_control, append=T)
+    write(paste("\t[randomseed]", df$seed2[f]), file=locus_control, append=T)
+  } else {
+    write("[TYPE] NUCLEOTIDE 1", file=locus_control)
+    write("[SETTINGS]", file=locus_control, append=T)
+    write(paste("\t[randomseed]", df$seed2[f]), file=locus_control, append=T)
+  }
+
+  # --- Tree Modification Logic (Paralogs/Shifts) ---
+  # (Keeping your original logic for modifying the tree structure)
+  new_tree <- modify_tree(gene_trees[[f]], df$lambdaPS[f], df$paralog_taxa[f], df$paralog_branch_mod[f])
+  new_tree2 <- new_tree
+  new_tree2$node.label <- rep("", new_tree2$Nnode)
+
+  # Model shift logic...
+  edges0 <- new_tree$edge.length
+  names(edges0) <- 1:length(edges0)
+  edges1 <- sort(edges0, decreasing = T)
+  edges2 <- edges1[which(cumsum(edges1)<sum(edges1)/4)]
+  edges3 <- as.numeric(names(edges2))
+  nEdges <- rtpois(1, 0.5, -1,length(edges3))
+  edges4 <- sample(edges3,nEdges)
+
+  modelnames <- c()
+  traversal <- get_tree_traversal_root_to_tips(new_tree2, T)
+
+  for (x in traversal$queue){
+    if (Ancestors(new_tree2,x,'parent') == 0) {
+      current_model <- paste0("#mRoot")
+      modelnames <- c(modelnames, current_model)
+      new_tree2$node.label[x-length(new_tree2$tip.label)] <- current_model
+    } else {
+      current_branch <- which(new_tree2$edge[,2]==x)
+      parent_model <- new_tree2$node.label[Ancestors(new_tree2,x,'parent')-length(new_tree2$tip.label)]
+      if (current_branch %in% edges4) {
+        current_model <- paste0("#m", x)
+        modelnames <- c(modelnames, current_model)
+      } else {
+        if (current_model != parent_model) { current_model <- parent_model }
+      }
+      if (x <= length(new_tree2$tip.label)) {
+        new_tree2$tip.label[x] <- paste0(new_tree2$tip.label[x], current_model)
+      } else {
+        new_tree2$node.label[x-length(new_tree2$tip.label)] <- current_model
+      }
+    }
+  }
+
+  # --- Write MODEL definitions to the file ---
+  clean_modelnames <- gsub('#','', modelnames)
+
+  if (df$proteinCoding[f] == "TRUE") {
+    # Codon Model Parameters...
+    pInv <- round(runif(1,0,0.25),3); pNeutral <- round(runif(1,0,1-pInv),3)
+    for (m in clean_modelnames) {
+      basefreqs <- draw.dirichlet(1,61,rep(10,61),1)[1,]
+      basefreqs <- c(basefreqs[1:10], 0, 0, basefreqs[11:12], 0, basefreqs[13:61])
+      kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
+      omegaSelect <- round(runif(1,0,3),3)
+
+      write(paste("[MODEL]", m), file=locus_control, append=T)
+      write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")), file=locus_control, append=T)
+      write(paste("\t[submodel]", paste(kappa, pInv, pNeutral, 0, 1, omegaSelect, collapse=" ")), file=locus_control, append=T)
+      write(paste("\t[indelmodel] POW", round(runif(1,1.5,2),3), "10"), file=locus_control, append=T)
+      write(paste("\t[indelrate]", round(runif(1,0.001,0.002),5)), file=locus_control, append=T)
+    }
+    } else {
+      # Nucleotide Model Parameters...
+      pInv <- round(runif(1,0,0.25),5)
+      ngamcat <- sample(c(0,1),1)
+      alpha <- if(ngamcat==0) round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5) else 0
+
+      for (m in clean_modelnames) {
+        modelType <- sample(c("GTR", "SYM", "TVM", "TVMef", "TIM", "TIMef", "K81uf", "K81", "TrN", "TrNef", "HKY", "K80", "F81", "JC"),1)
+        paramvector <- get_param_vector(modelType)
+
+        # Determine base frequencies for specific models
+        basefreqs <- NA
+        if (modelType %in% c("GTR", "TVM", "TIM", "K81uf", "TrN", "HKY", "F81")) {
+          basefreqs <- draw.dirichlet(1,4,c(10,10,10,10),1)[1,]
+        }
+
+        # --- BUILD THE SUBMODEL STRING ---
+        # This part is mandatory for INDELible to understand the modelType
+        if (modelType %in% c("GTR", "SYM")) {
+          modelstring <- paste(modelType, paste(paramvector[1:5], collapse=" "))
+        } else if (modelType %in% c("TVM", "TVMef")) {
+          modelstring <- paste(modelType, paste(paramvector[2:5], collapse=" "))
+        } else if (modelType %in% c("TIM", "TIMef")) {
+          modelstring <- paste(modelType, paste(paramvector[1:3], collapse=" "))
+        } else if (modelType %in% c("K81uf", "K81")) {
+          modelstring <- paste(modelType, paste(paramvector[2:3], collapse=" "))
+        } else if (modelType %in% c("TrN", "TrNef")) {
+          modelstring <- paste(modelType, paste(paramvector[c(1,6)], collapse=" "))
+        } else if (modelType %in% c("HKY", "K80")) {
+          modelstring <- paste(modelType, paramvector[1])
+        } else {
+          modelstring <- modelType # Covers JC and F81
+        }
+
+        # --- WRITE TO CONTROL FILE ---
+        write(paste("[MODEL]", m), file=locus_control, append=T)
+        write(paste("\t[submodel]", modelstring), file=locus_control, append=T)
+
+        if (!all(is.na(basefreqs))) {
+          write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")), file=locus_control, append=T)
+        }
+
+        write(paste("\t[rates]", pInv, alpha, ngamcat), file=locus_control, append=T)
+        write(paste("\t[indelmodel] POW", paramvector[7], "10"), file=locus_control, append=T)
+        write(paste("\t[indelrate]", paramvector[8]), file=locus_control, append=T)
+      }
+    }
+
+  # --- Write TREE, BRANCHES, and PARTITIONS to the file ---
+  write(paste0("[TREE] t1 ", write.tree(new_tree, file="")), file=locus_control, append=T)
+
+  new_tree2$edge.length <- NULL
+  write(paste0("[BRANCHES] b1 ", write.tree(new_tree2, file="")), file=locus_control, append=T)
+
+  seq_len <- if(df$proteinCoding[f]=="TRUE") round(df$loclen[f]/3) else df$loclen[f]
+  write(paste0("[PARTITIONS] p1 [t1 b1 ", seq_len, "]"), file=locus_control, append=T)
+
+  # --- Final EVOLVE block ---
+  write("[EVOLVE] p1 1 output", file=locus_control, append = T)
+}
+
+# (Optional: df2.csv logging logic remains here) # logging simulated model params: the original script, was tracking things like modelkappasd and modelratesd.
+# Since we are now using a loop, keeping that log would require initialize a data frame before the loop and fill it as you go.
+# Not sure yet if we strictly need those specific standard deviation metrics for downstream analysis, so leaving it out for now to keep the script faster.
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano post_INDELible.R
+#---------------------------------
+library(ape)
+
+# --- 1. Capture Arguments ---
+args = commandArgs(trailingOnly=TRUE)
+alignment_folder_path <- args[1] # This is $indel_dir from the .sh
+df_path <- args[2]
+df <- read.csv(df_path)
+
+nloci <- length(df[,1])
+
+# Create output directory for modified fasta files
+# We'll use file.path for safety
+final_aln_dir <- file.path(alignment_folder_path, "alignments_final")
+if (!dir.exists(final_aln_dir)) dir.create(final_aln_dir)
+
+# --- 2. Modification Loop ---
+for (f in 1:nloci){
+    # Identify the simulated file from INDELible
+    # Matches the 'mv' command in our bash script: locus_i.phy
+    seqpath <- file.path(alignment_folder_path, paste0("locus_", f, ".phy"))
+
+    if (!file.exists(seqpath)) {
+        message(paste("Warning: File missing for Locus", f))
+        next
+    }
+
+    # Read DNA (Sequential Phylip format)
+    locus <- read.dna(seqpath, format="sequential", as.character = T)
+
+    # Filter for remaining taxa
+    remaining_taxa <- as.character(eval(parse(text=df$remaining_taxa[f])))
+    locus <- locus[rownames(locus) %in% remaining_taxa,]
+
+    # --- Contamination Processing ---
+    # Swaps sequence data between pairs to simulate lab contamination
+    contaminant_tips <- eval(parse(text=df$cont_pairs[f]))
+    lencon <- length(contaminant_tips)
+    if (lencon > 0) {
+        for (t in seq(2, lencon, 2)) {
+            # Taxon t gets the sequence of Taxon t-1
+            locus[which(rownames(locus) == contaminant_tips[t]), ] <-
+                locus[which(rownames(locus) == contaminant_tips[t-1]), ]
+        }
+    }
+
+    # --- Missing Data Simulation ---
+    # Adds gaps (-) to the 5' or 3' ends based on prop and bias in df.csv
+    loclen <- ncol(locus)
+    taxa_vector <- as.character(eval(parse(text=df$taxa_missing_segments[f])))
+    missing_segments_prop_vector <- eval(parse(text=df$missing_segments_prop[f]))
+    missing_segments_bias_vector <- eval(parse(text=df$missing_segments_bias[f]))
+
+    if (length(taxa_vector) > 0) {
+        for (t in 1:length(taxa_vector)) {
+            taxon_name <- taxa_vector[t]
+            taxon_index <- which(rownames(locus) == taxon_name)
+
+            if (length(taxon_index) > 0) {
+                gapLen <- loclen * missing_segments_prop_vector[t]
+                gapLen5 <- round(gapLen * missing_segments_bias_vector[t])
+                gapLen3 <- round(gapLen - gapLen5)
+
+                if (gapLen5 > 0) locus[taxon_index, 1:gapLen5] <- "-"
+                if (gapLen3 > 0) locus[taxon_index, (loclen - gapLen3 + 1):loclen] <- "-"
+            }
+        }
+    }
+
+    # --- Cleanup: Remove empty columns ---
+    # If all taxa have a gap at a site, delete the site
+    badpos <- which(apply(locus, 2, function(col) all(col == "-")))
+    if (length(badpos) > 0) {
+        locus <- locus[, -badpos]
+    }
+
+    # --- Write Result ---
+    # Save as FASTA in the new alignments_final folder
+    locus_bin <- as.DNAbin(locus)
+    write.FASTA(locus_bin, file.path(final_aln_dir, paste0("loc_", f, ".fas")))
+}
+
+message("Post-processing complete. Modified alignments are in: ", final_aln_dir)
+#---------------------------------
+
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.3_submit_INDELible.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting INDELible job for random seed: $random_seed";
+  sbatch $RIND $random_seed
+done
+#---------------------------------
+sbatch 2.3_submit_INDELible.sh
+Submitted batch job 53707265
+sacct -j 53707265 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53707265          0:0   00:00:00            
+53707265.ba+      0:0   00:00:00      5264K 
+53707265.ex+      0:0   00:00:00  
+
+Submitting INDELible job for random seed: 12345
+Submitted batch job 53707266
+Submitting INDELible job for random seed: 67890
+Submitted batch job 53707267
+Submitting INDELible job for random seed: 23456
+Submitted batch job 53707268
+Submitting INDELible job for random seed: 78901
+Submitted batch job 53707269
+Submitting INDELible job for random seed: 34567
+Submitted batch job 53707270
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano run_INDELible.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=indelible_para
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32        # Number of INDELible instances to run at once
+#SBATCH --mem=4G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --time=00:20:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input from 2.2:
+tree_file="$out2_2/$dir_name/gene_trees.tre"
+# Input from 2.0
+df_file="$out2_0/$dir_name/df.csv"
+
+# Output subdirectory:
+indel_dir="$out2_3/$dir_name"
+mkdir -p "$indel_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+module load parallel/20240822
+# Fix for the C++ library (GLIBCXX) errors:
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+# Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- 1. Prep Control Files ---
+# Ensure your R script creates 'control_1.txt' through 'control_2000.txt' in $indel_dir
+echo "Generating 2,000 INDELible control files..."
+# Passing: [1]tree_file [2]df_file [3]output_dir [4]mod_write_tree2 [5]modify_gene_tree
+Rscript "$prepIND" \
+    "$tree_file" \
+    "$df_file" \
+    "$indel_dir" \
+    "$mod_write_tree2" \
+    "$modify_gene_tree"
+
+# --- 2. Parallel Execution ---
+echo "Running INDELible in parallel across $SLURM_CPUS_PER_TASK cores..."
+cd "$indel_dir"
+
+# Generate a list of tasks for parallel
+# We create a unique temporary folder for each locus to prevent control.txt collisions
+for i in {1..2000}; do
+    echo "mkdir -p tmp_$i && cp control_$i.txt tmp_$i/control.txt && cd tmp_$i && $indel_exe > /dev/null && mv output_TRUE.phy ../locus_$i.phy && cd .. && rm -rf tmp_$i"
+done > indelible_tasks.txt
+
+# Run the tasks
+parallel --jobs $SLURM_CPUS_PER_TASK < indelible_tasks.txt
+
+# --- 3. Post-Processing ---
+echo "Running post-simulation sequence modification..."
+Rscript "$postIND" "$indel_dir" "$df_file"
+
+date
+#---------------------------------
+
+Submitting INDELible job for random seed: 12345
+Submitted batch job 53707266
+sacct -j 53707266 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53707266          0:0   00:01:51            
+53707266.ba+      0:0   00:01:51    421612K 
+53707266.ex+      0:0   00:01:51    
+
+Submitting INDELible job for random seed: 67890
+Submitted batch job 53707267
+sacct -j 53707267 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53707267          0:0   00:02:05            
+53707267.ba+      0:0   00:02:05    445356K 
+53707267.ex+      0:0   00:02:05 
+
+Submitting INDELible job for random seed: 23456
+Submitted batch job 53707268
+sacct -j 53707268 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53707268          0:0   00:02:05            
+53707268.ba+      0:0   00:02:05    446244K 
+53707268.ex+      0:0   00:02:05  
+
+Submitting INDELible job for random seed: 78901
+Submitted batch job 53707269
+sacct -j 53707269 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53707269          0:0   00:02:07            
+53707269.ba+      0:0   00:02:07    445504K 
+53707269.ex+      0:0   00:02:07    
+
+Submitting INDELible job for random seed: 34567
+Submitted batch job 53707270
+sacct -j 53707270 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53707270          0:0   00:01:49            
+53707270.ba+      0:0   00:01:49    372548K 
+53707270.ex+      0:0   00:01:49 
+
+Check outputs:
+# Source variables to get the path to out2_3
+source /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh
+
+for seed in $seeds; do
+    echo "----------------------------------------------------------"
+    echo "CHECKING SEED: $seed (Directory: set_$seed)"
+    dir="$out2_3/set_$seed"
+
+    # 1. Count raw Phylip files from INDELible (Expect 2000)
+    raw_count=$(ls $dir/locus_*.phy 2>/dev/null | wc -l)
+    echo "Raw Phylip files:    $raw_count / 2000"
+
+    # 2. Count final FASTA files from Post-Processing (Expect 2000)
+    fasta_count=$(ls $dir/alignments_final/*.fas 2>/dev/null | wc -l)
+    echo "Final FASTA files:  $fasta_count / 2000"
+
+    # 3. Check for "Empty" or "Failed" files (Under 100 bytes)
+    # If this returns nothing, it means all 2000 files have data.
+    failed_files=$(find $dir/alignments_final/ -name "*.fas" -size -100c)
+    if [ -z "$failed_files" ]; then
+        echo "Integrity Check:    PASSED (No empty/corrupt files found)"
+    else
+        echo "Integrity Check:    FAILED (Some files are suspiciously small:)"
+        echo "$failed_files"
+    fi
+
+    # 4. Visual Inspection (Spot check Locus 500)
+    echo "Previewing loc_500.fas:"
+    head -n 4 $dir/alignments_final/loc_500.fas
+done
+----------------------------------------------------------
+CHECKING SEED: 12345 (Directory: set_12345)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>31
+GGTGAACTAAGGAAATGTCCTGCAGCTGTTCGCTTCAACTTTAGCTCATGGACGAGGCGCCCCCTTGATACCAAT---AGTATCGGCTGGGGCGATTGGTACGCTATCCCTGCTCGCCGTTGTCCTGTCAGACGCATTACAGCTCATACGCCTAGA------GTTTAT---------TGTCTCAGTTACCTACGTGCTCAC---TTTTACCCTATATCTCCACTAAAAGAGAGG---TCTCGAACGCGGGAACTA---CTG------CAGAATTCTACTGACACAATTGACGTTTCACTGCTTCAACAATTTTCCCAGCGACAGCTGAAGCATCCAGAGGTGAACATTGAAGGATGCTAT---GGAATCAACATTCGTCGGGTT---CTTTATGAAGCA------GGT---CAACGTGCGAAGGCGCCTCATGCAATTAAGGTTACA---GATGTC---CACGTCAACTGC---------GAGGCTAAAAGAGGCGCAGATTCGCCA---CGGGAGGTACTTGAC---CCCCTTTCAAAGACGTGGAGCGCTCGTTCATCACCGTACTTGCGGCGTGTGCGCCTTGTCCTATCT---------------GACTGGCGGCCTTATCCACGA------AGTGGACCACGTCCGCCGGACTTACTAAAGTGGGCGCGCAATGCA---AGATACCTGCGCTTTGAGCGG---TTT------GAA
+>32
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GGTCTTCCAATACTACCAGATCATGGCATCTTCCCACATGCGAACCTTAAAGAGGTC---GCGGGAAAAGAATTAAGA---CGG------ATCTATCCGGTTGATGGAATCTATGGTTCTTGGCTTACACAGCTGGGCCTGAGGCCTGGTATCATCCCACGGGGAAATCGTCGCCTGAAGTAT---GCCCACGATGGACTAGATGTA---CCTTGTCCCCGTCTGGGTGGT---GTTAGGGCGAAGGCTCCTCATGATCGCTATCTACTC---AAGTTA---GAGGTATGCACT---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------
+CHECKING SEED: 67890 (Directory: set_67890)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>26
+---------------------------TAAGCCGGTAAATCTTATGAATAACCGCTACAACCGAAACTTCGTACCATTCAGAGACCTAGCAAGCTCATAAATAGTATACCAACAATCGGTACAGCGTTCACAATATGCATGGGCCCATGAAAAGAGCATGGAGTTGGAGCGAGTTCGCAATTTAGTGCAAACGTGTCCACGGAAATCAATTAAGCACTACGACGAACCCGTATCGAGAGTGTTAAGTGGCCTCGAATAATGTCGCGCGTAACCTATCTAAAGTGATGTGAACTCCAAAAGCCTCCAGTAAAAAAGGATATCACATACAGGCGGAGGAGGTGCGAAAGATAGGGAACGAAAAAAATAAAG----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>25
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AGTGGCCTCGAGTAATGTCGCGCGCAACCTATCTAAAGTGATGTGAACTCCACAAGCCTCCAGTGAAAAAGAATATCACATAAAGGCGGAGGAGGTGCGAAAGTTAGGGAACGAAAAAAATAAAGACGCAGCTAGAAACAAAACGAGATCTACTAGGCTAAATCATCGTCATTTAAACGTGACATGAAACTGACCCACACCACAGAACAATTAGGGACTACTAAGACCTACCCCCAAGAATCAGCCTGAACGACAGGCCACATTGCGCACAACAGCGACCAACAAGACTGATAAGACATTTAGGACCTGAGACCATACGACAATTATAACACAAAATCGG-----------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------
+CHECKING SEED: 23456 (Directory: set_23456)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>17
+TAGA---TAACTTGG---C-----TTGC--AA-GC------G--A-CTCGG-GAATG---GAAAA-C-TG---GCGCA-GTTTTTTGGT---CAA-A-TTTGAG--G--G-A-----CC------------ATA-AG-TAA--GTTG-A-ACAG---------------CTG-GCG-CTC---TCCATTT--TA-GCC--TG------AA-TCA-T-GGT-----T-TGTC--CA-TTT-CG-----G-TGG-G--T-TGCT-GTAAG-CA---AGC-G-CC-----CGA-T-CG-TT-------TTGGTCA---------CC-T----TAGTTGCTA---AGGACTT-------TACCTAT-T-----CCC-G-GCGGGGCG-ACCTGCCCAGG-------C-TAA---C-TCGC-TGTGT-AG-A----TTTATT---TG-T-ATCTCGCAGC-C-TCACACTAACAAA---GA--ACCT-ACA-C-----T---TATGTG----TCG-G-CGT-TGCT-CA--AA-A-C--G-G-C--AACGA-CCGCCCGGT--C-TC---AC-T--GGCCTG-T------G-CGCTGAT----A-------ATC--TTT------AATACCTGGTGCA-GATCGGTC-----AC-C---T------TT-TGAG---GCT---G----------CGG-A--GCATTGC-TT--GT-GA-C--CAA--CT--AAGAT------A-TC--CC-C-GA-TATAGC--AC-CA-CGCAAC--------C----C------CCT-T-----TGTG--T-----ATC-----CC--C-C-----AG----CTGTACC--GTTTGGTTTAC-C--C-GG--AT---G--------------CC------------------G-GTC--TCACCGG--GTG-TTTA-----TCA-TA-GG-CT----C-TA--CTGTGCG--TAA------C----------ATG-GTT-AAT-TT--A---GGCGGAA-C-GA----GG---C------TGTC----CAG-G-G-----CCTGGA-------TC-CGG-CACCC---G----GCC--G---GT---ACTTTG-T--TA----------TAC-A--G-TG-GC-CTGC--G-GCC------------CTGGGC----------T--CGAG-TT-AT-TT--CTGT-A-GCG-CC----A-----G----TCG-------T-G-GCA--ATTCT-GG-CA---TGTGA-CCGG-TAT------A---T-C-TCA---ATTCA-CGCG----CGAG--G--C---GCCCAC-----GCA--AG--T----------TTC--CGGACC--C---TT----T---GT--TTT--TAGAGT-C-C-------CT---T-A--A---G-GC--T-TCT--------AGA--------------------------------TCGGAT-C-A--------------ACAAAATAGC--CGA----AA-T-GG-GAT-----------AC---G------AG-CTA---------G----------------TG-T----------G---CT--T--A-TT------AAT--TGGATT---CGCGAATAG-GTT--C--T---A---GGGCTT-A-T-CT-AAGGT----TTAC-GT-AT-CG-GATCG-----------T--CTTATG-C----TGGTGC----A---------C--A---CG---GACAGCAC-GTCGA-----A-GC----------GGC--T---G----------CTA-C-CG-------------T-----------A--A-ACTTCTC-CTCGCC-A-CGAT-G---T-AG---T-AACAGTATT-TG------G-CGTC-GGTA---GT----------G--A---CT-T--A--TG-AACA-G--AT-GG-CAGC-----GCA--GAA-G-TAC-A-T-AG----CA-------T-------AT-A--T--GGTTT-TC---TAA-T-CCTGGGT-TAGC----TGTGGG-CCT-CTTGAC---A-T-TTA---GTCTAG--CATATT----CGAGG---CTGGTT-A-GAGCA-T----TG-----GTCTA-TAA--------A-AA-T----GT----T-CGGCT----------GT-AA-GT--GGAATAC-TTGC--ATTA-TCGGTCT--TCTAG---------ACGC-C-CATG---CATTTGC-C-A-TC-AGC------T---GCCGA---AGA-----CA-CGGCGTTATCGAT-----------CGTCGT------TTCG-A----------T----AACG-----A---T---T-------C--G---------AACT-TA-----AGCT---A----------CG-GA-T-----GTGCG----GAG-T-CC--AAACT---ACCCGAGCG---GAGTC-GACGGC-CCGTG
+>16
+-T-G---TTGTACCG---T-----CCCT--AA-AG------A--A-CACACCCTCGT--GTTTAG-G-TC---GCACAGGG-------A----GA-A-TTGTCT--G--A-A-----GC------------ATG-CG-TCA--CGCT-A-ATCCTAG----------G-ACA-AAT-GCG---GTGATTT--AT-ATATAAG------A--TGA-A-TAG-----C-TAAT--GC-GCG-CG-----C-TTA-AC-C-CTGG-T------A---GCT-C-TA-----CCC-C-GT-AG-------GTTCAGG--------ATC-T----GAGTCGTGT--ATCAAACT-------TCACGTT-C-----CTG-C-TCGATCTA-ACTTCTTTA-G-------G-ACC---C-CG-TGGGTGT-AG-GACT-TTGCCA---CG-A-AAATCACGGG-G-CATTCTCAAGAGGTGAGACCCCGG-GCT-C-----T---CGT-CG--CTCCA-T-TGT-TCCA-CT--TT-A-T--A-C-G--GGTTA-CATCTGCTG--C-TC---TA-C--AACTA--G------T-AGGGACA----A-------CCC--CGT------CAAAAT---AGTA-GATCAGTC-----CA-A---T------CC-TAG----CGA---C----------AGA-A--TCAGCCA-GT--GC-CA-C--CTA--AT-CTGAAG------G-TC--GG-T-GC-GCCTTG--TG-TG-CGACCG-------GC----T------CCT-A-----GAT---T-----GCC-----GC--C-GC----CG----CGATCTCCAA-----------T--G-GC--ATT--GAGGACCAC------CC------------------C-CTT--CTTACTG--GAA-GTCT-----CTC-CC-TT-CG----A-AT--CTGGCAT--TGC------A----------AAT-TTC-AAC-AA--T---GGTAGAC-C-TA----AG---A------CTAG----TCT-C-G-----TGTCTT-------CG-TGT-ACCTC---C----CAC--C---AA---GC--------TT----------TAA-T--T-GT-AG-AGCTAG-------------------GGGGGCCGTCATGAT--ACCG-CA-TC-CT--AAAC-G-CGA-TG----C-----G----GTC-------A-G-GC---CGTGTTTC-GC---AGCAA-ATAG-TGG------T---G-C-ATC---T-----CGCT----ATCG--A--G---GCCCAA-----ATT--AT--A----------GCGG-CTG--CG-G---ATT---T---GC--TGT--GAGTTG-T-TT------AA---G-T-GA---T-GT--G-ACT--------T-A--------------------------------TCGGAT-G-A---------------AATTATACC--GCA----TA-T-GT-CAA-----------GC---A------GG-GAC---------G----------------TG-A----------C---GG--G--T-TC------TAG---TTTTT---TGTAAGTAA-GTG--ACG----T---CGATTT-C-CTGA-TAA-T----TTCT-TG-GA-AG-GACGA-----------T--TG--AA-C----TCACGA----A---------CATC---GA---TCCTGCGG-GCCACGGT--G-GA----------TAT--A---C----------TTA-A-TT-------------A----------CA--C-GCTCGCG-CTCTCC-T-C-TA-G---T-CA---T-ACATTTGCC-TG------G-CGTC-GACA---TG----------C--T---AT-C--T--GG-AAAT-C--AT-AG-GCGCA----CAA--CGT-C-GCA-C-T-CC----AC-------G-------GA-T----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------
+CHECKING SEED: 78901 (Directory: set_78901)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>23
+ACAGTTCGGCTAACAGGCCGCCATCGGCAGAGTAAGGTCCTCCTGGCGCATGGATGCTCGGACCGCCAAAATGGCTTCAAGGCGTGGCACGGTGACCTCCGCAATACAGTGTCTTTCTGCCATCCAGTATTTGTGGAAATGTTCACAGACTCTTCACACAGAGATCGTATGCAGCTCCGATCCTTACTCTGTTCACACCACGCGAATGCAGATCTTACATTGGCTTGCCACACATCCAGGGATTATGTCTGCGCTCGCCAGTGCAGATTGTGTTCCTGCTATTGGGGGATCAGATTTCGCTTCGGCTCGCACGATCAC---GGGGGCCCTACATCCAAGACCCGTAAACTACCGCCAGCTTGTTCAAATATGCACAACCGAACGATGGTACACAGGTACCTCGATGTCGTGTACAACTGGGGGTACCCCTGGAACACTCTGCTACGGCACATGTCTGATTTTGCTAACTTACAGCCACGTAACGCGAATATGGGCCGACGCTCGGTGCGTACACAT---AATCTCTTAGCGCTCGCTCTGTACATGCACAACATCGGCTTGACGATGGCTGTGACAAGGACCCGGGATGTGCATCAAGTGATATTGGACGTGTTGGTACCTATTTCCGGATTAATGCAGGTTACTCTCACGATCTTAGATCATTCTCTCGAATTCCTGCCGGTGAGACGTCTTTTAATGAGGTGCATAAATTACGCTCTTCAGATGGCC------------CTCACAATGCGACACCATTATCATAAGGGCGGTGCACGCAGTGCGCTTGAATACGACAATAGATGTCCAAACGTGCTCCGTCGCGTTCGGCGCATTTCATCGTCTGGACTACTCAACAATCACAGTGGCTTTTCTCTAACTCCCCATGTTTCACTCACAGATCGGAATCTCGTTGGGGCTAACGTTGCTCAACTCGACAATTTGCTTAATAGGATGAGCTCAAAACCAACTTTAGTTTGCTTGAGCTGGTGGGACTCAGAGTCGTGTTCGTGTAGCGATGTAAATGAGCGATGGGCCTTTCGCCCTAGGTGGAGTTCCACCGCCCTAGCTCATCATCACAGCATCCTCCCATCTAAGAGCGACCTTGACTATAGCGTTTTGAGTGCTGGCTCACCAGTACCTAGAAGGCGGTCAGGGCTGTACACGCCTCTACGGTTCTCGTTGCTGCGCAATAACCGGCTCAAGCGTACATTCGCCTCCAACCCTCACCTAACAGGTCATGACCACCCCGTGGATGTCCATGTGCCTTTGACAAGCGATAAGGGG
+>20
+ACAGCTCAGCAAGTAGTCCACCATCGGCGGGCCAAGGGGCTC---GCTGTTGGATGCTCAGACCGCCAAAATGACTTTAAGATGTGGCGCGTTGGCTGCCACCATACAATGCCTTTATGGCATCCAGCATTTGCGGAAATGTCCAGAGAC---ATGCACAGTGATCCTATGCAGCTCGTATCCTTACTCTGTTCTAACCACGTGAACGCAGATCGTGTATTGGCATGCCACACAACAAGCGATTATGTGTGCGTTCGGCAGTGCATAGTGCGTTCCTGCTATTGGGGGATGAGACTTCACTTCGAGTCGCACGGTCAC---GGCGGCCCTACATTCAAGACCTGTAAACTATCGCCAACTGTTTCAAATATGCACAACCGAACGATGGTACATAGGTATCTCGACGCCAAGTACAACTGGGGGTACCCCGGTTACAATCTGCTTCGGCACATGTCCGGTTTTGCTAACTTACAGCCACGTAACGCGAGTTTGGGTCGACGCTCGGTGCGTATATGT---AATCACTTAGCGCTCGGGCTGGCCATGCACAAAATCGGCGCGACAAAGGTTGTGACCAGGATCGTGGATGTGCATCAAGTGATGTTGGACGTACTAGGGCCTGTTTCTGGAATATTGCAGGTTATTCTCCTGCTCTTCGATCATCATCTCGAATTCCTGACGGTGAGAGGTCTTTTATTGAGGCTTATAGATTACGATCTTCAGATGGCC------------CTCACAATGCGCCACCATTATGATATGGCCGATGCACGCCGTGCGTTTCAAAACGACGATAGATGTCCATACATGTGCCGTCGTGTATGGCGCGTTTCGAAGTCTAAACTTCTTAATAATCACAATGGCCTTTCCCTGATTCCCCATGTTTCGCTAACAGATCGCTATCTCGTTAGGGATAACGTAGATCAATTCAATCTTTTGCTAACTAGTACGAGATTAAGACTAACTTTAGTTTACTTATGCTGGTGCAACTCGGAGTGGTGTTCGTATGGCGTTGTATATGGGCGATGGGCATTTCGCCCTCGGTGGAGTTCCACCGCCCTAGCTCAACATCACAGCATCCTCCCACCTAAGAGCGACCTCGACCACAACGCTTTGAGTGCTGACTCACCAGCGCCTAGGAGGTGGTCAGGGCTGTATTCGCGTCTAAGGTTCTCGTTGCTGGCCACAAACCGGTTCGAGCATACATTCGCCTCCAGGTTTCACCTAATAGGTTGTAGCCACTCGGTGGACGTCTCCATAACATCGACGAGCGCCATGGGG
+----------------------------------------------------------
+CHECKING SEED: 34567 (Directory: set_34567)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>27
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAAGGGGCTTCTAGACGTTGGATGTTATGAGCGGCAACATGAGCTCAAGGATTGGCAAGGGGGGCGCCACCATACAGTGTTCTTGTGTCGTACTGATTTTGATGGTATACTAGTAAAGGCTACGCACAGTGATCGCATACGGCTTCTGTCACTGCTT---TGCACCCACGATAATGATGGCCGCACGCCAGATTACCCGACATCGACTAATTACATGTGCCCTATCTCTTGCAGCTCTTGTTCATGCTACGGTGGA---ACTAGCTTTCGATTTGTATATCACGGCGAGGGAAGCCCCACGTGCAAGACCGGTATACCGTATCCTGCCAAGTCGAATATGGAAAAGCGGTTTTTGACTATGGTACACAGGGATCGCGACAGCAAGAGTAATAAGAGGTACCCAGGCTATACTCTTTTACAACAGACGTCCGACTATGATAACTTACGTCCAAGCACCCAAAATTTGAGACTGCGATATGTGATTAGTCGTAAGCATTTAGATCACTCTCTGTGTATTCACAATATCGCAAATACGGCTGCTGTGTCAGGGATCATTGACGTGCCGCAAGTGACGTTGGAGGGAGTAGTATCTTTTTACGTAATCTCTTGTGTTATTTTCCTAATCTTGGGCCCGCCTATCGGATTACTGCAAGTAAGCGGACCTTTCGTGAGATGCATAGACTGTGAGTTTCGTATAACGCTTACGATACCACAACACTATGACATGGAGGGCGATCGAAAGGCGTTT------------------------------------------------
+>20
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAGATGTTGGTTATTATGAGCGGCAAAATGAGCTCAAGGATTGGAAAGGACGACGCCACGATACGCTGTTCTTGTGTCGTACAGACTTTGATGGAATATTAGGAAGGGCTACGCACAGCGACCGCATCCGACTACTGTCCTTGCGATGTTCCACCCACGATAATGATGGCCGCACGGCAGATTACCAAACATCGATTGATTACGTCTGCCCTATTCTTTGCCTGTCTTGTTCATGCTACTGTGAA---ACTTGCCTTCGGTTTGTGTATCGCGACGAGGGAATCCCAACGTGCAAGCCTTATATCCCGTATCCTGCTAAGTTGGATATGCACAAGGGG------ACAACGGCACATAGGTATCTGAGCGGCAAGTGTAGTTGGGGAGACGCAGGCGACACTCTTTTAAATCAAACGTCAGACGATGATAACTTACGTCCAGGCAACCAAAGTTTGGGAATGCGATATGTGTTTATTCGCATGCACGTAGATATCGCTCTGAGTACTCACAACATAAAAGATACGACTGTAGTGACAAGGGACATTGACGTGCCACAAGTGACGTTGCGGGGAGTAGTACCTGTTAACGGAATCCCTTGTGTTGCTCTCCTGATCGTAGGCCCGTGTAGCGGATTACTGCCAGTACGCGGTCCTCTAACGGGATGCATAGACTATAGCATTAGTATAACGCTCGCGATACGACCA---------------------------------------------------------------------------------
+
+Git Commit Message:
+feat: refactor 2.3 for multi-seed automation and modular R sourcing
+Integrated variables.sh to replace hardcoded project paths and executable locations
+Updated Rscript calls to pass absolute paths for mod_write_tree2 and modify_gene_tree
+Standardized directory structure to use nested set_$seed folders for all inputs/outputs
+Synchronized prep_INDELible.R and post_INDELible.R arguments with the new centralized variable system

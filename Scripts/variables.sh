@@ -118,9 +118,28 @@ out2_1="$Output/2.1_commands_simphy"
 # Path to directory containing input files (output of 2.0_prep_simphy.sh)
 input2_1="$out2_0"
 
-## 2.2_simulated_loci.sh
+## 2.2_submit_sim_jobs.sh
 
+# Path to script-specific output directory:
 out2_2="$Output/2.2_simulated_loci"
+# Path to run_simulations.sh
+RSim="$SCRIPTS/2_simulation_scripts/run_simulations.sh"
+
+## 2.3_submit_INDELible.sh
+
+# Path to run_INDELible.sh
+RIND="$SCRIPTS/2_simulation_scripts/run_INDELible.sh"
+# Path to INDELible executable
+indel_exe="/project/pi_rsschwartz_uri_edu/Biancani/Software/indelible/src/indelible"
+# Path to script-specific output directory:
+out2_3="$Output/2.3_indelible"
+# Path to prep_INDELible.R
+prepIND="$SCRIPTS/2_simulation_scripts/prep_INDELible.R"
+# Path to post_INDELible.R
+postIND="$SCRIPTS/2_simulation_scripts/post_INDELible.R"
+# Path to modify_gene_tree.R
+modify_gene_tree="$SCRIPTS/2_simulation_scripts/modify_gene_tree.R"
+
 
 set +a  # Stop automatically exporting
 ################################################
