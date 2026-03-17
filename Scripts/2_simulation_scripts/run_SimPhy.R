@@ -27,7 +27,7 @@ nloci <- nrow(df)
 # Using mutate and paste0 for a clean 'tidyverse' approach
 df_cmds <- df %>%
   mutate(command = paste0(
-    simphy, 
+    simphy,
     " -rl f:1",                          # Replicates per locus
     " -sr ", species_tree_path,          # Input species tree
     " -sp f:", Ne,                       # Population size for ILS

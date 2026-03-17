@@ -550,7 +550,7 @@ JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
 53599007          0:0   00:00:27
 53599007.ba+      0:0   00:00:27    428048K
-53599007.ex+      0:0   00:00:27            
+53599007.ex+      0:0   00:00:27
 
 mkdir /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
@@ -558,9 +558,9 @@ cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_
 Skipping simulation_prep.sh and run_sptree_SimPhy.R because they generate simulated species trees which I don’t need for now. I just need loci simulated from the empirical tree above.
 
 Updates to generate_sim_properties.R:
-Expanded Command-Line Argument Control: transitioned from hardcoded values to command-line argument system. 
+Expanded Command-Line Argument Control: transitioned from hardcoded values to command-line argument system.
 Weighted Protein-Coding Status: replaced the default 50/50 "coin flip" for coding vs. non-coding status with a weighted probability variable (PropCoding).
-Proportional Paralogy Scaling: updated the paralogy logic so that the number of impacted taxa scales with the size of the tree (ParalogyIntensity) rather than a fixed average. 
+Proportional Paralogy Scaling: updated the paralogy logic so that the number of impacted taxa scales with the size of the tree (ParalogyIntensity) rather than a fixed average.
 Corrected Contamination Math: I adjusted the contamination logic to use ContaminantIntensity / 2 when calculating the number of events. This correctly accounts for the fact that one contamination "swap" impacts two distinct taxa, ensuring the total proportion of affected species matches my intended target.
 Safety Safeguards (pmax): I implemented pmax(1, ...) logic within the Zero-Inflated Poisson calculations. This ensures that if a locus is flagged as "non-orthologous" or "contaminated," it will always have at least one error event, even if the proportional math results in a value less than one.
 Argument Data Type Enforcement: I added explicit as.numeric() wrappers for all incoming command-line arguments. This prevents R from treating numeric inputs as strings, which would otherwise cause crashes during mathematical operations or sequence sampling.
@@ -812,22 +812,22 @@ for random_seed in $seeds;
   mkdir -p "$set_dir"
   cd "$set_dir" || exit # Exit if directory change fails
   Rscript $GSP $input2_0 $mod_write_tree2 $random_seed $nloci $Ne $ABLmin $ABLmax $LLmin $LLmax $lambdaPSmin $lambdaPSmax $VBLmin $VBLmax $MissTaxa $PartLoss $MissPropMIN $MissPropMAX $PropCoding $NoParalogy $ParalogyIntensity $NoContaminant $ContaminantIntensity
-  cd .. 
+  cd ..
   echo "Simulation properties for $set_dir have been generated."
-  done
+done
 
 date
 #---------------------------------
 sbatch 2.0_prep_simphy.sh
 Submitted batch job 53693684
 sacct -j 53693684 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53693684          0:0   00:00:36            
-53693684.ba+      0:0   00:00:36    283284K 
-53693684.ex+      0:0   00:00:36     
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53693684          0:0   00:00:36
+53693684.ba+      0:0   00:00:36    283284K
+53693684.ex+      0:0   00:00:36
 
-git commit message: 
+git commit message:
 feat: refactor 2.0_prep_simphy.sh to support multi-seed loops and centralized variables
 Replaced local variable definitions with centralized variables.sh sourcing
 Implemented a for loop to iterate through multiple random number seeds (generating multiple simulation sets)
@@ -836,3 +836,133 @@ Updated Rscript call to pass all 22 evolutionary and error parameters
 Enhanced directory safety with cd exit checks and mkdir -p
 Cleaned up variable naming for consistency with downstream scripts
 Fixed variable errors in generate_sim_properties.R
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano run_SimPhy.R
+#---------------------------------
+# ==============================================================================
+# Script: Run_SimPhy.R
+# Purpose: Generate a list of SimPhy commands based on generated parameters.
+# ==============================================================================
+
+library(tidyverse)
+
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check for the 5 arguments passed from the shell script
+if (length(args) < 5) {
+  stop("Usage: Rscript Run_SimPhy.R <sptree_path> <df_path> <output_list> <loci_dir> <simphy_path>", call. = FALSE)
+}
+
+species_tree_path <- args[1]
+df_path           <- args[2]
+output_list_path  <- args[3]
+loci_dir          <- args[4]
+simphy            <- args[5]
+
+
+# Load the parameter blueprint generated in the previous step
+df <- read.csv(df_path)
+nloci <- nrow(df)
+
+# Generate the command strings
+# Using mutate and paste0 for a clean 'tidyverse' approach
+df_cmds <- df %>%
+  mutate(command = paste0(
+    simphy,
+    " -rl f:1",                          # Replicates per locus
+    " -sr ", species_tree_path,          # Input species tree
+    " -sp f:", Ne,                       # Population size for ILS
+    " -su ln:", abl, ",0.1",             # Subst. rate (ln scale)
+    " -hs ln:", vbl, ",1",               # Heterotachy (vbl)
+    " -cs ", seed1,                      # Random seed
+    " -o ", loci_dir, loci               # Locus-specific output folder
+  ))
+
+# Write the command list to the text file
+writeLines(df_cmds$command, con = output_list_path)
+
+cat(paste("Successfully generated  ", nloci, "SimPhy commands in:", output_list_path, "\n"))
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.1_simphy_commands.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=simphy_cmd
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH -p uri-cpu
+#SBATCH --time=0:20:00  # walltime limit (HH:MM:SS)
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# create output subdirectory:
+mkdir -p $out2_1
+cd $out2_1
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+# Fix for the C++ library (GLIBCXX) errors:
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+# Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- run_SimPhy.R ---
+
+sets=$(echo $seeds | wc -w)
+echo "Generating SimPhy commands for $sets set(s) of loci"
+for random_seed in $seeds;
+  do
+  echo "Generating SimPhy commands for random seed: $random_seed";
+  set_dir="set_$random_seed"
+  mkdir -p "$set_dir"
+  #input files (generated by 2.0_prep_simphy.sh):
+  tree_file="$input2_1/$set_dir/sptree.nex"
+  df_file="$input2_1/$set_dir/df.csv"
+  #output files (to be generated)
+  cmd_list="$out2_1/$set_dir/simphy_command_list.txt"
+  loci_out_dir="$out2_2/$set_dir/" ## note: terminal "/" is necessary! ##
+  mkdir -p $loci_out_dir
+  Rscript "$RSP" \
+      "$tree_file" \
+      "$df_file" \
+      "$cmd_list" \
+      "$loci_out_dir" \
+      "$simphy_exe"
+  echo "SimPhy commands for $set_dir have been generated."
+done
+
+date
+#---------------------------------
+sbatch 2.1_simphy_commands.sh
+Submitted batch job 53695361
+sacct -j 53695361 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53695361          0:0   00:00:19            
+53695361.ba+      0:0   00:00:19    226392K 
+53695361.ex+      0:0   00:00:19   
+
+Git Commit message:
+feat: refactor 2.1 to support multi-seed looping and centralized variables
+Migrated local paths to centralized variables.sh sourcing
+Implemented for loop to generate command lists across multiple random seeds
+Added automated subdirectory creation for nested input/output structures
+
+
+

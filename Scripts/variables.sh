@@ -97,7 +97,6 @@ PartLoss=0.5
 # Proportion of locus sequence removed (for taxa exhibiting partial loss):
 MissPropMIN=0.2
 MissPropMAX=0.6
-
 ## Paralogy and Contamination Simulation
 # Proportion of loci exhibiting no paralogy (clean)
 NoParalogy=0.5
@@ -107,6 +106,21 @@ ParalogyIntensity=0.1
 NoContaminant=0.5
 # The average proportion of taxa exhibiting contamination (swaps) in a given contaminated locus
 ContaminantIntensity=0.1
+
+## 2.1_simphy_commands.sh
+
+# Path to SimPhy executable:
+simphy_exe="/project/pi_rsschwartz_uri_edu/Biancani/Software/SimPhy/SimPhy_1.0.2/bin/simphy_lnx64"
+# Path to run_SimPhy.R:
+RSP="$SCRIPTS/2_simulation_scripts/run_SimPhy.R"
+# Path to script-specific output directory:
+out2_1="$Output/2.1_commands_simphy"
+# Path to directory containing input files (output of 2.0_prep_simphy.sh)
+input2_1="$out2_0"
+
+## 2.2_simulated_loci.sh
+
+out2_2="$Output/2.2_simulated_loci"
 
 set +a  # Stop automatically exporting
 ################################################
