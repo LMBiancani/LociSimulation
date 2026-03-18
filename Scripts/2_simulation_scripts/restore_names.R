@@ -18,14 +18,14 @@ message(paste("Renaming taxa in", length(fas_files), "alignments..."))
 for (f in fas_files) {
   # Read alignment (as character matrix for easy renaming)
   aln <- read.dna(f, format = "fasta", as.character = TRUE)
-  
+
   # Map numerical rownames back to names using the CSV
   # match() finds the row index in taxon_map where 'number' matches the rowname
   new_names <- taxon_map$name[match(rownames(aln), taxon_map$number)]
-  
+
   # Apply new names
   rownames(aln) <- new_names
-  
+
   # Save output
   out_name <- file.path(output_dir, basename(f))
   write.FASTA(as.DNAbin(aln), out_name)
