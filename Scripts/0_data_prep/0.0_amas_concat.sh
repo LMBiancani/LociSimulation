@@ -26,6 +26,6 @@ mkdir -p $out0_0
 cd $out0_0
 
 #Concatenate input fasta files and prepare partitions ahead of IQTree run
-python3 $SCRIPTS/0_data_prep/run_amas.py $DATA $Cores $AMAS
+python3 $run_amas $DATA $Cores $AMAS
 
 date
