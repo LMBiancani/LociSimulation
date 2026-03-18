@@ -168,7 +168,7 @@ mkdir -p $out0_0
 cd $out0_0
 
 #Concatenate input fasta files and prepare partitions ahead of IQTree run
-python3 $SCRIPTS/0_data_prep/run_amas.py $DATA $Cores $AMAS
+python3 $run_amas $DATA $Cores $AMAS
 
 date
 #---------------------------------
@@ -1825,11 +1825,11 @@ done
 sbatch 2.4_restore_names.sh
 Submitted batch job 53715149
 sacct -j 53715149 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53715149          0:0   00:02:10            
-53715149.ba+      0:0   00:02:10    758588K 
-53715149.ex+      0:0   00:02:10            
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53715149          0:0   00:02:10
+53715149.ba+      0:0   00:02:10    758588K
+53715149.ex+      0:0   00:02:10
 
 Git Commit Message
 feat: update 2.4 to support multiple simulation sets (multiple seeds)
@@ -1837,3 +1837,320 @@ Centralized Variables: Migrated hardcoded project and script paths to variables.
 Multi-Seed Support: Added a for loop to iterate through multiple random number seeds.
 Dynamic Directory Handling: Updated input and output paths to use nested set_$random_seed structures.
 
+Phase 3: Filter_by_Known_Clades
+Filter all loci for support for Established Clades
+
+nano generate_constraints.R
+#---------------------------------
+library(ape)
+
+# Capture arguments from shell
+args <- commandArgs(trailingOnly = TRUE)
+ALN_DIR     <- args[1]
+OUTPUT_DIR  <- args[2]
+CLADE_FILE  <- args[3]
+
+dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
+
+# Load Clade Definitions (Group, Taxa)
+clade_df <- read.csv(CLADE_FILE, header = TRUE)
+all_clades <- split(clade_df$Taxa, clade_df$Group)
+
+# Process all alignments
+loci_files <- list.files(ALN_DIR, pattern = "\\.fas$")
+
+for (f in loci_files) {
+  locus_path <- file.path(ALN_DIR, f)
+  fasta <- read.FASTA(locus_path)
+  present_taxa <- names(fasta)
+
+  # Intersect defined clades with what is actually in this locus
+  pruned_clades <- lapply(all_clades, function(x) intersect(x, present_taxa))
+  valid_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+
+  if (length(valid_clades) > 0) {
+    # Create the constraint string
+    clade_strings <- sapply(valid_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
+    final_constraint <- paste0("(", paste(clade_strings, collapse = ","), ");")
+
+    # Save as locus_i_constraint.newick
+    out_name <- gsub("\\.fas$", "_constraint.newick", f)
+    write(final_constraint, file = file.path(OUTPUT_DIR, out_name))
+  }
+}
+cat(paste("Generated", length(list.files(OUTPUT_DIR)), "constraint files.\n"))
+#---------------------------------
+
+
+
+
+
+############################################
+Quick and dirty look at simulated loci trees:
+Fixed model: GTR+F+R8 - will save time (likely 4–6 hours vs. 24+ hours).
+Since these are simulated data using a mix of Codon and Nucleotide models, a single GTR model for a 2,000-locus concatenation is a broad stroke - may eventually want to use ModelFinder and/or Partitioned Models (where each locus gets its own model).
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.0_submit_unfiltered_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting unfiltered tree job for random seed: $random_seed";
+  sbatch $UFtree $random_seed
+done
+#---------------------------------
+sbatch 6.0_submit_unfiltered_trees.sh
+Submitted batch job 53724297
+sacct -j 53724297 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53724297          0:0   00:00:01
+53724297.ba+      0:0   00:00:01      5476K
+53724297.ex+      0:0   00:00:01
+
+Submitting unfiltered tree job for random seed: 12345
+Submitted batch job 53724298
+Submitting unfiltered tree job for random seed: 67890
+Submitted batch job 53724299
+Submitting unfiltered tree job for random seed: 23456
+Submitted batch job 53724300
+Submitting unfiltered tree job for random seed: 78901
+Submitted batch job 53724301
+Submitting unfiltered tree job for random seed: 34567
+Submitted batch job 53724302
+
+nano unfiltered_tree.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="unfiltered_tree"
+#SBATCH --time=6:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=62G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input
+Data="$out2_4/$dir_name"
+
+# Output directory
+OutDir="$out6_0/$dir_name"
+mkdir -p ${OutDir}
+cd ${OutDir}
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+# 1. Run the universal AMAS script
+python3 $run_amas ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
+
+# 2. Run IQ-TREE on the result (with model search - will require more time! >24 hours)
+#$IQTREE -s concatenated.fasta \
+#    -m MFP \
+#    -nt ${SLURM_CPUS_PER_TASK} \
+#    -pre 2000_loci_ref_tree \
+#    -bb 1000
+
+# 2. (Alt) Run IQ-TREE on the result (with model specified ~ 4 hours)
+$IQTREE -s concatenated.fasta \
+    -m GTR+F+R8 \
+    -nt ${SLURM_CPUS_PER_TASK} \
+    -pre 2000_loci_ref_tree \
+    -bb 1000
+#---------------------------------
+
+Submitting unfiltered tree job for random seed: 12345
+Submitted batch job 53724298
+Submitting unfiltered tree job for random seed: 67890
+Submitted batch job 53724299
+Submitting unfiltered tree job for random seed: 23456
+Submitted batch job 53724300
+Submitting unfiltered tree job for random seed: 78901
+Submitted batch job 53724301
+Submitting unfiltered tree job for random seed: 34567
+Submitted batch job 53724302
+
+sacct -j ## -o JobID,ExitCode,Elapsed,MaxRSS
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano 3.0_submit_generate_constraints.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting generate constraints job for random seed: $random_seed";
+  sbatch $GenCon $random_seed
+done
+#---------------------------------
+sbatch 3.0_submit_generate_constraints.sh
+Submitted batch job 53730983
+sacct -j 53730983 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53730983          0:0   00:00:00
+53730983.ba+      0:0   00:00:00      5304K
+53730983.ex+      0:0   00:00:00
+
+Submitting generate constraints job for random seed: 12345
+Submitted batch job 53730984
+Submitting generate constraints job for random seed: 67890
+Submitted batch job 53730985
+Submitting generate constraints job for random seed: 23456
+Submitted batch job 53730986
+Submitting generate constraints job for random seed: 78901
+Submitted batch job 53730987
+Submitting generate constraints job for random seed: 34567
+Submitted batch job 53730988
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano generate_constraints.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=constraints
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input alignment (generated by 2.4_restore_names.sh):
+Alignments="$input3_0/$dir_name"
+
+# Output subdirectory for the constraint tree:
+out_dir="$out3_0/$dir_name"
+mkdir -p "$out_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute ---
+Rscript $GenConR "$Alignments" "$out_dir" "$clades"
+
+# --- Audit & Confirmation ---
+echo "------------------------------------------------"
+echo "Post-Processing Audit:"
+expected_count=$(ls -1 "$Alignments"/*.fas | wc -l)
+actual_count=$(ls -1 "$out_dir"/*_constraint.newick 2>/dev/null | wc -l)
+
+echo "Expected constraints: $expected_count"
+echo "Generated constraints: $actual_count"
+
+if [ "$expected_count" -eq "$actual_count" ]; then
+    echo "SUCCESS: All constraint files were generated correctly."
+else
+    echo "WARNING: Count mismatch! Some loci may not have enough taxa to form a constraint."
+fi
+echo "------------------------------------------------"
+#---------------------------------
+
+Submitting generate constraints job for random seed: 12345
+Submitted batch job 53730984
+sacct -j 53730984 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53730984          0:0   00:00:24
+53730984.ba+      0:0   00:00:24    212484K
+53730984.ex+      0:0   00:00:24
+Submitting generate constraints job for random seed: 67890
+Submitted batch job 53730985
+sacct -j 53730985 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53730985          0:0   00:00:23
+53730985.ba+      0:0   00:00:23    204864K
+53730985.ex+      0:0   00:00:23
+Submitting generate constraints job for random seed: 23456
+Submitted batch job 53730986
+sacct -j 53730986 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53730986          0:0   00:00:23
+53730986.ba+      0:0   00:00:23    205316K
+53730986.ex+      0:0   00:00:23
+Submitting generate constraints job for random seed: 78901
+Submitted batch job 53730987
+sacct -j 53730987 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53730987          0:0   00:00:24
+53730987.ba+      0:0   00:00:24    200376K
+53730987.ex+      0:0   00:00:24
+Submitting generate constraints job for random seed: 34567
+Submitted batch job 53730988
+sacct -j 53730988 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53730988          0:0   00:00:24
+53730988.ba+      0:0   00:00:24    221448K
+53730988.ex+      0:0   00:00:24
+
+Git commit message:
+feat: refactor 3.0 for multi-simulation (via seeds) automation and centralized variables
+Multi-Seed Support: Added a for loop and positional argument $1 to iterate through all simulation sets.
+Variable Integration: Migrated hardcoded project paths, script locations, and input/output directories to variables.sh.
+Dynamic Pathing: Updated Alignments and out_dir to handle nested set_$random_seed directory structures.
