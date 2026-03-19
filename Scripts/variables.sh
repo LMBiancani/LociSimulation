@@ -185,6 +185,17 @@ out3_2="$Output/3.2_lrt_results"
 # Path to LRT_filter.R:
 LRTfilter="$SCRIPTS/3_filter_by_known_clades/LRT_filter.R"
 
+## 3.3_collect_filtered_loci.sh
+
+# Path to collect_filtered_loci.R
+CFL="$SCRIPTS/3_filter_by_known_clades/collect_filtered_loci.R"
+# p threshold:
+Pvalue3_3=0.05
+# Path to script-specific output directory:
+out3_3="$Output/3.3_loci_filtered_by_known_clades"
+
+
+
 
 
 ## 6.0_submit_unfiltered_trees.sh

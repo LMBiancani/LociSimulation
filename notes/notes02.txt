@@ -1881,154 +1881,6 @@ for (f in loci_files) {
 cat(paste("Generated", length(list.files(OUTPUT_DIR)), "constraint files.\n"))
 #---------------------------------
 
-
-
-
-
-############################################
-Quick and dirty look at simulated loci trees:
-Fixed model: GTR+F+R8 - will save time (likely 4–6 hours vs. 24+ hours).
-Since these are simulated data using a mix of Codon and Nucleotide models, a single GTR model for a 2,000-locus concatenation is a broad stroke - may eventually want to use ModelFinder and/or Partitioned Models (where each locus gets its own model).
-
-cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
-
-nano 6.0_submit_unfiltered_trees.sh
-#---------------------------------
-#!/bin/bash
-#SBATCH --job-name=submit_jobs
-#SBATCH --ntasks=1
-#SBATCH --mem=100M
-#SBATCH -p uri-cpu
-#SBATCH --time=00:05:00
-#SBATCH --mail-user="biancani@uri.edu"
-#SBATCH --mail-type=ALL
-
-# Source master parameters script:
-vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
-source $vars
-echo "Variables sourced into current shell environment:"
-cat $vars
-
-for random_seed in $seeds;
-  do
-  echo "Submitting unfiltered tree job for random seed: $random_seed";
-  sbatch $UFtree $random_seed
-done
-#---------------------------------
-sbatch 6.0_submit_unfiltered_trees.sh
-Submitted batch job 53724297
-sacct -j 53724297 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53724297          0:0   00:00:01
-53724297.ba+      0:0   00:00:01      5476K
-53724297.ex+      0:0   00:00:01
-
-Submitting unfiltered tree job for random seed: 12345
-Submitted batch job 53724298
-Submitting unfiltered tree job for random seed: 67890
-Submitted batch job 53724299
-Submitting unfiltered tree job for random seed: 23456
-Submitted batch job 53724300
-Submitting unfiltered tree job for random seed: 78901
-Submitted batch job 53724301
-Submitting unfiltered tree job for random seed: 34567
-Submitted batch job 53724302
-
-nano unfiltered_tree.sh
-#---------------------------------
-#!/bin/bash
-#SBATCH --job-name="unfiltered_tree"
-#SBATCH --time=6:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=20
-#SBATCH --mem=62G
-#SBATCH -p uri-cpu
-#SBATCH --constraint=avx512
-#SBATCH --mail-user="biancani@uri.edu"
-#SBATCH --mail-type=ALL
-
-random_seed=$1
-echo "Random number seed = $random_seed"
-dir_name="set_$random_seed"
-
-# Source master parameters script:
-vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
-source $vars
-echo "Variables sourced into current shell environment:"
-cat $vars
-
-# Input
-Data="$out2_4/$dir_name"
-
-# Output directory
-OutDir="$out6_0/$dir_name"
-mkdir -p ${OutDir}
-cd ${OutDir}
-
-module purge
-module load uri/main Python/3.7.4-GCCcore-8.3.0
-
-# 1. Run the universal AMAS script
-python3 $run_amas ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
-
-# 2. Run IQ-TREE on the result (with model search - will require more time! >24 hours)
-#$IQTREE -s concatenated.fasta \
-#    -m MFP \
-#    -nt ${SLURM_CPUS_PER_TASK} \
-#    -pre 2000_loci_ref_tree \
-#    -bb 1000
-
-# 2. (Alt) Run IQ-TREE on the result (with model specified ~ 4 hours)
-$IQTREE -s concatenated.fasta \
-    -m GTR+F+R8 \
-    -nt ${SLURM_CPUS_PER_TASK} \
-    -pre 2000_loci_ref_tree \
-    -bb 1000
-#---------------------------------
-
-Submitting unfiltered tree job for random seed: 12345
-Submitted batch job 53724298
-sacct -j 53724298 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53724298          0:0   03:37:04
-53724298.ba+      0:0   03:37:04  27958452K
-53724298.ex+      0:0   03:37:04
-Submitting unfiltered tree job for random seed: 67890
-Submitted batch job 53724299
-sacct -j 53724299 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53724299          0:0   04:41:20
-53724299.ba+      0:0   04:41:20  27368272K
-53724299.ex+      0:0   04:41:20
-Submitting unfiltered tree job for random seed: 23456
-Submitted batch job 53724300
-sacct -j 53724300 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53724300          0:0   04:27:16
-53724300.ba+      0:0   04:27:16  27859216K
-53724300.ex+      0:0   04:27:16
-Submitting unfiltered tree job for random seed: 78901
-Submitted batch job 53724301
-sacct -j 53724301 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53724301          0:0   04:30:21
-53724301.ba+      0:0   04:30:21  28302532K
-53724301.ex+      0:0   04:30:21
-Submitting unfiltered tree job for random seed: 34567
-Submitted batch job 53724302
-sacct -j 53724302 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53724302          0:0   04:04:42
-53724302.ba+      0:0   04:04:42  27702380K
-53724302.ex+      0:0   04:04:42
-
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 
 nano 3.0_submit_generate_constraints.sh
@@ -2515,3 +2367,153 @@ feat: refactor 3.2 for automated multi-seed LRT processing
 Multi-Seed Support: Added a for loop to iterate through all simulation sets defined in variables.sh.
 Centralized Configuration: Replaced hardcoded project and script paths with sourced global variables.
 Dynamic Directory Handling: Updated IQ_DIR and OutDir to process and store results within seed-specific subdirectories (e.g., set_12345).
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano collect_filtered_loci.R
+#---------------------------------
+#!/usr/bin/env Rscript
+
+# --- Setup ---
+args <- commandArgs(trailingOnly = TRUE)
+LRT_CSV    <- args[1]
+IN_DIR     <- args[2]
+OUT_BASE   <- args[3] # Base output path
+P_THRESH   <- as.numeric(args[4])
+
+# Load results
+df <- read.csv(LRT_CSV)
+
+# Define paths for both groups using paste0 to keep the name clean
+PASS_DIR <- file.path(OUT_BASE, paste0("pass_", P_THRESH))
+FAIL_DIR <- file.path(OUT_BASE, paste0("fail_", P_THRESH))
+
+# Create directories
+if(!dir.exists(PASS_DIR)) dir.create(PASS_DIR, recursive = TRUE)
+if(!dir.exists(FAIL_DIR)) dir.create(FAIL_DIR, recursive = TRUE)
+
+# Categorize loci
+passing_loci <- df$Locus[df$p_value >= P_THRESH]
+failing_loci <- df$Locus[df$p_value <  P_THRESH]
+
+cat("Threshold:", P_THRESH, "\n")
+cat("Loci to copy to PASS:", length(passing_loci), "\n")
+cat("Loci to copy to FAIL:", length(failing_loci), "\n")
+
+# Function to copy files
+move_files <- function(locus_list, destination) {
+  for(locus in locus_list) {
+    file_name <- paste0(locus, ".fas")
+    file.copy(from = file.path(IN_DIR, file_name),
+              to   = destination)
+  }
+}
+
+# Execute copies
+move_files(passing_loci, PASS_DIR)
+move_files(failing_loci, FAIL_DIR)
+
+cat("Assembly complete.\n")
+cat("  Pass folder:", PASS_DIR, "\n")
+cat(length(passing_loci), " loci passed.\n")
+cat("  Fail folder:", FAIL_DIR, "\n")
+cat(length(failing_loci), " loci failed.\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano 3.3_collect_filtered_loci.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=filter_loci
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --mem=1G
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+
+# --- Execute ---
+for random_seed in $seeds;
+  do
+  set_dir="set_$random_seed"
+  echo "Collecting filtered loci for Simulation $set_dir";
+  # input (LRT csv generated by 3.2)
+  LRT_CSV="$out3_2/$set_dir/lrt_results.csv"
+  # input (path to aligned loci generated by 2.4)
+  Alignments="$out2_4/$set_dir"
+  # output
+  FinalDir="$out3_3/$set_dir"
+  mkdir -p "$FinalDir"
+  # Arguments: <CSV> <SourceDir> <DestDir> <P-Threshold>
+  Rscript "$CFL" "$LRT_CSV" "$Alignments" "$FinalDir" "$Pvalue3_3"
+done
+#---------------------------------
+sbatch 3.3_collect_filtered_loci.sh
+Submitted batch job 53749071
+sacct -j 53749071 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53749071          0:0   00:00:26
+53749071.ba+      0:0   00:00:26    747940K
+53749071.ex+      0:0   00:00:27
+
+Collecting filtered loci for Simulation set_12345
+Threshold: 0.05
+Loci to copy to PASS: 481
+Loci to copy to FAIL: 1519
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/pass_0.05
+481  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/fail_0.05
+1519  loci failed.
+Collecting filtered loci for Simulation set_67890
+Threshold: 0.05
+Loci to copy to PASS: 478
+Loci to copy to FAIL: 1522
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/pass_0.05
+478  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/fail_0.05
+1522  loci failed.
+Collecting filtered loci for Simulation set_23456
+Threshold: 0.05
+Loci to copy to PASS: 455
+Loci to copy to FAIL: 1545
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/pass_0.05
+455  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/fail_0.05
+1545  loci failed.
+Collecting filtered loci for Simulation set_78901
+Threshold: 0.05
+Loci to copy to PASS: 424
+Loci to copy to FAIL: 1576
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/pass_0.05
+424  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/fail_0.05
+1576  loci failed.
+Collecting filtered loci for Simulation set_34567
+Threshold: 0.05
+Loci to copy to PASS: 505
+Loci to copy to FAIL: 1495
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/pass_0.05
+505  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/fail_0.05
+1495  loci failed.
+
+Git Commit Message
+feat: implement 3.3 automated collection of filtered loci for all simulation seeds
