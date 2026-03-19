@@ -22,11 +22,11 @@ get_lnl <- function(filepath) {
   if(!file.exists(filepath)) return(NA)
   lines <- tryCatch(readLines(filepath), error = function(e) return(NULL))
   if(is.null(lines)) return(NA)
-  
+
   # Search for the Likelihood line
   lnl_line <- lines[grep("Log-likelihood of the tree:", lines)]
   if(length(lnl_line) == 0) return(NA)
-  
+
   # Extract numeric value using regex (matches number before the space/bracket)
   val <- str_extract(lnl_line, "-?[0-9.]+(?= \\()")
   return(as.numeric(val))
@@ -58,7 +58,7 @@ results <- results[order(results$delta_lnL, decreasing = TRUE), ]
 # --- Save Output ---
 write.csv(results, OUT_CSV, row.names = FALSE)
 
-cat("\n--- Summary ---\n")
+cat("--- Summary ---\n")
 cat("Total loci processed:", nrow(results), "\n")
 cat("Loci failing backbone (p < 0.05):", sum(results$p_value < 0.05, na.rm=TRUE), "\n")
-cat("Results saved to:", OUT_CSV, "\n")
+cat("Results saved to:", OUT_CSV, "\n\n")
