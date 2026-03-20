@@ -44,6 +44,7 @@ ${IQTREE} -nt AUTO -ntmax ${Threads} \
     -s "$out0_0/concatenated.fasta" \
     -spp "$out0_0/partitions.txt" \
     -pre inferenceEmpirical \
-    -m MFP -bb 1000 -alrt 1000
+    -m MFP -mset GTR -cmax 8 \
+    -bb 1000 -alrt 1000
 
 date
