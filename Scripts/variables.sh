@@ -194,7 +194,14 @@ Pvalue3_3=0.05
 # Path to script-specific output directory:
 out3_3="$Output/3.3_loci_filtered_by_known_clades"
 
+## 4. Filter by Branch Length Correlation
 
+## 4.0_submit_concat_tree.sh
+
+# Path to concat_tree.sh
+concat_tree="$SCRIPTS/4_filter_by_branch_length/concat_tree.sh"
+# Path to script-specific output directory:
+out4_0="$Output/4.0_unfiltered_concat_tree"
 
 
 

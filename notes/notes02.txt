@@ -32,7 +32,6 @@ nano run_amas.py
 #!/usr/bin/env python3
 """
 run_amas.py
-------------
 Concatenates FASTA alignments using AMAS (in batches of 1000 to avoid overloading AMAS input limitations).
 Creates a concatenated alignment file and a corresponding partition file:
 concatenated.fasta
@@ -112,13 +111,46 @@ if len(fileList) > 0:
 # --- Final concatenation across all batches ---
 print("\n=== Performing final concatenation across batches ===")
 
+# 1. Concatenate the FASTA files (This part is fine for sequences)
 cmd_final = (
     f"python3 {amas} concat "
-    f"-f fasta -d dna --out-format fasta --part-format raxml "
+    f"-f fasta -d dna --out-format fasta --out-format fasta " # No -p here, we do it manually
     f"-i {' '.join(batch_outputs)} "
-    f"-c {total_cores} -t concatenated.fasta -p partitions.txt"
+    f"-c {total_cores} -t concatenated.fasta"
 )
 subprocess.call(cmd_final, shell=True)
+
+# 2. Manually Merge Partitions to preserve individual locus boundaries
+print("=== Merging batch partition files into final partitions.txt ===")
+offset = 0
+with open("partitions.txt", "w") as final_part:
+    for part_file in batch_parts:
+        with open(part_file, "r") as pf:
+            last_end = 0
+            for line in pf:
+                if "=" in line:
+                    # Example line: DNA, p799_SISRS_contig-999... = 1-500
+                    parts = line.strip().split("=")
+                    header = parts[0].strip() # "DNA, p799_SISRS_contig-999..."
+                    
+                    # 1. Remove the "p-number" prefix
+                    # We split by "DNA, " then split the remainder by "_" exactly once
+                    prefix_data = header.split("DNA, ")[1]
+                    clean_locus_name = prefix_data.split("_", 1)[1]
+                    
+                    # 2. Reconstruct coordinates with the offset
+                    coords = parts[1].strip().split("-")
+                    start = int(coords[0]) + offset
+                    end = int(coords[1]) + offset
+                    
+                    # 3. Write out the clean version
+                    final_part.write(f"DNA, {clean_locus_name} = {start}-{end}\n")
+                    last_end = int(coords[1])
+            
+            # Increase offset by the total length of this batch for the next batch
+            offset += last_end
+
+print(f"Total alignment length: {offset} bp across {len(files)} clean partitions.")
 
 # --- Cleanup temporary batch files ---
 print("\n=== Cleaning up intermediate files ===")
@@ -133,6 +165,14 @@ print("Output files:")
 print(" - concatenated.fasta")
 print(" - partitions.txt\n")
 #---------------------------------
+
+Git Commit Message:
+fix(run_amas): preserve individual locus partitions during batch concatenation
+
+Partition Integrity: Replaced the automated AMAS final partition step with a manual merge logic. This prevents AMAS from "flattening" the partitions into a few large batch blocks, ensuring each original locus is preserved for partitioned IQ-TREE analysis.
+Coordinate Offsetting: Implemented a global offset tracker to correctly recalculate start/end positions for each locus across multiple sequential batches.
+Name Cleaning: Added a string parser to strip AMAS-generated batch prefixes (e.g., p0_, p799_), restoring the original unique locus identifiers (e.g., SISRS_contig-X) to the partitions.txt file.
+Scalability: Retained the 1,000-file batching strategy to bypass the Linux shell's "Argument list too long" limitation while processing large datasets (100k+ files).
 
 0.0_amas_concat.sh runs AMAS on an empirical dataset to concatenate input fasta files and prepare partitions ahead of IQTree run.
 Uses a helper Python script (run_amas.py), which wraps around the AMAS.py concat command.
@@ -173,13 +213,25 @@ python3 $run_amas $DATA $Cores $AMAS
 date
 #---------------------------------
 sbatch 0.0_amas_concat.sh
-Submitted batch job 53474609
-sacct -j 53474609 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-53474609          0:0   00:01:46
-53474609.ba+      0:0   00:01:46   6716812K
-53474609.ex+      0:0   00:01:47
+Submitted batch job 53764543
+sacct -j 53764543 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53764543          0:0   00:02:15            
+53764543.ba+      0:0   00:02:15   6583540K 
+53764543.ex+      0:0   00:02:15     
+
+=== Performing final concatenation across batches ===
+=== Merging batch partition files into final partitions.txt ===
+Total alignment length: 25202245 bp across 109799 clean partitions.
+
+=== Cleaning up intermediate files ===
+
+=== run_amas.py execution completed. ===
+Output files:
+ - concatenated.fasta
+ - partitions.txt
 
 0.1_iqtree_empirical.sh will use iqtree to infer an empirical tree.
 
@@ -2517,3 +2569,33 @@ Assembly complete.
 
 Git Commit Message
 feat: implement 3.3 automated collection of filtered loci for all simulation seeds
+
+Starting Module 4: branch length correlation
+
+step 4.0:
+Purpose: To construct a comprehensive Maximum Likelihood "unfiltered" reference species tree for each simulation set using all 2000 simulated loci.
+
+Phylogenetic inference was performed using IQ-TREE 2.1.2 on a concatenated alignment of 2,000 simulated loci. To account for diverse evolutionary rates across the genome, a partitioned analysis was implemented using the -spp flag, which allows for proportional branch lengths across partitions.
+Model selection was performed using ModelFinder Plus, with the search space restricted to the GTR family of substitution models (-mset GTR) to maintain high parameter complexity while optimizing computational efficiency. Branch support was assessed using two independent metrics: 1,000 ultrafast bootstrap (UFB) replicates and 1,000 SH-like approximate likelihood ratio test (SH-aLRT) replicates.
+Why These Parameters Make Sense
+1. Proportional Partitioning (-spp)
+In the simulations, significant heterotachy was introduced (VBLmin=0.5 to VBLmax=5.0). 
+A standard concatenated analysis assumes all sites share the same branch lenghts, which would potentially average out the topological conflict of interest.
+The Logic: The -spp flag allows each locus (partition) to have its own scaling factor. 
+If one locus evolved significantly faster than another, IQ-TREE can scale those branches accordingly without changing the overall tree shape.
+2. Restricted GTR Search (-mset GTR)
+A full ModelFinder (-m MFP) tests hundreds of models (HKY, JC, TN93, etc.). 
+However, nearly all complex simulations involving SimPhy and INDELible are inherently grounded in GTR-based matrices.
+The Logic: Forcing IQ-TREE to only consider GTR-family models bypasses the time spent testing simpler models that are statistically unlikely to fit the noisy, simulated data.
+This reduces pre-analysis overhead time.
+3. Dual Support Metrics (-bb and --alrt)
+The Logic: * UFBoot (-bb) measures how much of your total data (loci/sites) supports a branch.
+Standard bootstrapping is notoriously slow for 2,000 loci. The Ultrafast Bootstrap is specifically designed for phylogenomics. It is less prone to the "over-support" bias seen in traditional methods and provides a reliable measure of clade confidence in a fraction of the time.
+SH-aLRT (--alrt) measures if the inferred branch is statistically better than alternative topological arrangements.
+Conflict Identification: Clades with high Bootstrap (e.g., 98%) but low SH-aLRT (e.g., 65%) are classic indicators of phylogenetic conflict or "rogue" signal.
+4. Hardware Optimization (-nt AUTO)
+The Logic: This allows IQ-TREE to benchmark the specific hardware it's running on and pick the core count that minimizes slow down due to "communication overhead" between too many cores.
+
+
+
+
