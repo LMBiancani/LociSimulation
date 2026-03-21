@@ -35,8 +35,17 @@ module load uri/main Python/3.7.4-GCCcore-8.3.0
 python3 $run_amas ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
 
 # 2. Run IQ-TREE on the result
+
+# Generate a starting tree:
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -pre StartTree \
+    -m GTR+G -fast
+
 ${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
     -s "concatenated.fasta" \
     -spp "partitions.txt" \
     -pre Unfiltered_loci_ref_tree \
-    -mset GTR -bb 1000 --alrt 1000
+    -t StartTree.treefile \
+    -m MFP -mset GTR -cmax 8 \
+    -bb 1000 --alrt 1000
