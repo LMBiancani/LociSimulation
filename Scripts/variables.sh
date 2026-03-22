@@ -203,7 +203,14 @@ concat_tree="$SCRIPTS/4_filter_by_branch_length/concat_tree.sh"
 # Path to script-specific output directory:
 out4_0="$Output/4.0_unfiltered_concat_tree"
 
+## 4.1_submit_constrained_gtrees.sh
 
+# Path to constrained_gtrees.sh
+CGT="$SCRIPTS/4_filter_by_branch_length/constrained_gtrees.sh"
+# Path to trimConstraintTree.R
+TCT="$SCRIPTS/4_filter_by_branch_length/trimConstraintTree.R"
+# Path to script-specific output directory:
+out4_1="$Output/4.1_constrained_gtrees"
 
 ## 6.0_submit_unfiltered_trees.sh
 

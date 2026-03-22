@@ -2771,4 +2771,228 @@ Stability: Added a preliminary unpartitioned IQ-TREE run using -m GTR+G -fast to
 Initialization: Resolved the "Reading input tree file" crash by explicitly passing the guide tree to the partitioned analysis via the -t flag.
 Model Optimization: Refined the partitioned search using -m MFP (ModelFinder Plus) restricted to the GTR family (-mset GTR) and capped rate categories (-cmax 8) to balance biological accuracy with computational efficiency.
 
+4.1
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano trimConstraintTree.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# trimConstraintTree.R
+# Purpose: Prune a reference species tree to match the taxa present in a specific locus alignment.
+
+library(ape)
+
+# Capture command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 3) {
+  stop("Usage: Rscript trimConstraintTree.R <alignment.fas> <reference.treefile> <output.tre>")
+}
+
+# 1. Load the alignment to see which taxa are present
+alignment <- read.dna(args[1], format="fasta")
+taxapresent <- rownames(alignment)
+
+# 2. Load the Reference Species Tree (from Step 4.0)
+tree <- read.tree(args[2])
+treetips <- tree$tip.label
+
+# 3. Identify tips in the tree that are NOT in the alignment
+tipstoremove <- treetips[!(treetips %in% taxapresent)]
+
+# 4. Prune the tree and write to file
+# drop.tip removes the missing taxa while maintaining the relative branch lengths of the rest
+outtree <- drop.tip(tree, tipstoremove)
+write.tree(outtree, args[3])
+
+cat("Successfully pruned tree to", length(outtree$tip.label), "taxa.\n")
+#---------------------------------
+
+4.1_constrained_gtrees.sh
+This script uses a Command Factory function to handle the R-pruning and the IQ-TREE inference in one go, distributed across your CPU cores.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.1_submit_constrained_gtrees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting constrained gene trees job for random seed: $random_seed";
+  sbatch $CGT $random_seed
+done
+#---------------------------------
+sbatch 4.1_submit_constrained_gtrees.sh
+Submitted batch job 53791176
+sacct -j 53791176 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53791176          0:0   00:00:00            
+53791176.ba+      0:0   00:00:00      5336K 
+53791176.ex+      0:0   00:00:00  
+
+Submitted batch job 53791176
+Submitting constrained gene trees job for random seed: 12345
+Submitted batch job 53791177
+Submitting constrained gene trees job for random seed: 67890
+Submitted batch job 53791178
+Submitting constrained gene trees job for random seed: 23456
+Submitted batch job 53791179
+Submitting constrained gene trees job for random seed: 78901
+Submitted batch job 53791180
+Submitting constrained gene trees job for random seed: 34567
+Submitted batch job 53791181
+
+nano constrained_gtrees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=BLC_gtrees
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=32
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Variables ---
+# Input (final named alignments from 2.4)
+Alignments="$out2_4/$dir_name"
+# The Reference Tree from Step 4.0:
+RefTree="$out4_0/$dir_name/Unfiltered_loci_ref_tree.treefile"
+MODEL_FILE="$out4_0/$dir_name/Unfiltered_loci_ref_tree.iqtree"
+
+# Output
+OutDir="$out4_1/$dir_name"
+mkdir -p "$OutDir"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+module load parallel/20240822
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Command Factory Logic ---
+run_constrained_inference() {
+    locus_fas=$1
+    locus_id=$(basename "$locus_fas" .fas)
+    out_path=$2
+    ref_tree=$3
+    iqtree_exe=$4
+    trimconstraint_R=$5
+    model_info_file=$6
+
+    # Optional: add this right before the Rscript line to stagger starts (preventing library loading issues)
+    sleep $(( (RANDOM % 5) + 1 ))
+
+    # 1. Prune the reference tree to match this locus
+    Rscript "$trimconstraint_R" "$locus_fas" "$ref_tree" "$out_path/${locus_id}.constraint.tre"
+
+    # 2. Look up the specific model for this locus from the BIC summary block
+        # We turn the comma-separated list into lines, find the locus, and grab the model part
+        SPECIFIC_MODEL=$(grep -A 100 "Best-fit model according to BIC:" "$model_info_file" | \
+                         grep -m 1 -v "BIC:" | \
+                         tr ',' '\n' | \
+                         grep -w "$locus_id" | \
+                         cut -d ":" -f 1 | \
+                         tr -d '[:space:]')
+
+        # Fallback to GTR+G if the lookup fails for any reason
+        if [ -z "$SPECIFIC_MODEL" ]; then SPECIFIC_MODEL="GTR+G"; fi
+
+    # 3. Run IQ-TREE constrained to that pruned topology
+    $iqtree_exe -s "$locus_fas" -m "$SPECIFIC_MODEL" -g "$out_path/${locus_id}.constraint.tre" -pre "$out_path/${locus_id}" -nt 1 -redo
+
+    # Cleanup auxiliary files
+    rm -f "$out_path/${locus_id}."{ckp.gz,bionj,mldist,log}
+}
+
+export -f run_constrained_inference
+
+# --- Execute with GNU Parallel ---
+echo "Starting constrained branch length estimation..."
+find "$Alignments" -name "*.fas" | parallel -j 32 --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$TCT" "$MODEL_FILE"
+echo "Step 4.1 complete. Constrained trees are in $OutDir"
+#---------------------------------
+
+Submitting constrained gene trees job for random seed: 12345
+Submitted batch job 53791177
+sacct -j 53791177 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53791177          0:0   00:04:16            
+53791177.ba+      0:0   00:04:16    796796K 
+53791177.ex+      0:0   00:04:16   
+Submitting constrained gene trees job for random seed: 67890
+Submitted batch job 53791178
+sacct -j 53791178 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53791178          0:0   00:05:05            
+53791178.ba+      0:0   00:05:05   1225316K 
+53791178.ex+      0:0   00:05:05       
+Submitting constrained gene trees job for random seed: 23456
+Submitted batch job 53791179
+sacct -j 53791179 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53791179          0:0   00:05:06            
+53791179.ba+      0:0   00:05:06   1407940K 
+53791179.ex+      0:0   00:05:06 
+Submitting constrained gene trees job for random seed: 78901
+Submitted batch job 53791180
+sacct -j 53791180 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53791180          0:0   00:05:06            
+53791180.ba+      0:0   00:05:06   1226192K 
+53791180.ex+      0:0   00:05:06 
+Submitting constrained gene trees job for random seed: 34567
+Submitted batch job 53791181
+sacct -j 53791181 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53791181          0:0   00:05:06            
+53791181.ba+      0:0   00:05:06   1092416K 
+53791181.ex+      0:0   00:05:06  
+
+Git Commit Message
+refactor(4.1): transition to per-locus model lookup and dynamic seed handling
+Dynamic Model Mapping: Replaced the global GEN_MODEL extraction with a per-locus lookup logic within the GNU Parallel function. The script now parses the Step 4.0 .iqtree BIC summary block to apply the specific best-fit substitution model to each locus (e.g., GTR+F+R4 vs GTR+F+I).
+Simulation Set Support: Updated the script to accept a random_seed argument, enabling it to process specific simulation sets (set_$seed) rather than a hardcoded single directory.
+Variable Sourcing: Replaced manual path definitions with a centralized variables.sh source, ensuring consistency across the simulation pipeline and reducing path-related errors.
+Resource Header Optimization: Standardized SLURM headers and explicitly added avx512 constraints to match the computational requirements of IQ-TREE 2.1.2 on the URI cluster.
+Code Robustness: Improved the model parsing regex to handle the comma-separated BIC block formatting and added a GTR+G fallback to prevent job failure if a specific model lookup returns null.
+
 
