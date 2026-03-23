@@ -15,8 +15,8 @@ output_csv    <- args[3]
 
 # 1. Extract reference terminal branch lengths
 ref_tree <- read.tree(ref_tree_path)
-ref_bl <- setNames(ref_tree$edge.length[sapply(1:length(ref_tree$tip.label), 
-                  function(x,y) which(y==x), y=ref_tree$edge[,2])], 
+ref_bl <- setNames(ref_tree$edge.length[sapply(1:length(ref_tree$tip.label),
+                  function(x,y) which(y==x), y=ref_tree$edge[,2])],
                   ref_tree$tip.label)
 
 # 2. Identify all constrained treefiles
@@ -28,15 +28,15 @@ results_list <- list()
 for (f in tree_files) {
     locus_id <- gsub("\\.treefile$", "", basename(f))
     gtree    <- read.tree(f)
-    
+
     # Extract gene tree branch lengths
-    gtree_bl <- setNames(gtree$edge.length[sapply(1:length(gtree$tip.label), 
-                         function(x,y) which(y==x), y=gtree$edge[,2])], 
+    gtree_bl <- setNames(gtree$edge.length[sapply(1:length(gtree$tip.label),
+                         function(x,y) which(y==x), y=gtree$edge[,2])],
                          gtree$tip.label)
-    
+
     # Align tips (handles cases where gene trees have fewer taxa)
     common_tips <- intersect(names(ref_bl), names(gtree_bl))
-    
+
     if (length(common_tips) > 2) {
         # Regression: Reference Lengths ~ Gene Tree Lengths
         regress  <- lm(gtree_bl[common_tips] ~ ref_bl[common_tips])

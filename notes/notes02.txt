@@ -132,21 +132,21 @@ with open("partitions.txt", "w") as final_part:
                     # Example line: DNA, p799_SISRS_contig-999... = 1-500
                     parts = line.strip().split("=")
                     header = parts[0].strip() # "DNA, p799_SISRS_contig-999..."
-                    
+
                     # 1. Remove the "p-number" prefix
                     # We split by "DNA, " then split the remainder by "_" exactly once
                     prefix_data = header.split("DNA, ")[1]
                     clean_locus_name = prefix_data.split("_", 1)[1]
-                    
+
                     # 2. Reconstruct coordinates with the offset
                     coords = parts[1].strip().split("-")
                     start = int(coords[0]) + offset
                     end = int(coords[1]) + offset
-                    
+
                     # 3. Write out the clean version
                     final_part.write(f"DNA, {clean_locus_name} = {start}-{end}\n")
                     last_end = int(coords[1])
-            
+
             # Increase offset by the total length of this batch for the next batch
             offset += last_end
 
@@ -216,11 +216,11 @@ sbatch 0.0_amas_concat.sh
 Submitted batch job 53764543
 sacct -j 53764543 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53764543          0:0   00:02:15            
-53764543.ba+      0:0   00:02:15   6583540K 
-53764543.ex+      0:0   00:02:15     
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53764543          0:0   00:02:15
+53764543.ba+      0:0   00:02:15   6583540K
+53764543.ex+      0:0   00:02:15
 
 === Performing final concatenation across batches ===
 === Merging batch partition files into final partitions.txt ===
@@ -2589,15 +2589,15 @@ Purpose: To construct a comprehensive Maximum Likelihood "unfiltered" reference 
 Phylogenetic inference was performed using IQ-TREE 2.1.2 on a concatenated alignment of 2,000 simulated loci. To account for diverse evolutionary rates across the genome, a partitioned analysis was implemented using the -spp flag, which allows for proportional branch lengths across partitions.
 Model selection was performed using ModelFinder Plus, with the search space restricted to the GTR family of substitution models (-mset GTR) to maintain high parameter complexity while optimizing computational efficiency. Branch support was assessed using two independent metrics: 1,000 ultrafast bootstrap (UFB) replicates and 1,000 SH-like approximate likelihood ratio test (SH-aLRT) replicates.
 Why These Parameters Make Sense
-0. -m GTR+G -fast 
+0. -m GTR+G -fast
 Quickly generate a topology to use as a start tree file (-t) - more reliable than internal parsimony for complex alignments (which was causing the script to crash previously).
 1. Proportional Partitioning (-spp)
-In the simulations, significant heterotachy was introduced (VBLmin=0.5 to VBLmax=5.0). 
+In the simulations, significant heterotachy was introduced (VBLmin=0.5 to VBLmax=5.0).
 A standard concatenated analysis assumes all sites share the same branch lenghts, which would potentially average out the topological conflict of interest.
-The Logic: The -spp flag allows each locus (partition) to have its own scaling factor. 
+The Logic: The -spp flag allows each locus (partition) to have its own scaling factor.
 If one locus evolved significantly faster than another, IQ-TREE can scale those branches accordingly without changing the overall tree shape.
 2. Restricted GTR Search (-mset GTR)
-A full ModelFinder (-m MFP) tests hundreds of models (HKY, JC, TN93, etc.). 
+A full ModelFinder (-m MFP) tests hundreds of models (HKY, JC, TN93, etc.).
 However, nearly all complex simulations involving SimPhy and INDELible are inherently grounded in GTR-based matrices.
 The Logic: Forcing IQ-TREE to only consider GTR-family models bypasses the time spent testing simpler models that are statistically unlikely to fit the noisy, simulated data.
 This reduces pre-analysis overhead time.
@@ -2639,11 +2639,11 @@ done
 sbatch 4.0_submit_concat_tree.sh
 Submitted batch job 53785734
 sacct -j 53785734 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53785734          0:0   00:00:00            
-53785734.ba+      0:0   00:00:00      5536K 
-53785734.ex+      0:0   00:00:00  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53785734          0:0   00:00:00
+53785734.ba+      0:0   00:00:00      5536K
+53785734.ex+      0:0   00:00:00
 
 Submitting concatenated tree job for random seed: 12345
 Submitted batch job 53785735
@@ -2654,7 +2654,7 @@ Submitted batch job 53785737
 Submitting concatenated tree job for random seed: 78901
 Submitted batch job 53785738
 Submitting concatenated tree job for random seed: 34567
-Submitted batch job 53785739    
+Submitted batch job 53785739
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
 
@@ -2717,43 +2717,43 @@ ${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
 Submitting concatenated tree job for random seed: 12345
 Submitted batch job 53785735
 sacct -j 53785735 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53785735          0:0   01:50:00            
-53785735.ba+      0:0   01:50:00  15406332K 
-53785735.ex+      0:0   01:50:00    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53785735          0:0   01:50:00
+53785735.ba+      0:0   01:50:00  15406332K
+53785735.ex+      0:0   01:50:00
 Submitting concatenated tree job for random seed: 67890
 Submitted batch job 53785736
 sacct -j 53785736 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53785736          0:0   02:05:02            
-53785736.ba+      0:0   02:05:02  15014108K 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53785736          0:0   02:05:02
+53785736.ba+      0:0   02:05:02  15014108K
 53785736.ex+      0:0   02:05:02
 Submitting concatenated tree job for random seed: 23456
 Submitted batch job 53785737
 sacct -j 53785737 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53785737          0:0   02:58:11            
-53785737.ba+      0:0   02:58:11  15345536K 
-53785737.ex+      0:0   02:58:11 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53785737          0:0   02:58:11
+53785737.ba+      0:0   02:58:11  15345536K
+53785737.ex+      0:0   02:58:11
 Submitting concatenated tree job for random seed: 78901
 Submitted batch job 53785738
 sacct -j 53785738 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53785738          0:0   02:21:17            
-53785738.ba+      0:0   02:21:17  15664484K 
-53785738.ex+      0:0   02:21:17 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53785738          0:0   02:21:17
+53785738.ba+      0:0   02:21:17  15664484K
+53785738.ex+      0:0   02:21:17
 Submitting concatenated tree job for random seed: 34567
 Submitted batch job 53785739
 sacct -j 53785739 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53785739          0:0   02:42:30            
-53785739.ba+      0:0   02:42:30  15165312K 
-53785739.ex+      0:0   02:42:30 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53785739          0:0   02:42:30
+53785739.ba+      0:0   02:42:30  15165312K
+53785739.ex+      0:0   02:42:30
 
 Output:
 concatenated.fasta  StartTree.mldist                          Unfiltered_loci_ref_tree.contree
@@ -2839,11 +2839,11 @@ done
 sbatch 4.1_submit_constrained_gtrees.sh
 Submitted batch job 53791176
 sacct -j 53791176 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53791176          0:0   00:00:00            
-53791176.ba+      0:0   00:00:00      5336K 
-53791176.ex+      0:0   00:00:00  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53791176          0:0   00:00:00
+53791176.ba+      0:0   00:00:00      5336K
+53791176.ex+      0:0   00:00:00
 
 Submitted batch job 53791176
 Submitting constrained gene trees job for random seed: 12345
@@ -2949,43 +2949,43 @@ echo "Step 4.1 complete. Constrained trees are in $OutDir"
 Submitting constrained gene trees job for random seed: 12345
 Submitted batch job 53791177
 sacct -j 53791177 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53791177          0:0   00:04:16            
-53791177.ba+      0:0   00:04:16    796796K 
-53791177.ex+      0:0   00:04:16   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53791177          0:0   00:04:16
+53791177.ba+      0:0   00:04:16    796796K
+53791177.ex+      0:0   00:04:16
 Submitting constrained gene trees job for random seed: 67890
 Submitted batch job 53791178
 sacct -j 53791178 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53791178          0:0   00:05:05            
-53791178.ba+      0:0   00:05:05   1225316K 
-53791178.ex+      0:0   00:05:05       
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53791178          0:0   00:05:05
+53791178.ba+      0:0   00:05:05   1225316K
+53791178.ex+      0:0   00:05:05
 Submitting constrained gene trees job for random seed: 23456
 Submitted batch job 53791179
 sacct -j 53791179 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53791179          0:0   00:05:06            
-53791179.ba+      0:0   00:05:06   1407940K 
-53791179.ex+      0:0   00:05:06 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53791179          0:0   00:05:06
+53791179.ba+      0:0   00:05:06   1407940K
+53791179.ex+      0:0   00:05:06
 Submitting constrained gene trees job for random seed: 78901
 Submitted batch job 53791180
 sacct -j 53791180 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53791180          0:0   00:05:06            
-53791180.ba+      0:0   00:05:06   1226192K 
-53791180.ex+      0:0   00:05:06 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53791180          0:0   00:05:06
+53791180.ba+      0:0   00:05:06   1226192K
+53791180.ex+      0:0   00:05:06
 Submitting constrained gene trees job for random seed: 34567
 Submitted batch job 53791181
 sacct -j 53791181 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53791181          0:0   00:05:06            
-53791181.ba+      0:0   00:05:06   1092416K 
-53791181.ex+      0:0   00:05:06  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53791181          0:0   00:05:06
+53791181.ba+      0:0   00:05:06   1092416K
+53791181.ex+      0:0   00:05:06
 
 Git Commit Message
 refactor(4.1): transition to per-locus model lookup and dynamic seed handling
@@ -2995,4 +2995,286 @@ Variable Sourcing: Replaced manual path definitions with a centralized variables
 Resource Header Optimization: Standardized SLURM headers and explicitly added avx512 constraints to match the computational requirements of IQ-TREE 2.1.2 on the URI cluster.
 Code Robustness: Improved the model parsing regex to handle the comma-separated BIC block formatting and added a GTR+G fallback to prevent job failure if a specific model lookup returns null.
 
+4.2
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano treescreen.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# treescreen.R
+# Purpose: Calculate Pearson correlation (R2) between gene trees and reference tree.
+
+library(ape)
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 3) {
+  stop("Usage: Rscript treescreen.R <ref_tree.treefile> <gtrees_dir> <output.csv>")
+}
+
+ref_tree_path <- args[1]
+gtrees_dir    <- args[2]
+output_csv    <- args[3]
+
+# 1. Extract reference terminal branch lengths
+ref_tree <- read.tree(ref_tree_path)
+ref_bl <- setNames(ref_tree$edge.length[sapply(1:length(ref_tree$tip.label),
+                  function(x,y) which(y==x), y=ref_tree$edge[,2])],
+                  ref_tree$tip.label)
+
+# 2. Identify all constrained treefiles
+tree_files <- list.files(gtrees_dir, pattern = "\\.treefile$", full.names = TRUE)
+
+# 3. Process each locus
+results_list <- list()
+
+for (f in tree_files) {
+    locus_id <- gsub("\\.treefile$", "", basename(f))
+    gtree    <- read.tree(f)
+
+    # Extract gene tree branch lengths
+    gtree_bl <- setNames(gtree$edge.length[sapply(1:length(gtree$tip.label),
+                         function(x,y) which(y==x), y=gtree$edge[,2])],
+                         gtree$tip.label)
+
+    # Align tips (handles cases where gene trees have fewer taxa)
+    common_tips <- intersect(names(ref_bl), names(gtree_bl))
+
+    if (length(common_tips) > 2) {
+        # Regression: Reference Lengths ~ Gene Tree Lengths
+        regress  <- lm(gtree_bl[common_tips] ~ ref_bl[common_tips])
+        rsq      <- summary(regress)$r.squared
+        slope    <- coef(regress)[2]
+        results_list[[locus_id]] <- data.frame(Locus=locus_id, Slope=slope, Rsq=rsq)
+    }
+}
+
+results <- do.call(rbind, results_list)
+
+# 4. Calculate filtering thresholds (Simion et al. 2017: Mean +/- 1.96 * SD)
+mean_rsq <- mean(results$Rsq, na.rm=TRUE)
+sd_rsq   <- sd(results$Rsq, na.rm=TRUE)
+lower_limit <- mean_rsq - (1.96 * sd_rsq)
+upper_limit <- mean_rsq + (1.96 * sd_rsq)
+
+results$Status <- ifelse(results$Rsq >= lower_limit & results$Rsq <= upper_limit, "Pass", "Fail")
+
+# 5. Save output
+write.csv(results, output_csv, row.names = FALSE)
+
+cat("\n--- BLC Screening Summary ---\n")
+cat("Mean Rsq:    ", round(mean_rsq, 4), "\n")
+cat("SD Rsq:      ", round(sd_rsq, 4), "\n")
+cat("Lower Limit: ", round(lower_limit, 4), "\n")
+cat("Loci Passed: ", sum(results$Status == "Pass"), "\n")
+cat("Loci Failed: ", sum(results$Status == "Fail"), "\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.2_submit_treescreen.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting treescreen job for random seed: $random_seed";
+  sbatch $TScreen $random_seed
+done
+#---------------------------------
+sbatch 4.2_submit_treescreen.sh
+Submitted batch job 53802400
+sacct -j 53802400 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53802400          0:0   00:00:01            
+53802400.ba+      0:0   00:00:01      5552K 
+53802400.ex+      0:0   00:00:01      
+
+Submitting treescreen job for random seed: 12345
+Submitted batch job 53802401
+Submitting treescreen job for random seed: 67890
+Submitted batch job 53802402
+Submitting treescreen job for random seed: 23456
+Submitted batch job 53802403
+Submitting treescreen job for random seed: 78901
+Submitted batch job 53802404
+Submitting treescreen job for random seed: 34567
+Submitted batch job 53802405
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+nano treescreen.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=BLC_screen
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:20:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Inputs ---
+# The Reference Tree from Step 4.0:
+RefTree="$out4_0/$dir_name/Unfiltered_loci_ref_tree.treefile"
+# Constrained Gene trees from Step 4.1:
+Gtrees="$out4_1/$dir_name"
+# Final named alignments from 2.4)
+Alignments="$out2_4/$dir_name"
+
+# Output
+OutDir="$out4_2/$dir_name"
+mkdir -p "$OutDir/pass_loci"
+mkdir -p "$OutDir/fail_loci"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute R Screening ---
+echo "Calculating Branch Length Correlations..."
+Rscript "$TScreenR" "$RefTree" "$Gtrees" "$OutDir/blc_results.csv"
+
+# --- Assemble Filtered Datasets ---
+echo "Sorting alignments into pass/fail directories..."
+
+# Use tail to skip CSV header, IFS to parse columns
+while IFS=, read -r locus slope rsq status; do
+    # Remove possible carriage returns or quotes
+    locus=$(echo $locus | tr -d '"\r')
+    status=$(echo $status | tr -d '"\r')
+
+    if [ "$status" == "Pass" ]; then
+        cp "$Alignments/${locus}.fas" "$OutDir/pass_loci/"
+    elif [ "$status" == "Fail" ]; then
+        cp "$Alignments/${locus}.fas" "$OutDir/fail_loci/"
+    fi
+done < <(tail -n +2 "$OutDir/blc_results.csv")
+
+echo "Process complete. Final alignments are in $OutDir/pass_loci"
+date
+#---------------------------------
+
+Submitting treescreen job for random seed: 12345
+Submitted batch job 53802401
+sacct -j 53802401 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53802401          0:0   00:00:37            
+53802401.ba+      0:0   00:00:37    217264K 
+53802401.ex+      0:0   00:00:37     
+--- BLC Screening Summary ---
+Mean Rsq:     0.1485 
+SD Rsq:       0.1869 
+Lower Limit:  -0.2178 
+Loci Passed:  1854 
+Loci Failed:  146 
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_12345/pass_loci
+
+Submitting treescreen job for random seed: 67890
+Submitted batch job 53802402
+sacct -j 53802402 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53802402          0:0   00:00:37            
+53802402.ba+      0:0   00:00:37    219224K 
+53802402.ex+      0:0   00:00:37   
+--- BLC Screening Summary ---
+Mean Rsq:     0.148 
+SD Rsq:       0.1903 
+Lower Limit:  -0.2249 
+Loci Passed:  1847 
+Loci Failed:  153 
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_67890/pass_loci       
+
+Submitting treescreen job for random seed: 23456
+Submitted batch job 53802403
+sacct -j 53802403 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53802403          0:0   00:00:37            
+53802403.ba+      0:0   00:00:37    198124K 
+53802403.ex+      0:0   00:00:37  
+--- BLC Screening Summary ---
+Mean Rsq:     0.1481 
+SD Rsq:       0.1911 
+Lower Limit:  -0.2264 
+Loci Passed:  1855 
+Loci Failed:  145 
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_23456/pass_loci   
+
+Submitting treescreen job for random seed: 78901
+Submitted batch job 53802404
+sacct -j 53802404 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53802404          0:0   00:00:36            
+53802404.ba+      0:0   00:00:36    199488K 
+53802404.ex+      0:0   00:00:36       
+--- BLC Screening Summary ---
+Mean Rsq:     0.1443 
+SD Rsq:       0.1895 
+Lower Limit:  -0.2271 
+Loci Passed:  1857 
+Loci Failed:  143 
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_78901/pass_loci
+
+Submitting treescreen job for random seed: 34567
+Submitted batch job 53802405
+sacct -j 53802405 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53802405          0:0   00:00:36            
+53802405.ba+      0:0   00:00:36    220328K 
+53802405.ex+      0:0   00:00:36   
+--- BLC Screening Summary ---
+Mean Rsq:     0.1475 
+SD Rsq:       0.1892 
+Lower Limit:  -0.2234 
+Loci Passed:  1857 
+Loci Failed:  143 
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_34567/pass_loci
+
+Git Commit Message
+refactor(4.2): modernize treescreen script for seed-based simulation sets
+Dynamic Seed Handling: Updated the script to accept a random_seed argument, enabling it to process specific simulation subdirectories (set_$seed) rather than relying on a hardcoded single path.
+Centralized Variables: Replaced manual path definitions with a source call to variables.sh, improving maintainability and ensuring the script correctly references global output variables like $out4_0, $out4_1, and $out4_2.
+Path Correction: Refined the logic for locating the reference tree and constrained gene trees to ensure compatibility with the partitioned analysis outputs generated in Steps 4.0 and 4.1.
+Directory Management: Standardized output subdirectory creation within the seed-specific path to prevent data overwrites between different simulation runs.
 

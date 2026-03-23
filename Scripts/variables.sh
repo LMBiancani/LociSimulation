@@ -212,6 +212,16 @@ TCT="$SCRIPTS/4_filter_by_branch_length/trimConstraintTree.R"
 # Path to script-specific output directory:
 out4_1="$Output/4.1_constrained_gtrees"
 
+## 4.2_submit_treescreen.sh
+
+# Path to treescreen.sh
+TScreen="$SCRIPTS/4_filter_by_branch_length/treescreen.sh"
+# Path to treescreen.R
+TScreenR="$SCRIPTS/4_filter_by_branch_length/treescreen.R"
+# Path to script-specific output directory:
+out4_2="$Output/4.2_BLC_filtered"
+
+
 ## 6.0_submit_unfiltered_trees.sh
 
 # Path to unfiltered_tree.sh:

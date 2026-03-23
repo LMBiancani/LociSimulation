@@ -9,19 +9,26 @@
 #SBATCH --mail-user="biancani@uri.edu"
 #SBATCH --mail-type=ALL
 
-# --- Variables ---
-Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
-Scripts="$Project/LociSimulation/Scripts/"
-Scripts4="$Scripts/4_filter_by_branch_length"
-Output="$Project/output/mammals"
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
 
-# Inputs
-RefTree="$Output/4.0_unfiltered_concat_tree/2000_loci_ref_tree.treefile"
-Gtrees="$Output/4.1_constrained_gtrees"
-Alignments="$Output/2.4_final_named_alignments"
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
 
-# Output subdirectories
-OutDir="$Output/4.2_BLC_filtered"
+# --- Inputs ---
+# The Reference Tree from Step 4.0:
+RefTree="$out4_0/$dir_name/Unfiltered_loci_ref_tree.treefile"
+# Constrained Gene trees from Step 4.1:
+Gtrees="$out4_1/$dir_name"
+# Final named alignments from 2.4)
+Alignments="$out2_4/$dir_name"
+
+# Output
+OutDir="$out4_2/$dir_name"
 mkdir -p "$OutDir/pass_loci"
 mkdir -p "$OutDir/fail_loci"
 
@@ -37,7 +44,7 @@ export R_LIBS=~/R-packages
 
 # --- Execute R Screening ---
 echo "Calculating Branch Length Correlations..."
-Rscript "$Scripts4/treescreen.R" "$RefTree" "$Gtrees" "$OutDir/blc_results.csv"
+Rscript "$TScreenR" "$RefTree" "$Gtrees" "$OutDir/blc_results.csv"
 
 # --- Assemble Filtered Datasets ---
 echo "Sorting alignments into pass/fail directories..."
@@ -47,7 +54,7 @@ while IFS=, read -r locus slope rsq status; do
     # Remove possible carriage returns or quotes
     locus=$(echo $locus | tr -d '"\r')
     status=$(echo $status | tr -d '"\r')
-    
+
     if [ "$status" == "Pass" ]; then
         cp "$Alignments/${locus}.fas" "$OutDir/pass_loci/"
     elif [ "$status" == "Fail" ]; then
