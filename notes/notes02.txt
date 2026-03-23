@@ -3271,4 +3271,277 @@ Directory Management: Standardized output subdirectory creation within the seed-
 
 Skipping module 5 for now (will be another filtering step later)
 
-Step 6:
+Module 6 - Infer and Compare Trees
+
+Step 6.0: Unfiltered Reference Tree Inference
+Step removed because it is exactly the same as step 4.0.
+
+Git commit message: remove step 6.0 (redundant with step 4.0)
+
+Step 6.1: Intersection Dataset Generation
+Purpose: To isolate the most reliable "Elite" loci and the most problematic "Bottom-Tier" loci by identifying the intersection of results from two independent quality control filters.
+Methods:
+Intersection Logic: Using the comm -12 command on sorted lists of filenames, the script identifies loci that appears in both "Pass" directories (Step 3.3 and Step 4.2) and both "Fail" directories.
+Categorization: * All-Pass (Elite): Loci that passed the clade-based p-value screening (noise filter) and the Branch Length Correlation test (rate filter).
+All-Fail (Bottom-Tier): Loci that were rejected by both the clade-based screening and the BLC test.
+Data Integrity: The script copies the raw .fas files from the original named alignments directory to ensure that downstream tree building starts from clean, un-modified sequence data.
+Significance: This step creates the polarized datasets necessary for a robust sensitivity analysis. By comparing trees built from "Elite" loci against those built from "Bottom-Tier" loci, you can quantify how much phylogenetic signal is lost or distorted by specific types of genomic noise.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.1_submit_create_intersections.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting create intersections job for random seed: $random_seed";
+  sbatch $Intersects $random_seed
+done
+#---------------------------------
+sbatch 6.1_submit_create_intersections.sh
+Submitted batch job 53818494
+sacct -j 53818494 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818494          0:0   00:00:01
+53818494.ba+      0:0   00:00:01      5644K
+53818494.ex+      0:0   00:00:01
+
+Submitting create intersections job for random seed: 12345
+Submitted batch job 53818495
+Submitting create intersections job for random seed: 67890
+Submitted batch job 53818496
+Submitting create intersections job for random seed: 23456
+Submitted batch job 53818497
+Submitting create intersections job for random seed: 78901
+Submitted batch job 53818498
+Submitting create intersections job for random seed: 34567
+Submitted batch job 53818499
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+nano create_intersections.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.1_intersection"
+#SBATCH --time=00:15:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=1G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Variables ---
+
+# Final named alignments from 2.4)
+Alignments="$out2_4/$dir_name"
+
+# Input Directories
+clades_PASS="$out3_3/$dir_name/pass_0.05"
+clades_FAIL="$out3_3/$dir_name/fail_0.05"
+blc_PASS="$out4_2/$dir_name/pass_loci"
+blc_FAIL="$out4_2/$dir_name/fail_loci"
+
+# Define and Create Output Directory
+OutDir="$out6_1/$dir_name"
+mkdir -p "$OutDir/all_PASS" "$OutDir/all_FAIL" \
+         "$OutDir/clades_PASS_blc_FAIL" "$OutDir/blc_PASS_clades_FAIL" \
+         "$OutDir/FAIL_at_least_one" "$OutDir/PASS_at_least_one"
+
+# Move to output directory for generating lists
+cd "$OutDir"
+
+# Ensure consistent sorting for comm command
+export LC_ALL=C
+
+# --- Function to copy files based on the generated lists ---
+copy_loci() {
+    local list=$1
+    local dest=$2
+    if [ -s "$list" ]; then
+        count=$(wc -l < "$list")
+        echo "Processing $dest: Copying $count loci..."
+        # -r prevents backslash interpretation, IFS= prevents trimming whitespace
+        while IFS= read -r locus; do
+            cp "$Alignments/$locus" "$dest/"
+        done < "$list"
+    else
+        echo "Warning: No names found in $list for $dest"
+    fi
+}
+
+# Generate a master list of all 2000 loci for subtraction logic
+ls "$Alignments" | sort > master_list.txt
+
+# Existing list files
+ls "$clades_PASS" | sort > clades_PASS_list.txt
+ls "$clades_FAIL" | sort > clades_FAIL_list.txt
+ls "$blc_PASS" | sort > blc_PASS_list.txt
+ls "$blc_FAIL" | sort > blc_FAIL_list.txt
+
+# --- Intersection Logic ---
+
+# 1. ALL PASS (Elite: 529)
+comm -12 clades_PASS_list.txt blc_PASS_list.txt > elite_names.txt
+
+# 2. ALL FAIL (Noisy: 28)
+comm -12 clades_FAIL_list.txt blc_FAIL_list.txt > noisy_names.txt
+
+# 3. clades PASS / blc FAIL (104)
+comm -12 clades_PASS_list.txt blc_FAIL_list.txt > cladesP_blcF_names.txt
+
+# 4. blc PASS / clades FAIL (1,339)
+comm -12 blc_PASS_list.txt clades_FAIL_list.txt > blcP_cladesF_names.txt
+
+# 5. FAIL AT LEAST ONE (Everything except Elite: 1,471)
+comm -23 master_list.txt elite_names.txt > FAIL_at_least_one_names.txt
+
+# 6. PASS AT LEAST ONE (Everything except Noisy: 1,972)
+comm -23 master_list.txt noisy_names.txt > PASS_at_least_one_names.txt
+
+echo "------------------------------------------------"
+echo "INTERSECTION SUMMARY REPORT"
+echo "------------------------------------------------"
+copy_loci elite_names.txt "all_PASS"
+copy_loci noisy_names.txt "all_FAIL"
+copy_loci cladesP_blcF_names.txt "clades_PASS_blc_FAIL"
+copy_loci blcP_cladesF_names.txt "blc_PASS_clades_FAIL"
+copy_loci FAIL_at_least_one_names.txt "FAIL_at_least_one"
+copy_loci PASS_at_least_one_names.txt "PASS_at_least_one"
+echo "------------------------------------------------"
+
+# --- Cleanup ---
+rm *_list.txt *_names.txt
+
+echo "Step 6.1 Complete. Intersection datasets are ready."
+#---------------------------------
+
+i=JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting create intersections job for random seed: 12345
+Submitted batch job 53818495
+sacct -j 53818495 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818495          0:0   00:00:17
+53818495.ba+      0:0   00:00:17    214680K
+53818495.ex+      0:0   00:00:17
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 375 loci...
+Processing all_FAIL: Copying 47 loci...
+Processing clades_PASS_blc_FAIL: Copying 106 loci...
+Processing blc_PASS_clades_FAIL: Copying 1472 loci...
+Processing FAIL_at_least_one: Copying 1625 loci...
+Processing PASS_at_least_one: Copying 1953 loci...
+------------------------------------------------
+
+Submitting create intersections job for random seed: 67890
+Submitted batch job 53818496
+sacct -j 53818496 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818496          0:0   00:00:18
+53818496.ba+      0:0   00:00:18    211304K
+53818496.ex+      0:0   00:00:18
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 349 loci...
+Processing all_FAIL: Copying 42 loci...
+Processing clades_PASS_blc_FAIL: Copying 104 loci...
+Processing blc_PASS_clades_FAIL: Copying 1505 loci...
+Processing FAIL_at_least_one: Copying 1651 loci...
+Processing PASS_at_least_one: Copying 1958 loci...
+------------------------------------------------
+
+Submitting create intersections job for random seed: 23456
+Submitted batch job 53818497
+sacct -j 53818497 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818497          0:0   00:00:17
+53818497.ba+      0:0   00:00:17    217220K
+53818497.ex+      0:0   00:00:17
+Submitting create intersections job for random seed: 78901
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 360 loci...
+Processing all_FAIL: Copying 39 loci...
+Processing clades_PASS_blc_FAIL: Copying 98 loci...
+Processing blc_PASS_clades_FAIL: Copying 1503 loci...
+Processing FAIL_at_least_one: Copying 1640 loci...
+Processing PASS_at_least_one: Copying 1961 loci...
+------------------------------------------------
+
+Submitted batch job 53818498
+sacct -j 53818498 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818498          0:0   00:00:17
+53818498.ba+      0:0   00:00:17    220680K
+53818498.ex+      0:0   00:00:17
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 328 loci...
+Processing all_FAIL: Copying 42 loci...
+Processing clades_PASS_blc_FAIL: Copying 102 loci...
+Processing blc_PASS_clades_FAIL: Copying 1527 loci...
+Processing FAIL_at_least_one: Copying 1672 loci...
+Processing PASS_at_least_one: Copying 1958 loci...
+------------------------------------------------
+
+Submitting create intersections job for random seed: 34567
+Submitted batch job 53818499
+sacct -j 53818499 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818499          0:0   00:00:17
+53818499.ba+      0:0   00:00:17    213924K
+53818499.ex+      0:0   00:00:17
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 399 loci...
+Processing all_FAIL: Copying 40 loci...
+Processing clades_PASS_blc_FAIL: Copying 102 loci...
+Processing blc_PASS_clades_FAIL: Copying 1459 loci...
+Processing FAIL_at_least_one: Copying 1601 loci...
+Processing PASS_at_least_one: Copying 1960 loci...
+------------------------------------------------
+
+
+Git Commit Message
+refactor(6.1): migrate to centralized variables and seed-based directory handling
+Centralized Configuration: Replaced local path variables (Project, Output, Original_Alignments) with a source call to variables.sh. This ensures the script uses the globally defined $outX_Y output variables, maintaining consistency across the entire simulation pipeline.
+Seed-Aware Execution: Refactored input and output paths to use $dir_name (derived from random_seed). This allows the script to be submitted via the batch wrapper to process all simulation sets (set_12345, set_67890, etc.) in parallel.
+Revised Directory Structure: Updated subdirectory names to be more descriptive and consistent with the project's terminology (e.g., changing S3_pass_S4_fail to clades_PASS_blc_FAIL).
+Path Correction: Updated input directory references to point to the correct seed-specific subfolders for Clade filtering (Step 3.3) and BLC filtering (Step 4.2).

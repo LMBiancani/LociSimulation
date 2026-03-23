@@ -221,14 +221,14 @@ TScreenR="$SCRIPTS/4_filter_by_branch_length/treescreen.R"
 # Path to script-specific output directory:
 out4_2="$Output/4.2_BLC_filtered"
 
+## 6. Infer and Compare Trees
 
-## 6.0_submit_unfiltered_trees.sh
+## 6.1_submit_create_intersections.sh
 
-# Path to unfiltered_tree.sh:
-UFtree="$SCRIPTS/6_infer_and_compare_trees/unfiltered_tree.sh"
+# Path to create_intersections.sh
+Intersects="$SCRIPTS/6_infer_and_compare_trees/create_intersections.sh"
 # Path to script-specific output directory:
-out6_0="$Output/6.0_unfiltered_trees"
-
+out6_1="$Output/6.1_intersection_data"
 
 set +a  # Stop automatically exporting
 ################################################
