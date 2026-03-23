@@ -291,16 +291,12 @@ date
 #---------------------------------
 sbatch 0.1_iqtree_empirical.sh
 Submitted batch job 53765421
-
-*****
-
-Submitted batch job 47065851
-sacct -j 47065851 -o JobID,ExitCode,Elapsed,MaxRSS
+sacct -j 53765421 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-47065851          0:0 2-17:22:51
-47065851.ba+      0:0 2-17:22:51 149134624K
-47065851.ex+      0:0 2-17:22:51       256K
+53765421          0:0 2-08:41:10
+53765421.ba+      0:0 2-08:41:10 145015740K
+53765421.ex+      0:0 2-08:41:10
 
 Git Commit Message
 refine(0.1_iqtree): restrict ModelFinder search space for empirical inference
@@ -607,13 +603,13 @@ Rscript $SCRIPTS/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tre
 date
 #---------------------------------
 sbatch 1.1_format_tree.sh
-Submitted batch job 53599007
-sacct -j 53599007 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803607
+sacct -j 53803607 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53599007          0:0   00:00:27
-53599007.ba+      0:0   00:00:27    428048K
-53599007.ex+      0:0   00:00:27
+53803607          0:0   00:00:25
+53803607.ba+      0:0   00:00:25    457096K
+53803607.ex+      0:0   00:00:25
 
 mkdir /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
@@ -882,13 +878,13 @@ done
 date
 #---------------------------------
 sbatch 2.0_prep_simphy.sh
-Submitted batch job 53693684
-sacct -j 53693684 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803621
+sacct -j 53803621 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53693684          0:0   00:00:36
-53693684.ba+      0:0   00:00:36    283284K
-53693684.ex+      0:0   00:00:36
+53803621          0:0   00:00:19
+53803621.ba+      0:0   00:00:19    252352K
+53803621.ex+      0:0   00:00:19
 
 git commit message:
 feat: refactor 2.0_prep_simphy.sh to support multi-seed loops and centralized variables
@@ -1013,13 +1009,13 @@ done
 date
 #---------------------------------
 sbatch 2.1_simphy_commands.sh
-Submitted batch job 53695361
-sacct -j 53695361 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803626
+sacct -j 53803626 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53695361          0:0   00:00:19
-53695361.ba+      0:0   00:00:19    226392K
-53695361.ex+      0:0   00:00:19
+53803626          0:0   00:00:18
+53803626.ba+      0:0   00:00:18    222268K
+53803626.ex+      0:0   00:00:18
 
 Git Commit message:
 feat: refactor 2.1 to support multi-seed looping and centralized variables
@@ -1053,24 +1049,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 2.2_submit_sim_jobs.sh
-Submitted batch job 53703017
-sacct -j 53703017 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803629
+sacct -j 53803629 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53703017          0:0   00:00:00
-53703017.ba+      0:0   00:00:00      5560K
-53703017.ex+      0:0   00:00:00
+53803629          0:0   00:00:00
+53803629.ba+      0:0   00:00:00      5644K
+53803629.ex+      0:0   00:00:00
 
 Submitting simulation job for random seed: 12345
-Submitted batch job 53703018
+Submitted batch job 53803630
 Submitting simulation job for random seed: 67890
-Submitted batch job 53703019
+Submitted batch job 53803631
 Submitting simulation job for random seed: 23456
-Submitted batch job 53703020
+Submitted batch job 53803632
 Submitting simulation job for random seed: 78901
-Submitted batch job 53703021
+Submitted batch job 53803633
 Submitting simulation job for random seed: 34567
-Submitted batch job 53703022
+Submitted batch job 53803634
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
@@ -1220,49 +1216,45 @@ date
 #---------------------------------
 
 Submitting simulation job for random seed: 12345
-Submitted batch job 53703018
-sacct -j 53703018 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803630
+sacct -j 53803630 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53703018          0:0   00:00:37
-53703018.ba+      0:0   00:00:37    196232K
-53703018.ex+      0:0   00:00:37
-
+53803630          0:0   00:00:45
+53803630.ba+      0:0   00:00:45    183160K
+53803630.ex+      0:0   00:00:45
 Submitting simulation job for random seed: 67890
-Submitted batch job 53703019
-sacct -j 53703019 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803631
+sacct -j 53803631 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53703019          0:0   00:00:35
-53703019.ba+      0:0   00:00:35    191412K
-53703019.ex+      0:0   00:00:35
-
+53803631          0:0   00:00:40
+53803631.ba+      0:0   00:00:40    199772K
+53803631.ex+      0:0   00:00:41
 Submitting simulation job for random seed: 23456
-Submitted batch job 53703020
-sacct -j 53703020 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803632
+sacct -j 53803632 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53703020          0:0   00:00:38
-53703020.ba+      0:0   00:00:38    199664K
-53703020.ex+      0:0   00:00:38
-
+53803632          0:0   00:00:40
+53803632.ba+      0:0   00:00:40    198492K
+53803632.ex+      0:0   00:00:40
 Submitting simulation job for random seed: 78901
-Submitted batch job 53703021
-sacct -j 53703021 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803633
+sacct -j 53803633 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53703021          0:0   00:00:37
-53703021.ba+      0:0   00:00:37    167440K
-53703021.ex+      0:0   00:00:37
-
+53803633          0:0   00:00:39
+53803633.ba+      0:0   00:00:39    169012K
+53803633.ex+      0:0   00:00:39
 Submitting simulation job for random seed: 34567
-Submitted batch job 53703022
-sacct -j 53703022 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803634
+sacct -j 53803634 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53703022          0:0   00:00:23
-53703022.ba+      0:0   00:00:23    148548K
-53703022.ex+      0:0   00:00:23
+53803634          0:0   00:00:40
+53803634.ba+      0:0   00:00:40    180072K
+53803634.ex+      0:0   00:00:40
 
 Git Commit Message:
 feat: refactor 2.2 for automation of multiple simulation sets
@@ -1567,24 +1559,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 2.3_submit_INDELible.sh
-Submitted batch job 53707265
-sacct -j 53707265 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803651
+sacct -j 53803651 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53707265          0:0   00:00:00
-53707265.ba+      0:0   00:00:00      5264K
-53707265.ex+      0:0   00:00:00
+53803651          0:0   00:00:00
+53803651.ba+      0:0   00:00:00      5496K
+53803651.ex+      0:0   00:00:00
 
 Submitting INDELible job for random seed: 12345
-Submitted batch job 53707266
+Submitted batch job 53803652
 Submitting INDELible job for random seed: 67890
-Submitted batch job 53707267
+Submitted batch job 53803653
 Submitting INDELible job for random seed: 23456
-Submitted batch job 53707268
+Submitted batch job 53803654
 Submitting INDELible job for random seed: 78901
-Submitted batch job 53707269
+Submitted batch job 53803655
 Submitting INDELible job for random seed: 34567
-Submitted batch job 53707270
+Submitted batch job 53803656
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
 
@@ -1665,49 +1657,46 @@ date
 #---------------------------------
 
 Submitting INDELible job for random seed: 12345
-Submitted batch job 53707266
-sacct -j 53707266 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803652
+sacct -j 53803652 -o JobID,ExitCode,Elapsed,MaxRSS
+sacct -j 53803652 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53707266          0:0   00:01:51
-53707266.ba+      0:0   00:01:51    421612K
-53707266.ex+      0:0   00:01:51
-
+53803652          0:0   00:01:58
+53803652.ba+      0:0   00:01:58    418732K
+53803652.ex+      0:0   00:01:58
 Submitting INDELible job for random seed: 67890
-Submitted batch job 53707267
-sacct -j 53707267 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803653
+sacct -j 53803653 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53707267          0:0   00:02:05
-53707267.ba+      0:0   00:02:05    445356K
-53707267.ex+      0:0   00:02:05
-
+53803653          0:0   00:02:03
+53803653.ba+      0:0   00:02:03    447368K
+53803653.ex+      0:0   00:02:03
 Submitting INDELible job for random seed: 23456
-Submitted batch job 53707268
-sacct -j 53707268 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803654
+sacct -j 53803654 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53707268          0:0   00:02:05
-53707268.ba+      0:0   00:02:05    446244K
-53707268.ex+      0:0   00:02:05
-
+53803654          0:0   00:02:02
+53803654.ba+      0:0   00:02:02    410088K
+53803654.ex+      0:0   00:02:02
 Submitting INDELible job for random seed: 78901
-Submitted batch job 53707269
-sacct -j 53707269 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803655
+sacct -j 53803655 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53707269          0:0   00:02:07
-53707269.ba+      0:0   00:02:07    445504K
-53707269.ex+      0:0   00:02:07
-
+53803655          0:0   00:01:55
+53803655.ba+      0:0   00:01:55    399684K
+53803655.ex+      0:0   00:01:55
 Submitting INDELible job for random seed: 34567
-Submitted batch job 53707270
-sacct -j 53707270 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53803656
+sacct -j 53803656 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53707270          0:0   00:01:49
-53707270.ba+      0:0   00:01:49    372548K
-53707270.ex+      0:0   00:01:49
+53803656          0:0   00:02:02
+53803656.ba+      0:0   00:02:02    445584K
+53803656.ex+      0:0   00:02:02
 
 Check outputs:
 # Source variables to get the path to out2_3
@@ -1746,10 +1735,10 @@ Raw Phylip files:    2000 / 2000
 Final FASTA files:  2000 / 2000
 Integrity Check:    PASSED (No empty/corrupt files found)
 Previewing loc_500.fas:
->31
-GGTGAACTAAGGAAATGTCCTGCAGCTGTTCGCTTCAACTTTAGCTCATGGACGAGGCGCCCCCTTGATACCAAT---AGTATCGGCTGGGGCGATTGGTACGCTATCCCTGCTCGCCGTTGTCCTGTCAGACGCATTACAGCTCATACGCCTAGA------GTTTAT---------TGTCTCAGTTACCTACGTGCTCAC---TTTTACCCTATATCTCCACTAAAAGAGAGG---TCTCGAACGCGGGAACTA---CTG------CAGAATTCTACTGACACAATTGACGTTTCACTGCTTCAACAATTTTCCCAGCGACAGCTGAAGCATCCAGAGGTGAACATTGAAGGATGCTAT---GGAATCAACATTCGTCGGGTT---CTTTATGAAGCA------GGT---CAACGTGCGAAGGCGCCTCATGCAATTAAGGTTACA---GATGTC---CACGTCAACTGC---------GAGGCTAAAAGAGGCGCAGATTCGCCA---CGGGAGGTACTTGAC---CCCCTTTCAAAGACGTGGAGCGCTCGTTCATCACCGTACTTGCGGCGTGTGCGCCTTGTCCTATCT---------------GACTGGCGGCCTTATCCACGA------AGTGGACCACGTCCGCCGGACTTACTAAAGTGGGCGCGCAATGCA---AGATACCTGCGCTTTGAGCGG---TTT------GAA
->32
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------GGTCTTCCAATACTACCAGATCATGGCATCTTCCCACATGCGAACCTTAAAGAGGTC---GCGGGAAAAGAATTAAGA---CGG------ATCTATCCGGTTGATGGAATCTATGGTTCTTGGCTTACACAGCTGGGCCTGAGGCCTGGTATCATCCCACGGGGAAATCGTCGCCTGAAGTAT---GCCCACGATGGACTAGATGTA---CCTTGTCCCCGTCTGGGTGGT---GTTAGGGCGAAGGCTCCTCATGATCGCTATCTACTC---AAGTTA---GAGGTATGCACT---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>36
+------GGCGAATTA---GAGGAGTACGATAGAGCTACTGATTTTAACCAAACAGCATTGACC---------AGGGGTAATTTAGCATATCTTGACATGCTTTGGGCATCTTGCACTGAAGTCCCAGCAGCTCGGCGTGTGGTTACACGGATCCTCCTATGTCGTCCA---------AGAGATTCAGAACTGTCC------------------------GCCCTTCGCCCCCATTTGTAC------CTGCCTCATATGCTGAAGGAAGCAATTCACATCCGCTATGATTCGCGT---TTATCGACTGACGTC---ATACTTAGCTCAGTGGGTCAACAGTTTGTGCACAGA---TCTGTCCGCATTCCGCTATCTAACTCTCCCAATACGTACAGAGGC---AAGGCTACTGGCGTTCCCGGC------------CCTGGGTTGACAGGTTGGCGCGCTAAG---GCACCACACCGCGATAACAATCTGAACAACGAGGTGACCCCAGAGGGATACCGATACGCTGACCCCCTAACCCTACCTTCTGCTGCTCCTGTCTCAAATACACGCGCCGCC---CGCTCATCCTGCACCTTACGCTGCATCGCTATCGTGCTCCCGTACTTTCGGAAGTTTCCAGCTATAGGCCAGTCATCACCTCGTCTGCTAAGCTATGGGCGCAATGCTCTACTCGCGAAAGATACAGTC---TCAATC
+>1
+------TTGAAACTT---CTTAAGACTAATCGCGCGCCACGCTTCAACAGGCGAAACCCGACT---------AGAGATCTTCTAGCTCGTAAGAAGCTCACTTGGCTATCACCATGCGTTAGACCGGCGGTTCGATGGCGCGTCGCACGGTACAGAGCCGACGCTCCA---------CTGATCCGCGGGCTCGTT------------------------TCTTTGGCTGCTCACTCTCGG------GCCGCGTCGGAACTTAAAGAGCTCCATGCTAAGTACCCAGGTCACACA---GCGACTCTTGACTTG---ATCTGCAGATCAGAGTGTACGCAAAACCGGATCAGA---TTCTATTCGATACCTGATTTTAACCCGAAAGTAACCTACGCAGCT------TCGTCTGGTGTACCACGT------------CGGACACTCCCGGGTCTTAGGGCAAAG---GCTCCACATGTCGTTATCCTGCTAGATTGCGCAGTCAGGGTAGAGCGCGGCACGAGGGCGGACGTTCTAACCCAGTTGGTGATCTCGCCAGACTCAATAACGCCTGCAATC---CGCTCGTCCGTTTCTCTTGTCAGGAGGTCTAACGTGCAGGCGGAATGCGCATGTTTCCCATGCCGTGGGCTCGATACCCCAGATCTACTAACTCGCAGAAGAAATGCGATTTACAGAGTCGGTAAACGC---CAGGCG
 ----------------------------------------------------------
 CHECKING SEED: 67890 (Directory: set_67890)
 Raw Phylip files:    2000 / 2000
@@ -1757,9 +1746,9 @@ Final FASTA files:  2000 / 2000
 Integrity Check:    PASSED (No empty/corrupt files found)
 Previewing loc_500.fas:
 >26
----------------------------TAAGCCGGTAAATCTTATGAATAACCGCTACAACCGAAACTTCGTACCATTCAGAGACCTAGCAAGCTCATAAATAGTATACCAACAATCGGTACAGCGTTCACAATATGCATGGGCCCATGAAAAGAGCATGGAGTTGGAGCGAGTTCGCAATTTAGTGCAAACGTGTCCACGGAAATCAATTAAGCACTACGACGAACCCGTATCGAGAGTGTTAAGTGGCCTCGAATAATGTCGCGCGTAACCTATCTAAAGTGATGTGAACTCCAAAAGCCTCCAGTAAAAAAGGATATCACATACAGGCGGAGGAGGTGCGAAAGATAGGGAACGAAAAAAATAAAG----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------TAAGCCGGTAAATTTTATGAATAACCGCTACAACCGAAACTTCGTACCATTCAGAGACCTAGCAAGCTCATAAATAGTATACCAACAATCGGTACAGCGTTCACAATATGCATGGGCCCATGAAAAGAGCATGGAGTTGGAGCGAGTTCGCAATTTAGTGCAAACGTGTCCACGGAAATCAATTAAGCACTACGACGAACCCGTATTGAGAGTGTTCAGTGGCCTCGAATAATGTCGCGCGTAACCTATCTAAAGTGATGTGAACTCCAAAAGCCTCCAGTACAAAAGGATATCACATACAGGCGGAGGAGGTGCGAAAGATAGGGAACGAAAAAAATAAAG----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 >25
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AGTGGCCTCGAGTAATGTCGCGCGCAACCTATCTAAAGTGATGTGAACTCCACAAGCCTCCAGTGAAAAAGAATATCACATAAAGGCGGAGGAGGTGCGAAAGTTAGGGAACGAAAAAAATAAAGACGCAGCTAGAAACAAAACGAGATCTACTAGGCTAAATCATCGTCATTTAAACGTGACATGAAACTGACCCACACCACAGAACAATTAGGGACTACTAAGACCTACCCCCAAGAATCAGCCTGAACGACAGGCCACATTGCGCACAACAGCGACCAACAAGACTGATAAGACATTTAGGACCTGAGACCATACGACAATTATAACACAAAATCGG-----------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AGTGGCCTCGAGTAATGTCGCGCGCAACCTATCTAAAGTGATGTGAACTCCACAAGCCTCCAGTGCAAAAGAATATCACATAAAGGCGGAGGAGGTGCGAAAGTTAGGGAACGAAAAAAATAAAGACGCAGCTAGAAACAAAACGAGATATACTAGGCTAAATCATCGTCATTTAAACGTGACATGAAACTGACCCACACCACAGAACAATTAGGGACTACTAAGACCTACCCCCAAGAATCAGCCTGAACGACAGGCCACATTGCGCACAACAGCGACCAACAAGACTGATAAGACATTTAGGACCTGAGACCATACGACAATTATAGCACAAAATCGG-----------------------------------------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------
 CHECKING SEED: 23456 (Directory: set_23456)
 Raw Phylip files:    2000 / 2000
@@ -1767,9 +1756,9 @@ Final FASTA files:  2000 / 2000
 Integrity Check:    PASSED (No empty/corrupt files found)
 Previewing loc_500.fas:
 >17
-TAGA---TAACTTGG---C-----TTGC--AA-GC------G--A-CTCGG-GAATG---GAAAA-C-TG---GCGCA-GTTTTTTGGT---CAA-A-TTTGAG--G--G-A-----CC------------ATA-AG-TAA--GTTG-A-ACAG---------------CTG-GCG-CTC---TCCATTT--TA-GCC--TG------AA-TCA-T-GGT-----T-TGTC--CA-TTT-CG-----G-TGG-G--T-TGCT-GTAAG-CA---AGC-G-CC-----CGA-T-CG-TT-------TTGGTCA---------CC-T----TAGTTGCTA---AGGACTT-------TACCTAT-T-----CCC-G-GCGGGGCG-ACCTGCCCAGG-------C-TAA---C-TCGC-TGTGT-AG-A----TTTATT---TG-T-ATCTCGCAGC-C-TCACACTAACAAA---GA--ACCT-ACA-C-----T---TATGTG----TCG-G-CGT-TGCT-CA--AA-A-C--G-G-C--AACGA-CCGCCCGGT--C-TC---AC-T--GGCCTG-T------G-CGCTGAT----A-------ATC--TTT------AATACCTGGTGCA-GATCGGTC-----AC-C---T------TT-TGAG---GCT---G----------CGG-A--GCATTGC-TT--GT-GA-C--CAA--CT--AAGAT------A-TC--CC-C-GA-TATAGC--AC-CA-CGCAAC--------C----C------CCT-T-----TGTG--T-----ATC-----CC--C-C-----AG----CTGTACC--GTTTGGTTTAC-C--C-GG--AT---G--------------CC------------------G-GTC--TCACCGG--GTG-TTTA-----TCA-TA-GG-CT----C-TA--CTGTGCG--TAA------C----------ATG-GTT-AAT-TT--A---GGCGGAA-C-GA----GG---C------TGTC----CAG-G-G-----CCTGGA-------TC-CGG-CACCC---G----GCC--G---GT---ACTTTG-T--TA----------TAC-A--G-TG-GC-CTGC--G-GCC------------CTGGGC----------T--CGAG-TT-AT-TT--CTGT-A-GCG-CC----A-----G----TCG-------T-G-GCA--ATTCT-GG-CA---TGTGA-CCGG-TAT------A---T-C-TCA---ATTCA-CGCG----CGAG--G--C---GCCCAC-----GCA--AG--T----------TTC--CGGACC--C---TT----T---GT--TTT--TAGAGT-C-C-------CT---T-A--A---G-GC--T-TCT--------AGA--------------------------------TCGGAT-C-A--------------ACAAAATAGC--CGA----AA-T-GG-GAT-----------AC---G------AG-CTA---------G----------------TG-T----------G---CT--T--A-TT------AAT--TGGATT---CGCGAATAG-GTT--C--T---A---GGGCTT-A-T-CT-AAGGT----TTAC-GT-AT-CG-GATCG-----------T--CTTATG-C----TGGTGC----A---------C--A---CG---GACAGCAC-GTCGA-----A-GC----------GGC--T---G----------CTA-C-CG-------------T-----------A--A-ACTTCTC-CTCGCC-A-CGAT-G---T-AG---T-AACAGTATT-TG------G-CGTC-GGTA---GT----------G--A---CT-T--A--TG-AACA-G--AT-GG-CAGC-----GCA--GAA-G-TAC-A-T-AG----CA-------T-------AT-A--T--GGTTT-TC---TAA-T-CCTGGGT-TAGC----TGTGGG-CCT-CTTGAC---A-T-TTA---GTCTAG--CATATT----CGAGG---CTGGTT-A-GAGCA-T----TG-----GTCTA-TAA--------A-AA-T----GT----T-CGGCT----------GT-AA-GT--GGAATAC-TTGC--ATTA-TCGGTCT--TCTAG---------ACGC-C-CATG---CATTTGC-C-A-TC-AGC------T---GCCGA---AGA-----CA-CGGCGTTATCGAT-----------CGTCGT------TTCG-A----------T----AACG-----A---T---T-------C--G---------AACT-TA-----AGCT---A----------CG-GA-T-----GTGCG----GAG-T-CC--AAACT---ACCCGAGCG---GAGTC-GACGGC-CCGTG
+TA--GATA----A-C-TTGGC---TT-GCA-A----GC-GA-CTCGG-GAATG---GAAAAC-TGGCGCA-GTTTTTTGG-T-CAAA-TTTGA-G--------------G---GA-----C----C----------ATAA-GTA----A---GTTGA-ACAG-------------------------C--T---GGCGC--TC---TCC-A--TT------TT-A-GCC---TGAATCATG----GT-----TT-G------T---CCAT--T----------TCG-----G---TG---GG-T-TGCTGTAAG-CAA--G--CGC-CCGATC--G---TTTTG----GTCA-C--------CTT---A-GTTG-CTA-AGGA-----CT-T----TAC---CTATTCCCGGC-GGGGCGA--CCT-GCC-CAG-G--CT--AACTCGC-TGTGTA-GA---T-T---T-A------TTT--GTATCT-CG-CAGCCTCA----C-AC--TAACAAA---GA--ACCTACAC---T-TATG--TG--T-CG--GCGT------T-------GCT--CAAAA--------CG-GCAAC---------------GACC-GC----------C-CG-GTC-TCA--CTGGC-----C-TGT-GCGCTGA-TA---------------ATCTT-T--AA------TA-CCT--GGT--GCA----GATCGGTC----ACCT--TTTGA------G--GCT---GC--G------GAG-CAT--------T--G--CT--TGTG--------ACCAACT--AAGA--T--A-TCC----CC-GA----------T------------ATA--GCA--C--C--AC-G----CAAC--C-CCCT------TTGTG--T---AT-C--------CCC--C-A----G--CT-GT--A---CC--GTTTGGTTTAC-C-C----GGAT----------------------G---------------------C---CGG-T-C-TC--ACC-GGGTG--T-TTAT-CATA------------GGCTC------TACTGT-G------CGT--AA-----C--ATGG---------TTAATT-T--A---GGCGGAACGAGG-CTGTC-----C-A------GGG-CC-----T-GGATCC-G----G-C-AC--CC-G-----GCC--G-------GTA--CTTTG-T-T-------ATA---CAG---TGGCCTGC--G-G------CCC-TGG-GC----------TCGAGTTATT-TC-----------TGT--AG---CGCCA----GT----------C-G-------TG-GCA-ATTCT---G-G----------CAT-G-TGACCG---GT------ATATC-T-CA-ATTCACGC----------GCGAG----GCG--CCCACGCAA-------GT----TT-C-C--GGAC----C-C-TT-TGT-TT----TT----AG----AGTCC-CT---TA-AGGC--TT-CTAG--A-TCGG-ATCAACAAAATAGC-----C-------GA---A--AT---G-GGA-T-AC---G-AG-C--------------T-A-----GTG---TG--C-TTATT-A-----AT---T--GG-------ATTCGC------GAA---T-AGGTTC--TAGGG-C--TTA------T-CTAA-GGTT-T-A-CGTA-TCGGATCG------TCT--------------------TATG----CTGGTGCAC----A---C----G---------GAC---------AGCAC-GTCGA----A--GC--------G--GCTG----CTA-C---CG------T----AA---ACT--TCT-CCTCGCCA--CGATG----T--AG---TAA-----CAGTATTT-GG---CGTCG-G-TA--GTG----------A-----C---TTATG-------A---ACA-G--ATGGCA----G-C--GCA--GA---AGTAC---------A-TAG-----CAT-----AT------AT--GG-----T--TTTCT--AA----TC-------C-TGGG--TTAGCTGTGG---GCC----T----CTTGACA-TTTA----GTCTAGC-A-----TA-TTC-GA-----GGC--TGG--TT---AGAGCA-T--TGGTCTATA---A-----------------------AA-A-T------GTTC-----G-----------GCTGT---AAGTG--G-AATACT-T---------GCATTA-TCGG-TCT---TCT--AG-------ACGCC-CAT-------GCAT--T---TG-C-CATC-AG--CTGCCGAAG-----ACACGGC----GT----------------TATCG-AT---C--GTCGT------TTCGAT---AACGATT-C-G--------A-A-CTTAAGCTA----CGG-A--TG-TG----CGGA-G---T----C-CAA--ACTA--CCCGAG---CG--GAGTC-G--ACGG-------C-CCGTG
 >16
--T-G---TTGTACCG---T-----CCCT--AA-AG------A--A-CACACCCTCGT--GTTTAG-G-TC---GCACAGGG-------A----GA-A-TTGTCT--G--A-A-----GC------------ATG-CG-TCA--CGCT-A-ATCCTAG----------G-ACA-AAT-GCG---GTGATTT--AT-ATATAAG------A--TGA-A-TAG-----C-TAAT--GC-GCG-CG-----C-TTA-AC-C-CTGG-T------A---GCT-C-TA-----CCC-C-GT-AG-------GTTCAGG--------ATC-T----GAGTCGTGT--ATCAAACT-------TCACGTT-C-----CTG-C-TCGATCTA-ACTTCTTTA-G-------G-ACC---C-CG-TGGGTGT-AG-GACT-TTGCCA---CG-A-AAATCACGGG-G-CATTCTCAAGAGGTGAGACCCCGG-GCT-C-----T---CGT-CG--CTCCA-T-TGT-TCCA-CT--TT-A-T--A-C-G--GGTTA-CATCTGCTG--C-TC---TA-C--AACTA--G------T-AGGGACA----A-------CCC--CGT------CAAAAT---AGTA-GATCAGTC-----CA-A---T------CC-TAG----CGA---C----------AGA-A--TCAGCCA-GT--GC-CA-C--CTA--AT-CTGAAG------G-TC--GG-T-GC-GCCTTG--TG-TG-CGACCG-------GC----T------CCT-A-----GAT---T-----GCC-----GC--C-GC----CG----CGATCTCCAA-----------T--G-GC--ATT--GAGGACCAC------CC------------------C-CTT--CTTACTG--GAA-GTCT-----CTC-CC-TT-CG----A-AT--CTGGCAT--TGC------A----------AAT-TTC-AAC-AA--T---GGTAGAC-C-TA----AG---A------CTAG----TCT-C-G-----TGTCTT-------CG-TGT-ACCTC---C----CAC--C---AA---GC--------TT----------TAA-T--T-GT-AG-AGCTAG-------------------GGGGGCCGTCATGAT--ACCG-CA-TC-CT--AAAC-G-CGA-TG----C-----G----GTC-------A-G-GC---CGTGTTTC-GC---AGCAA-ATAG-TGG------T---G-C-ATC---T-----CGCT----ATCG--A--G---GCCCAA-----ATT--AT--A----------GCGG-CTG--CG-G---ATT---T---GC--TGT--GAGTTG-T-TT------AA---G-T-GA---T-GT--G-ACT--------T-A--------------------------------TCGGAT-G-A---------------AATTATACC--GCA----TA-T-GT-CAA-----------GC---A------GG-GAC---------G----------------TG-A----------C---GG--G--T-TC------TAG---TTTTT---TGTAAGTAA-GTG--ACG----T---CGATTT-C-CTGA-TAA-T----TTCT-TG-GA-AG-GACGA-----------T--TG--AA-C----TCACGA----A---------CATC---GA---TCCTGCGG-GCCACGGT--G-GA----------TAT--A---C----------TTA-A-TT-------------A----------CA--C-GCTCGCG-CTCTCC-T-C-TA-G---T-CA---T-ACATTTGCC-TG------G-CGTC-GACA---TG----------C--T---AT-C--T--GG-AAAT-C--AT-AG-GCGCA----CAA--CGT-C-GCA-C-T-CC----AC-------G-------GA-T----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------T----G-T-ACCGT---CC-CTA-A----AG-AA-CACACCCTCGT--GTTTAGG-TCGCACAGGG--------A--GAA-TTGTC-T--------------G---AA-----G----C----------ATGC-GTC----A---CGCTA-ATCCTAG---------------------GA--C---AAATG--CG---GTG-A--TT------TA-T-ATATA-AGA-TGAAT----AG-----CT-A------A---TGCG--C----------GCG-----C---TT---AACC-CTGGT------AG--C--TCT-ACCCCG--T---AGGTT----CAGGAT--------CTG---A-GTCG-TGTATCAA-----AC-T----TCA---CGTTCCTGCTC-GATCTAA--CTT-CTT-TA--G--GA--CCCCG-TGGGTGTA-GGACTT-T---G-C------CAC--GAAAAT-CA-CGGGGCAT----T-CT--CAAGAGGTGAGACCCCGGGCTC---T-CGT---CGCTC-CA--TTGT------T-------CCA--CTTTA--------TA-CGGGT---------------TACA-TC----------T-GC-TGC-TCT--ACAAC-----T-A-G-TAGGGAC-AA---------------CCCCG-T--CA------AA-AT-----A--GTA----GATCAGTC----CAAT--CCTAG---------CGA---CA--G------AAT-CAG--------C--C--AG--TGCC--------ACCTAAT-CTGAA--G--G-TCG----GT-GC----------G------------CCT--TGT--G--T--GC-G----ACCGG-C-TCCT------AGAT---T---GC-C--------GCC--GCC----G--CG-AT--C---TCCAA-----------T-G----GCAT---------------------TGAGGACCAC-------------C---CCC-T-T-CT--TAC-TGGAA--G-TCTC-TCCC------------TTCGA------ATCTGG-C------ATT--GC-----A--AATT---------TCAACA-A--T---GGTAGACCTAAG-ACTAG-----T-C------TCG-TG-----T-CTTCGT-G----T-A-CC--TC-C-----CAC--C-------AAG--C-------T-------TTA---ATT---GTAGAGCTAG--------------GG-GGGCCGTCATGATACCGCATCC-TA-----------AAC--GC---GATGC----GG----------T-C-------AG-GC--CGTGTT--T-C----------GCA-G-CAAATA---GT------GGTGC-A-TC-T----CGC----------TATCG----AGG--CCCAAATTA-------TA----GC-GGC--TG------CGG-ATTTGC-TG----TG----AG----TTGTTTAA---GTGATGT--GA-CTT---A-TCGG-ATGA-AATTATACC-----G-------CA---T--AT---G-TCA-A-GC---A-GG-G--------------A-C-----GTG---AC--G-GGTTC-T-----AG------TT-------TTTTGT------AAG---T-AAGTGACG-TCGA-T--TTC------CTGATA-A-TT-T-C-TTGG-AAGGACGA------TTG----------------------AA----CTCACGAAC-A-TC---G----A---------TCC---------TGCGG-GCCACGG-TG--GA--------T--ATAC----TTA-A---TT------A--C-AC---GCT--CGC-GCTCTCCT--C-TAG----T--CA---TAC-----ATTTGCCT-GG---CGTCG-A-CA--TGC----------T-----A---TCTGG-------A---AAT-C--ATAGGC----G-C-ACAA--CG---TCGCA---------C-TCC-----ACG-----GA------T----------T-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------
 CHECKING SEED: 78901 (Directory: set_78901)
 Raw Phylip files:    2000 / 2000
@@ -1777,9 +1766,9 @@ Final FASTA files:  2000 / 2000
 Integrity Check:    PASSED (No empty/corrupt files found)
 Previewing loc_500.fas:
 >23
-ACAGTTCGGCTAACAGGCCGCCATCGGCAGAGTAAGGTCCTCCTGGCGCATGGATGCTCGGACCGCCAAAATGGCTTCAAGGCGTGGCACGGTGACCTCCGCAATACAGTGTCTTTCTGCCATCCAGTATTTGTGGAAATGTTCACAGACTCTTCACACAGAGATCGTATGCAGCTCCGATCCTTACTCTGTTCACACCACGCGAATGCAGATCTTACATTGGCTTGCCACACATCCAGGGATTATGTCTGCGCTCGCCAGTGCAGATTGTGTTCCTGCTATTGGGGGATCAGATTTCGCTTCGGCTCGCACGATCAC---GGGGGCCCTACATCCAAGACCCGTAAACTACCGCCAGCTTGTTCAAATATGCACAACCGAACGATGGTACACAGGTACCTCGATGTCGTGTACAACTGGGGGTACCCCTGGAACACTCTGCTACGGCACATGTCTGATTTTGCTAACTTACAGCCACGTAACGCGAATATGGGCCGACGCTCGGTGCGTACACAT---AATCTCTTAGCGCTCGCTCTGTACATGCACAACATCGGCTTGACGATGGCTGTGACAAGGACCCGGGATGTGCATCAAGTGATATTGGACGTGTTGGTACCTATTTCCGGATTAATGCAGGTTACTCTCACGATCTTAGATCATTCTCTCGAATTCCTGCCGGTGAGACGTCTTTTAATGAGGTGCATAAATTACGCTCTTCAGATGGCC------------CTCACAATGCGACACCATTATCATAAGGGCGGTGCACGCAGTGCGCTTGAATACGACAATAGATGTCCAAACGTGCTCCGTCGCGTTCGGCGCATTTCATCGTCTGGACTACTCAACAATCACAGTGGCTTTTCTCTAACTCCCCATGTTTCACTCACAGATCGGAATCTCGTTGGGGCTAACGTTGCTCAACTCGACAATTTGCTTAATAGGATGAGCTCAAAACCAACTTTAGTTTGCTTGAGCTGGTGGGACTCAGAGTCGTGTTCGTGTAGCGATGTAAATGAGCGATGGGCCTTTCGCCCTAGGTGGAGTTCCACCGCCCTAGCTCATCATCACAGCATCCTCCCATCTAAGAGCGACCTTGACTATAGCGTTTTGAGTGCTGGCTCACCAGTACCTAGAAGGCGGTCAGGGCTGTACACGCCTCTACGGTTCTCGTTGCTGCGCAATAACCGGCTCAAGCGTACATTCGCCTCCAACCCTCACCTAACAGGTCATGACCACCCCGTGGATGTCCATGTGCCTTTGACAAGCGATAAGGGG
+ACAGTTCGGCTAACAGGCCGCCATCGGCGTGTCAAGGTTCTCCTGGCGCATGGATGCTCGGACCGCCAAAATGGCTTCAAGGCGTGGCACGGTGACCTCCGCAATACAGTGTCTTTCTGCCATCCAGTATTTGTGGAAATGTTCGCAGACTCTTCGCACAGAGATCGTATGCAGCTCCGATCCTTACTCTGTTCACACCACGCGAATGCAGATCCTACATTGGCTTGCCACACATCCGACGATTATGTCTGCGCTCGACAGTGCAGATCGTGTTCCTGCTATTGGGGGATTAGATTTCGTTTAGGCTCGCACGATCAC---GGGGGCCCTACATCCAAGACCCGTAAACTACCGCCAGCTTCTTCAAATATGCACAACCGAACGATGGTACACAGGTATCTCGATGTCGTGTACAACTGGGGGTACCCCTGGAACACTCTGCTACGGCACATGTCTGATTTTGCTAACTTACAGCCACGTAACGCGAATCTGGGTCGACGCTCGGTGCGTACACAT---AATCCTTTAGCGCTCGCTCTGTACATGCACAACATCGGCTTGACGATGGCTGTGACAAGGACCCGGGATGTGCATCAAGTGATCTTGGACGTGTTGATGCCTATTTCCGGATTAATGCAGGTTACTCTCACGATCTTAGATCATTCTCTCGAATTCCTGCCGGTGAGACGTCTTTTAATGAGGTGCATAAATTACGTTCTTCAGATGGCC------------CTCACAATGCGACACCATTATCATAAGGGCGGTGCACGCAGTGCGCTTGAATACGACAATAGATGTCCAAACGTGCTCCGTCGCGTTCGGCGCATTTCATCGTCTGGACTACTCAATAATCACAGTGGCTTTTCTCTAATGCCCCATGTTTCGCTCACAGATCGGAATCTCGTTGGGGCTAACGTTGCTCAACTCGACAATTTGCTTAATAGGATGAGCTCAAAACCAACTTTAGTTTGCTTGAGCTGGTGGGACTCAGAGTCGTGTTCGTGTAGCGATGTAAATGAGCGATGGGCCTTTCGCCCTAGGTGGAGTTCCACCGCCCTAGCTCATCATCACAGCATCCTCCCATCTAAGAGCGACCTTGACTACAGCGTTTTGAGTGCTGGCTCACCAGTGCCTAGAAGGCGGTCAGGGCTGTACACGCCTCTACGGTTCTCGCTACTGCGCAATAACCGGCTCAAGCGTACATTCGCCTCCAACATTCACCTAACAGGTCATGACCACCCCGTGGATGTCACTGTGCCTTTGACAAGCGATAAGGGG
 >20
-ACAGCTCAGCAAGTAGTCCACCATCGGCGGGCCAAGGGGCTC---GCTGTTGGATGCTCAGACCGCCAAAATGACTTTAAGATGTGGCGCGTTGGCTGCCACCATACAATGCCTTTATGGCATCCAGCATTTGCGGAAATGTCCAGAGAC---ATGCACAGTGATCCTATGCAGCTCGTATCCTTACTCTGTTCTAACCACGTGAACGCAGATCGTGTATTGGCATGCCACACAACAAGCGATTATGTGTGCGTTCGGCAGTGCATAGTGCGTTCCTGCTATTGGGGGATGAGACTTCACTTCGAGTCGCACGGTCAC---GGCGGCCCTACATTCAAGACCTGTAAACTATCGCCAACTGTTTCAAATATGCACAACCGAACGATGGTACATAGGTATCTCGACGCCAAGTACAACTGGGGGTACCCCGGTTACAATCTGCTTCGGCACATGTCCGGTTTTGCTAACTTACAGCCACGTAACGCGAGTTTGGGTCGACGCTCGGTGCGTATATGT---AATCACTTAGCGCTCGGGCTGGCCATGCACAAAATCGGCGCGACAAAGGTTGTGACCAGGATCGTGGATGTGCATCAAGTGATGTTGGACGTACTAGGGCCTGTTTCTGGAATATTGCAGGTTATTCTCCTGCTCTTCGATCATCATCTCGAATTCCTGACGGTGAGAGGTCTTTTATTGAGGCTTATAGATTACGATCTTCAGATGGCC------------CTCACAATGCGCCACCATTATGATATGGCCGATGCACGCCGTGCGTTTCAAAACGACGATAGATGTCCATACATGTGCCGTCGTGTATGGCGCGTTTCGAAGTCTAAACTTCTTAATAATCACAATGGCCTTTCCCTGATTCCCCATGTTTCGCTAACAGATCGCTATCTCGTTAGGGATAACGTAGATCAATTCAATCTTTTGCTAACTAGTACGAGATTAAGACTAACTTTAGTTTACTTATGCTGGTGCAACTCGGAGTGGTGTTCGTATGGCGTTGTATATGGGCGATGGGCATTTCGCCCTCGGTGGAGTTCCACCGCCCTAGCTCAACATCACAGCATCCTCCCACCTAAGAGCGACCTCGACCACAACGCTTTGAGTGCTGACTCACCAGCGCCTAGGAGGTGGTCAGGGCTGTATTCGCGTCTAAGGTTCTCGTTGCTGGCCACAAACCGGTTCGAGCATACATTCGCCTCCAGGTTTCACCTAATAGGTTGTAGCCACTCGGTGGACGTCTCCATAACATCGACGAGCGCCATGGGG
+ACAGCTCAGCAAGTAGTCCACCATCGGCGGGCCAAGGGGCTC---GCTGTTGGATGCTCAGACCGCCAAAATGACTTTAAGATGTGGCGCGTTGGCTGCCACCATACAATGCCTTTATGGCATCCAGCATTTGCGGAAATGTCCAGAGAC---ATGCACAGTGATCCTATGCAGCTCGTATCCTTACTCTGTTCTAACCACGTGAACGCAGATCGTGTATTGGCATGCCACACAACGAGCGATTATGTGTGCGTTCGGCAGTGCATAGTGCGTTCCTGCTATTGGGGGATGAGACTTCACTTCGAGTCGCACGGTCAC---GGCGGCCCTACATTCAAGACCTGTAAACTATCGCCAACTGTTTCAAATATGCACAACCGAACGATGGTACATAGGTATCTCGACGCCAAGTACAACTGGGGGTACCCCGGTTACAATCTGCTTCGGCACATGTCCGGTTTTGCTAACTTACAGCCACGTAACGCGAGTTTGGGTCGACGCTCGGTGCGTATATGT---AATCACTTAGCGCTCGGGCTGGCCATGCACAAAATCGGCGCGACAAAGGTTGTGACCAGGATCGCGGATGTGCATCAAGTGATGTTGGACGTACTAGGGCCTGTTTCTGGAATATTGCAGGTTATTCTCCTGCTCTTCGATCATCATCTCGAATTCCTGACGGTGAGAGGTCTTTTATTGAGGCTTATAGATTACGATCTTCAGATGGCC------------CTCACAATGCGCCACCATTATGATATGGCCGATGCACGCCGTGCGTTTCAAAACGACGATAGATGTCCATACATGTGCCGTCGTGTATGGCGCGTTTCGAAGTCTAAACTTCTTAATAATCACAATGGCCTTTCCCTGATTCCCCATGTTTCGCTAACAGATCGCTATCTCGTTAGGGATAACGTAGATCAATTCAATCTTTTGCTAACTAGTACGAGATTAAGACTAACTTTAGTTTACTTATGCTGGTGCAACTCGGAGTGTTGTTCGTATGGCGTTGTATATGGGCGATGGGCATTTCGCCCTCGGTGGAGTTCCACCGCCCTAGCTCAGCATCACAGCATCCTCCCACCTAAGAGCGACCTCGACCACAACGCTTTGAGTGCTGACTCACCAGCGCCTAGGAGGTGGTCAGGGCTGTATTCGCGTCTAAGGTTCTCGTTGCTGGCCACGAACCGGTTCGAGCATACATTCGCCTCCAGGTTTCACCTAATAGGTTGTAGCCACTCAGTGGACGTCTCCATAACATCGACGAGCGCCATGGGG
 ----------------------------------------------------------
 CHECKING SEED: 34567 (Directory: set_34567)
 Raw Phylip files:    2000 / 2000
@@ -1787,9 +1776,9 @@ Final FASTA files:  2000 / 2000
 Integrity Check:    PASSED (No empty/corrupt files found)
 Previewing loc_500.fas:
 >27
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAAGGGGCTTCTAGACGTTGGATGTTATGAGCGGCAACATGAGCTCAAGGATTGGCAAGGGGGGCGCCACCATACAGTGTTCTTGTGTCGTACTGATTTTGATGGTATACTAGTAAAGGCTACGCACAGTGATCGCATACGGCTTCTGTCACTGCTT---TGCACCCACGATAATGATGGCCGCACGCCAGATTACCCGACATCGACTAATTACATGTGCCCTATCTCTTGCAGCTCTTGTTCATGCTACGGTGGA---ACTAGCTTTCGATTTGTATATCACGGCGAGGGAAGCCCCACGTGCAAGACCGGTATACCGTATCCTGCCAAGTCGAATATGGAAAAGCGGTTTTTGACTATGGTACACAGGGATCGCGACAGCAAGAGTAATAAGAGGTACCCAGGCTATACTCTTTTACAACAGACGTCCGACTATGATAACTTACGTCCAAGCACCCAAAATTTGAGACTGCGATATGTGATTAGTCGTAAGCATTTAGATCACTCTCTGTGTATTCACAATATCGCAAATACGGCTGCTGTGTCAGGGATCATTGACGTGCCGCAAGTGACGTTGGAGGGAGTAGTATCTTTTTACGTAATCTCTTGTGTTATTTTCCTAATCTTGGGCCCGCCTATCGGATTACTGCAAGTAAGCGGACCTTTCGTGAGATGCATAGACTGTGAGTTTCGTATAACGCTTACGATACCACAACACTATGACATGGAGGGCGATCGAAAGGCGTTT------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAAGGGGCTTCTAGACGTTGGATGTTATGAGCGGCAACATGAGCTCAAGGATTGGCAAGGAGGGCGCCACCATACAGTGTTCTTGTGTCGTACTGATTTTGATGGTATACTAGTAAAGGCTACGCACAGTGATCGCATACGGCTTCTGTCACTGTTG---TGCACCCACGATAATGATGGCCGCACGTCCGATTACCCGACATCGAATAATTACACTTGCCCTATCTCTTGCAGCTCTTGTTCATGCTACGGTGGA---ACTAGCTTTCGATTTACTTATCACGGCGAGGGAAGACCCACGTGCAAGACCGGTATACCATATCCTGCCAAGTCGAATATGGAAAAGCGGTTTTTGACTATGGTACACAGGGATCGCGACAGCAAGAGTAATAAGAGATACCCAGGCTATACTTGTTTAATGCAGACGTCCGACTATGATAACTTACGTCCAAGCACCATTAATTTGAGACTGCGATATGTGATTAGTCGTAAGCATTTAGATCGCTCTCTGTGTATTCACAATATCGCAAATACGGCTGCTGTGTCAGGGATCATTGACGTGCCGCAAGTGACCTTGGAGGGAGTAGTATCTTTTTACGTAATCTCTTGTGTTATTTTCCTAATCTTGGGCCCGCCTATCGGATTACTGCAAGTAAGCGGACCTTTCGTGAGATGCATAGACTGTGAGTTTCGTATAGTTCTTACGATACCACAACACTGTGACATGGAGGGCGATCGAAAGGCGTTT------------------------------------------------
 >20
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAGATGTTGGTTATTATGAGCGGCAAAATGAGCTCAAGGATTGGAAAGGACGACGCCACGATACGCTGTTCTTGTGTCGTACAGACTTTGATGGAATATTAGGAAGGGCTACGCACAGCGACCGCATCCGACTACTGTCCTTGCGATGTTCCACCCACGATAATGATGGCCGCACGGCAGATTACCAAACATCGATTGATTACGTCTGCCCTATTCTTTGCCTGTCTTGTTCATGCTACTGTGAA---ACTTGCCTTCGGTTTGTGTATCGCGACGAGGGAATCCCAACGTGCAAGCCTTATATCCCGTATCCTGCTAAGTTGGATATGCACAAGGGG------ACAACGGCACATAGGTATCTGAGCGGCAAGTGTAGTTGGGGAGACGCAGGCGACACTCTTTTAAATCAAACGTCAGACGATGATAACTTACGTCCAGGCAACCAAAGTTTGGGAATGCGATATGTGTTTATTCGCATGCACGTAGATATCGCTCTGAGTACTCACAACATAAAAGATACGACTGTAGTGACAAGGGACATTGACGTGCCACAAGTGACGTTGCGGGGAGTAGTACCTGTTAACGGAATCCCTTGTGTTGCTCTCCTGATCGTAGGCCCGTGTAGCGGATTACTGCCAGTACGCGGTCCTCTAACGGGATGCATAGACTATAGCATTAGTATAACGCTCGCGATACGACCA---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAGATGTTGGTTACTATGAGCGGCAAAATGAGCTCAAGGATTGGAAAGGACGCCGCCACGACACGCTGTTCTTGTGTCGTACAGACTTCGATGGAATATTAGGAAGGGCTACGCACAGCGACCGCATCCGCCTGCTGTCCTTGCGCTGTTCCACCCACGATAATGATGGCCGCACGGCCGATTACCAAACATCGATTGATTACGTCTGCCCTATTCTTTGCCTATCTTGTTCATGCTACTGTGAA---ACTTGCCTTCGGTTTGCATATCGCGACGAGGGAAAACCAACGTGCAAGCCTTATATCCCATATCCTGCTAAGTTGGATATGCACAAGGGG------ACAACGGCACATAGGTATTGCAAGGGCAAGTGTAGTTGGGGAGACGCAGGCGACACTTGTTTAAATCAAACGTCAGACGATGATAACTTACGTCCAGGCAACACTAGTTTGGGAATGCGATATGTGTTTATTCGCATACACGTAGATATCGCTCTGAGTACTCACAACATAAAAGATACGACTGCTGTGACAAGGGACATTGACGTGCCACAAGTGACGTTGCGGGGAGTAGTACCTGTTAACGGAATCCCTTGTGTTGCTCTCCTGATCGTAGGCCCGTGTAGCGGATTACTGCCCGTACGCGGTCCTCTAACGGGATGCATAGACTATAGCATTAGTATAGTTCTCGCGATACGACCA---------------------------------------------------------------------------------
 
 Git Commit Message:
 feat: refactor 2.3 for multi-seed automation and modular R sourcing
@@ -1886,13 +1875,13 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 2.4_restore_names.sh
-Submitted batch job 53715149
-sacct -j 53715149 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804138
+sacct -j 53804138 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53715149          0:0   00:02:10
-53715149.ba+      0:0   00:02:10    758588K
-53715149.ex+      0:0   00:02:10
+53804138          0:0   00:01:31
+53804138.ba+      0:0   00:01:31    835340K
+53804138.ex+      0:0   00:01:31
 
 Git Commit Message
 feat: update 2.4 to support multiple simulation sets (multiple seeds)
@@ -1903,6 +1892,7 @@ Dynamic Directory Handling: Updated input and output paths to use nested set_$ra
 Phase 3: Filter_by_Known_Clades
 Filter all loci for support for Established Clades
 
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano generate_constraints.R
 #---------------------------------
 library(ape)
@@ -1970,24 +1960,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 3.0_submit_generate_constraints.sh
-Submitted batch job 53730983
-sacct -j 53730983 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804412
+sacct -j 53804412 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53730983          0:0   00:00:00
-53730983.ba+      0:0   00:00:00      5304K
-53730983.ex+      0:0   00:00:00
+53804412          0:0   00:00:00
+53804412.ba+      0:0   00:00:00      5440K
+53804412.ex+      0:0   00:00:00
 
 Submitting generate constraints job for random seed: 12345
-Submitted batch job 53730984
+Submitted batch job 53804413
 Submitting generate constraints job for random seed: 67890
-Submitted batch job 53730985
+Submitted batch job 53804414
 Submitting generate constraints job for random seed: 23456
-Submitted batch job 53730986
+Submitted batch job 53804415
 Submitting generate constraints job for random seed: 78901
-Submitted batch job 53730987
+Submitted batch job 53804416
 Submitting generate constraints job for random seed: 34567
-Submitted batch job 53730988
+Submitted batch job 53804417
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano generate_constraints.sh
@@ -2052,45 +2042,45 @@ echo "------------------------------------------------"
 #---------------------------------
 
 Submitting generate constraints job for random seed: 12345
-Submitted batch job 53730984
-sacct -j 53730984 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804413
+sacct -j 53804413 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53730984          0:0   00:00:24
-53730984.ba+      0:0   00:00:24    212484K
-53730984.ex+      0:0   00:00:24
+53804413          0:0   00:00:16
+53804413.ba+      0:0   00:00:16    206296K
+53804413.ex+      0:0   00:00:16
 Submitting generate constraints job for random seed: 67890
-Submitted batch job 53730985
-sacct -j 53730985 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804414
+sacct -j 53804414 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53730985          0:0   00:00:23
-53730985.ba+      0:0   00:00:23    204864K
-53730985.ex+      0:0   00:00:23
+53804414          0:0   00:00:16
+53804414.ba+      0:0   00:00:16    203536K
+53804414.ex+      0:0   00:00:16
 Submitting generate constraints job for random seed: 23456
-Submitted batch job 53730986
-sacct -j 53730986 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804415
+sacct -j 53804415 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53730986          0:0   00:00:23
-53730986.ba+      0:0   00:00:23    205316K
-53730986.ex+      0:0   00:00:23
+53804415          0:0   00:00:16
+53804415.ba+      0:0   00:00:16    198684K
+53804415.ex+      0:0   00:00:16
 Submitting generate constraints job for random seed: 78901
-Submitted batch job 53730987
-sacct -j 53730987 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804416
+sacct -j 53804416 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53730987          0:0   00:00:24
-53730987.ba+      0:0   00:00:24    200376K
-53730987.ex+      0:0   00:00:24
+53804416          0:0   00:00:16
+53804416.ba+      0:0   00:00:16    217536K
+53804416.ex+      0:0   00:00:16
 Submitting generate constraints job for random seed: 34567
-Submitted batch job 53730988
-sacct -j 53730988 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804417
+sacct -j 53804417 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53730988          0:0   00:00:24
-53730988.ba+      0:0   00:00:24    221448K
-53730988.ex+      0:0   00:00:24
+53804417          0:0   00:00:16
+53804417.ba+      0:0   00:00:16    212348K
+53804417.ex+      0:0   00:00:16
 
 Git commit message:
 feat: refactor 3.0 for multi-simulation (via seeds) automation and centralized variables
@@ -2124,24 +2114,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 3.1_submit_iqtree_likelihoods.sh
-Submitted batch job 53744132
-sacct -j 53744132 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804486
+sacct -j 53804486 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53744132          0:0   00:00:00
-53744132.ba+      0:0   00:00:00      5304K
-53744132.ex+      0:0   00:00:00
+53804486          0:0   00:00:00
+53804486.ba+      0:0   00:00:00      5544K
+53804486.ex+      0:0   00:00:00
 
 Submitting iqtree likelihood job for random seed: 12345
-Submitted batch job 53744133
+Submitted batch job 53804487
 Submitting iqtree likelihood job for random seed: 67890
-Submitted batch job 53744134
+Submitted batch job 53804488
 Submitting iqtree likelihood job for random seed: 23456
-Submitted batch job 53744135
+Submitted batch job 53804489
 Submitting iqtree likelihood job for random seed: 78901
-Submitted batch job 53744136
+Submitted batch job 53804490
 Submitting iqtree likelihood job for random seed: 34567
-Submitted batch job 53744137
+Submitted batch job 53804491
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano iqtree_likelihoods.sh
@@ -2210,47 +2200,45 @@ echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
 #---------------------------------
 
 Submitting iqtree likelihood job for random seed: 12345
-Submitted batch job 53744133
-sacct -j 53744133 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804487
+sacct -j 53804487 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53744133          0:0   00:32:54
-53744133.ba+      0:0   00:32:54    470500K
-53744133.ex+      0:0   00:32:54
+53804487          0:0   00:32:04
+53804487.ba+      0:0   00:32:04    478496K
+53804487.ex+      0:0   00:32:04
 Submitting iqtree likelihood job for random seed: 67890
-Submitted batch job 53744134
-sacct -j 53744134 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804488
+sacct -j 53804488 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53744134          0:0   00:40:15
-53744134.ba+      0:0   00:40:15    477816K
-53744134.ex+      0:0   00:40:15
+53804488          0:0   00:31:10
+53804488.ba+      0:0   00:31:10    479292K
+53804488.ex+      0:0   00:31:10
 Submitting iqtree likelihood job for random seed: 23456
-Submitted batch job 53744135
-sacct -j 53744135 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804489
+sacct -j 53804489 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53744135          0:0   00:38:07
-53744135.ba+      0:0   00:38:07    473964K
-53744135.ex+      0:0   00:38:07
+53804489          0:0   00:30:34
+53804489.ba+      0:0   00:30:34    468604K
+53804489.ex+      0:0   00:30:34
 Submitting iqtree likelihood job for random seed: 78901
-Submitted batch job 53744136
-sacct -j 53744136 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804490
+sacct -j 53804490 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53744136          0:0   00:34:45
-53744136.ba+      0:0   00:34:45    469548K
-53744136.ex+      0:0   00:34:46
+53804490          0:0   00:39:53
+53804490.ba+      0:0   00:39:53    481576K
+53804490.ex+      0:0   00:39:53
 Submitting iqtree likelihood job for random seed: 34567
-Submitted batch job 53744137
-sacct -j 53744137 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804491
+sacct -j 53804491 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53744137          0:0   00:32:46
-53744137.ba+      0:0   00:32:46    485592K
-53744137.ex+      0:0   00:32:46
-
-sacct -j ### -o JobID,ExitCode,Elapsed,MaxRSS
+53804491          0:0   00:40:13
+53804491.ba+      0:0   00:40:13    487996K
+53804491.ex+      0:0   00:40:14
 
 Git Commit Message
 feat: refactor 3.1 for multi-seed (multiple simulation sets) automation and increased memory
@@ -2375,13 +2363,13 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 3.2_LRT_filter.sh
-Submitted batch job 53747393
-sacct -j 53747393 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808651
+sacct -j 53808651 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53747393          0:0   00:00:28
-53747393.ba+      0:0   00:00:28    221712K
-53747393.ex+      0:0   00:00:28
+53808651          0:0   00:00:26
+53808651.ba+      0:0   00:00:26
+53808651.ex+      0:0   00:00:26
 
 Running Likelihood Ratio Test for Simulation set_12345
 Found 2000 loci to process...
@@ -2389,32 +2377,30 @@ Extracting constrained likelihoods...
 --- Summary ---
 Total loci processed: 2000
 Loci failing backbone (p < 0.05): 1519
-Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_re
-sults/set_12345/lrt_results.csv
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_12345/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_67890
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
 Total loci processed: 2000
-Loci failing backbone (p < 0.05): 1522
-Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_re
-sults/set_67890/lrt_results.csv
+Loci failing backbone (p < 0.05): 1547
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_67890/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_23456
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
 Total loci processed: 2000
-Loci failing backbone (p < 0.05): 1545
+Loci failing backbone (p < 0.05): 1542
 Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_23456/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_78901
-Found 2000 loci to process...
+Found 1999 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
-Total loci processed: 2000
-Loci failing backbone (p < 0.05): 1576
+Total loci processed: 1999
+Loci failing backbone (p < 0.05): 1569
 Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_78901/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_34567
@@ -2422,7 +2408,7 @@ Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
 Total loci processed: 2000
-Loci failing backbone (p < 0.05): 1495
+Loci failing backbone (p < 0.05): 1499
 Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_34567/lrt_results.csv
 
 Git Commit Message
@@ -2524,59 +2510,60 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 3.3_collect_filtered_loci.sh
-Submitted batch job 53749071
-sacct -j 53749071 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808652
+sacct -j 53808652 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53749071          0:0   00:00:26
-53749071.ba+      0:0   00:00:26    747940K
-53749071.ex+      0:0   00:00:27
+53808652          0:0   00:00:23
+53808652.ba+      0:0   00:00:23    442492K
+53808652.ex+      0:0   00:00:23
 
 Collecting filtered loci for Simulation set_12345
 Threshold: 0.05
 Loci to copy to PASS: 481
 Loci to copy to FAIL: 1519
 Assembly complete.
-  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/pass_0.05
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_kno
+wn_clades/set_12345/pass_0.05
 481  loci passed.
   Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/fail_0.05
 1519  loci failed.
 Collecting filtered loci for Simulation set_67890
 Threshold: 0.05
-Loci to copy to PASS: 478
-Loci to copy to FAIL: 1522
+Loci to copy to PASS: 453
+Loci to copy to FAIL: 1547
 Assembly complete.
   Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/pass_0.05
-478  loci passed.
+453  loci passed.
   Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/fail_0.05
-1522  loci failed.
+1547  loci failed.
 Collecting filtered loci for Simulation set_23456
 Threshold: 0.05
-Loci to copy to PASS: 455
-Loci to copy to FAIL: 1545
+Loci to copy to PASS: 458
+Loci to copy to FAIL: 1542
 Assembly complete.
   Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/pass_0.05
-455  loci passed.
+458  loci passed.
   Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/fail_0.05
-1545  loci failed.
+1542  loci failed.
 Collecting filtered loci for Simulation set_78901
 Threshold: 0.05
-Loci to copy to PASS: 424
-Loci to copy to FAIL: 1576
+Loci to copy to PASS: 430
+Loci to copy to FAIL: 1569
 Assembly complete.
   Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/pass_0.05
-424  loci passed.
+430  loci passed.
   Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/fail_0.05
-1576  loci failed.
+1569  loci failed.
 Collecting filtered loci for Simulation set_34567
 Threshold: 0.05
-Loci to copy to PASS: 505
-Loci to copy to FAIL: 1495
+Loci to copy to PASS: 501
+Loci to copy to FAIL: 1499
 Assembly complete.
   Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/pass_0.05
-505  loci passed.
+501  loci passed.
   Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/fail_0.05
-1495  loci failed.
+1499  loci failed.
 
 Git Commit Message
 feat: implement 3.3 automated collection of filtered loci for all simulation seeds
@@ -2637,24 +2624,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 4.0_submit_concat_tree.sh
-Submitted batch job 53785734
-sacct -j 53785734 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804501
+sacct -j 53804501 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53785734          0:0   00:00:00
-53785734.ba+      0:0   00:00:00      5536K
-53785734.ex+      0:0   00:00:00
+53804501          0:0   00:00:00
+53804501.ba+      0:0   00:00:00      5620K
+53804501.ex+      0:0   00:00:00
 
 Submitting concatenated tree job for random seed: 12345
-Submitted batch job 53785735
+Submitted batch job 53804502
 Submitting concatenated tree job for random seed: 67890
-Submitted batch job 53785736
+Submitted batch job 53804503
 Submitting concatenated tree job for random seed: 23456
-Submitted batch job 53785737
+Submitted batch job 53804504
 Submitting concatenated tree job for random seed: 78901
-Submitted batch job 53785738
+Submitted batch job 53804505
 Submitting concatenated tree job for random seed: 34567
-Submitted batch job 53785739
+Submitted batch job 53804506
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
 
@@ -2713,47 +2700,46 @@ ${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
     -bb 1000 --alrt 1000
 #---------------------------------
 
-
 Submitting concatenated tree job for random seed: 12345
-Submitted batch job 53785735
-sacct -j 53785735 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804502
+sacct -j 53804502 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53785735          0:0   01:50:00
-53785735.ba+      0:0   01:50:00  15406332K
-53785735.ex+      0:0   01:50:00
+53804502          0:0   02:14:52
+53804502.ba+      0:0   02:14:52  15447980K
+53804502.ex+      0:0   02:14:53
 Submitting concatenated tree job for random seed: 67890
-Submitted batch job 53785736
-sacct -j 53785736 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804503
+sacct -j 53804503 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53785736          0:0   02:05:02
-53785736.ba+      0:0   02:05:02  15014108K
-53785736.ex+      0:0   02:05:02
+53804503          0:0   02:56:38
+53804503.ba+      0:0   02:56:38  15157288K
+53804503.ex+      0:0   02:56:38
 Submitting concatenated tree job for random seed: 23456
-Submitted batch job 53785737
-sacct -j 53785737 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804504
+sacct -j 53804504 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53785737          0:0   02:58:11
-53785737.ba+      0:0   02:58:11  15345536K
-53785737.ex+      0:0   02:58:11
+53804504          0:0   02:40:09
+53804504.ba+      0:0   02:40:09  15364260K
+53804504.ex+      0:0   02:40:09
 Submitting concatenated tree job for random seed: 78901
-Submitted batch job 53785738
-sacct -j 53785738 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804505
+sacct -j 53804505 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53785738          0:0   02:21:17
-53785738.ba+      0:0   02:21:17  15664484K
-53785738.ex+      0:0   02:21:17
+53804505          0:0   02:25:32
+53804505.ba+      0:0   02:25:32  15644668K
+53804505.ex+      0:0   02:25:32
 Submitting concatenated tree job for random seed: 34567
-Submitted batch job 53785739
-sacct -j 53785739 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53804506
+sacct -j 53804506 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53785739          0:0   02:42:30
-53785739.ba+      0:0   02:42:30  15165312K
-53785739.ex+      0:0   02:42:30
+53804506          0:0   03:06:20
+53804506.ba+      0:0   03:06:20  15223008K
+53804506.ex+      0:0   03:06:20
 
 Output:
 concatenated.fasta  StartTree.mldist                          Unfiltered_loci_ref_tree.contree
@@ -2837,25 +2823,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 4.1_submit_constrained_gtrees.sh
-Submitted batch job 53791176
-sacct -j 53791176 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808674
+sacct -j 53808674 -o JobID,ExitCode,Elapsed,MaxRSS
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53791176          0:0   00:00:00
-53791176.ba+      0:0   00:00:00      5336K
-53791176.ex+      0:0   00:00:00
+53808674          0:0   00:00:00
+53808674.ba+      0:0   00:00:00      5512K
+53808674.ex+      0:0   00:00:00
 
-Submitted batch job 53791176
 Submitting constrained gene trees job for random seed: 12345
-Submitted batch job 53791177
+Submitted batch job 53808675
 Submitting constrained gene trees job for random seed: 67890
-Submitted batch job 53791178
+Submitted batch job 53808676
 Submitting constrained gene trees job for random seed: 23456
-Submitted batch job 53791179
+Submitted batch job 53808677
 Submitting constrained gene trees job for random seed: 78901
-Submitted batch job 53791180
+Submitted batch job 53808678
 Submitting constrained gene trees job for random seed: 34567
-Submitted batch job 53791181
+Submitted batch job 53808679
 
 nano constrained_gtrees.sh
 #---------------------------------
@@ -2946,46 +2931,47 @@ find "$Alignments" -name "*.fas" | parallel -j 32 --progress run_constrained_inf
 echo "Step 4.1 complete. Constrained trees are in $OutDir"
 #---------------------------------
 
+i=JobID,ExitCode,Elapsed,MaxRSS
 Submitting constrained gene trees job for random seed: 12345
-Submitted batch job 53791177
-sacct -j 53791177 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808675
+sacct -j 53808675 -o $i
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53791177          0:0   00:04:16
-53791177.ba+      0:0   00:04:16    796796K
-53791177.ex+      0:0   00:04:16
+53808675          0:0   00:04:20
+53808675.ba+      0:0   00:04:20    800424K
+53808675.ex+      0:0   00:04:20
 Submitting constrained gene trees job for random seed: 67890
-Submitted batch job 53791178
-sacct -j 53791178 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808676
+sacct -j 53808676 -o $i
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53791178          0:0   00:05:05
-53791178.ba+      0:0   00:05:05   1225316K
-53791178.ex+      0:0   00:05:05
+53808676          0:0   00:04:17
+53808676.ba+      0:0   00:04:17    703284K
+53808676.ex+      0:0   00:04:17
 Submitting constrained gene trees job for random seed: 23456
-Submitted batch job 53791179
-sacct -j 53791179 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808677
+sacct -j 53808677 -o $i
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53791179          0:0   00:05:06
-53791179.ba+      0:0   00:05:06   1407940K
-53791179.ex+      0:0   00:05:06
+53808677          0:0   00:04:12
+53808677.ba+      0:0   00:04:12    723428K
+53808677.ex+      0:0   00:04:12
 Submitting constrained gene trees job for random seed: 78901
-Submitted batch job 53791180
-sacct -j 53791180 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808678
+sacct -j 53808678 -o $i
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53791180          0:0   00:05:06
-53791180.ba+      0:0   00:05:06   1226192K
-53791180.ex+      0:0   00:05:06
+53808678          0:0   00:04:58
+53808678.ba+      0:0   00:04:58    763676K
+53808678.ex+      0:0   00:04:58
 Submitting constrained gene trees job for random seed: 34567
-Submitted batch job 53791181
-sacct -j 53791181 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 53808679
+sacct -j 53808679 -o $i
 JobID        ExitCode    Elapsed     MaxRSS
 ------------ -------- ---------- ----------
-53791181          0:0   00:05:06
-53791181.ba+      0:0   00:05:06   1092416K
-53791181.ex+      0:0   00:05:06
+53808679          0:0   00:04:58
+53808679.ba+      0:0   00:04:58    854248K
+53808679.ex+      0:0   00:04:58
 
 Git Commit Message
 refactor(4.1): transition to per-locus model lookup and dynamic seed handling
@@ -3096,24 +3082,24 @@ for random_seed in $seeds;
 done
 #---------------------------------
 sbatch 4.2_submit_treescreen.sh
-Submitted batch job 53802400
-sacct -j 53802400 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53802400          0:0   00:00:01            
-53802400.ba+      0:0   00:00:01      5552K 
-53802400.ex+      0:0   00:00:01      
+Submitted batch job 53808687
+sacct -j 53808687 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808687          0:0   00:00:00
+53808687.ba+      0:0   00:00:00      5368K
+53808687.ex+      0:0   00:00:00
 
 Submitting treescreen job for random seed: 12345
-Submitted batch job 53802401
+Submitted batch job 53808688
 Submitting treescreen job for random seed: 67890
-Submitted batch job 53802402
+Submitted batch job 53808689
 Submitting treescreen job for random seed: 23456
-Submitted batch job 53802403
+Submitted batch job 53808690
 Submitting treescreen job for random seed: 78901
-Submitted batch job 53802404
+Submitted batch job 53808691
 Submitting treescreen job for random seed: 34567
-Submitted batch job 53802405
+Submitted batch job 53808692
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
 nano treescreen.sh
@@ -3187,89 +3173,94 @@ date
 #---------------------------------
 
 Submitting treescreen job for random seed: 12345
-Submitted batch job 53802401
-sacct -j 53802401 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53802401          0:0   00:00:37            
-53802401.ba+      0:0   00:00:37    217264K 
-53802401.ex+      0:0   00:00:37     
+Submitted batch job 53808688
+sacct -j 53808688 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808688          0:0   00:00:32
+53808688.ba+      0:0   00:00:32    200360K
+53808688.ex+      0:0   00:00:32
 --- BLC Screening Summary ---
-Mean Rsq:     0.1485 
-SD Rsq:       0.1869 
-Lower Limit:  -0.2178 
-Loci Passed:  1854 
-Loci Failed:  146 
+Mean Rsq:     0.1524
+SD Rsq:       0.1921
+Lower Limit:  -0.2241
+Loci Passed:  1847
+Loci Failed:  153
 Sorting alignments into pass/fail directories...
 Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_12345/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
 
 Submitting treescreen job for random seed: 67890
-Submitted batch job 53802402
-sacct -j 53802402 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53802402          0:0   00:00:37            
-53802402.ba+      0:0   00:00:37    219224K 
-53802402.ex+      0:0   00:00:37   
+Submitted batch job 53808689
+sacct -j 53808689 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808689          0:0   00:00:32
+53808689.ba+      0:0   00:00:32    196328K
+53808689.ex+      0:0   00:00:32
 --- BLC Screening Summary ---
-Mean Rsq:     0.148 
-SD Rsq:       0.1903 
-Lower Limit:  -0.2249 
-Loci Passed:  1847 
-Loci Failed:  153 
+Mean Rsq:     0.1537
+SD Rsq:       0.197
+Lower Limit:  -0.2325
+Loci Passed:  1854
+Loci Failed:  146
 Sorting alignments into pass/fail directories...
-Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_67890/pass_loci       
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_67890/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
 
 Submitting treescreen job for random seed: 23456
-Submitted batch job 53802403
-sacct -j 53802403 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53802403          0:0   00:00:37            
-53802403.ba+      0:0   00:00:37    198124K 
-53802403.ex+      0:0   00:00:37  
+Submitted batch job 53808690
+sacct -j 53808690 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808690          0:0   00:00:32
+53808690.ba+      0:0   00:00:32    204484K
+53808690.ex+      0:0   00:00:32
 --- BLC Screening Summary ---
-Mean Rsq:     0.1481 
-SD Rsq:       0.1911 
-Lower Limit:  -0.2264 
-Loci Passed:  1855 
-Loci Failed:  145 
+Mean Rsq:     0.1528
+SD Rsq:       0.1953
+Lower Limit:  -0.2301
+Loci Passed:  1863
+Loci Failed:  137
 Sorting alignments into pass/fail directories...
-Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_23456/pass_loci   
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_23456/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
 
 Submitting treescreen job for random seed: 78901
-Submitted batch job 53802404
-sacct -j 53802404 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53802404          0:0   00:00:36            
-53802404.ba+      0:0   00:00:36    199488K 
-53802404.ex+      0:0   00:00:36       
+Submitted batch job 53808691
+sacct -j 53808691 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808691          0:0   00:00:32
+53808691.ba+      0:0   00:00:32       214M
+53808691.ex+      0:0   00:00:32
 --- BLC Screening Summary ---
-Mean Rsq:     0.1443 
-SD Rsq:       0.1895 
-Lower Limit:  -0.2271 
-Loci Passed:  1857 
-Loci Failed:  143 
+Mean Rsq:     0.1491
+SD Rsq:       0.1918
+Lower Limit:  -0.2268
+Loci Passed:  1856
+Loci Failed:  144
 Sorting alignments into pass/fail directories...
 Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_78901/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
 
 Submitting treescreen job for random seed: 34567
-Submitted batch job 53802405
-sacct -j 53802405 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-53802405          0:0   00:00:36            
-53802405.ba+      0:0   00:00:36    220328K 
-53802405.ex+      0:0   00:00:36   
+Submitted batch job 53808692
+sacct -j 53808692 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808692          0:0   00:00:32
+53808692.ba+      0:0   00:00:32    192040K
+53808692.ex+      0:0   00:00:32
 --- BLC Screening Summary ---
-Mean Rsq:     0.1475 
-SD Rsq:       0.1892 
-Lower Limit:  -0.2234 
-Loci Passed:  1857 
-Loci Failed:  143 
+Mean Rsq:     0.1535
+SD Rsq:       0.1942
+Lower Limit:  -0.2272
+Loci Passed:  1858
+Loci Failed:  142
 Sorting alignments into pass/fail directories...
 Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_34567/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
 
 Git Commit Message
 refactor(4.2): modernize treescreen script for seed-based simulation sets
@@ -3278,3 +3269,6 @@ Centralized Variables: Replaced manual path definitions with a source call to va
 Path Correction: Refined the logic for locating the reference tree and constrained gene trees to ensure compatibility with the partitioned analysis outputs generated in Steps 4.0 and 4.1.
 Directory Management: Standardized output subdirectory creation within the seed-specific path to prevent data overwrites between different simulation runs.
 
+Skipping module 5 for now (will be another filtering step later)
+
+Step 6:
