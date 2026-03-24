@@ -3538,10 +3538,183 @@ Processing FAIL_at_least_one: Copying 1601 loci...
 Processing PASS_at_least_one: Copying 1960 loci...
 ------------------------------------------------
 
-
 Git Commit Message
 refactor(6.1): migrate to centralized variables and seed-based directory handling
 Centralized Configuration: Replaced local path variables (Project, Output, Original_Alignments) with a source call to variables.sh. This ensures the script uses the globally defined $outX_Y output variables, maintaining consistency across the entire simulation pipeline.
 Seed-Aware Execution: Refactored input and output paths to use $dir_name (derived from random_seed). This allows the script to be submitted via the batch wrapper to process all simulation sets (set_12345, set_67890, etc.) in parallel.
 Revised Directory Structure: Updated subdirectory names to be more descriptive and consistent with the project's terminology (e.g., changing S3_pass_S4_fail to clades_PASS_blc_FAIL).
 Path Correction: Updated input directory references to point to the correct seed-specific subfolders for Clade filtering (Step 3.3) and BLC filtering (Step 4.2).
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.2_submit_subset_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting subset trees array for random seed: $random_seed";
+  sbatch $ISubTree $random_seed
+done
+#---------------------------------
+sbatch 6.2_submit_subset_trees.sh
+
+Submitted batch job 53846170
+sacct -j 53846170 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53846170          0:0   00:00:00            
+53846170.ba+      0:0   00:00:00      5492K 
+53846170.ex+      0:0   00:00:00        
+
+Submitting subset trees array for random seed: 12345
+Submitted batch job 53846171
+Submitting subset trees array for random seed: 67890
+Submitted batch job 53846172
+Submitting subset trees array for random seed: 23456
+Submitted batch job 53846173
+Submitting subset trees array for random seed: 78901
+Submitted batch job 53846174
+Submitting subset trees array for random seed: 34567
+Submitted batch job 53846175
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano infer_subset_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.2_trees"
+#SBATCH --time=36:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=62G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --array=0-9
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- 1. Mapping via Case Statement ---
+case $SLURM_ARRAY_TASK_ID in
+    0) name="all_PASS";          in="$out6_1/$dir_name/all_PASS" ;;
+    1) name="all_FAIL";          in="$out6_1/$dir_name/all_FAIL" ;;
+    2) name="clades_PASS";       in="$out3_3/$dir_name/pass_0.05" ;;
+    3) name="clades_FAIL";       in="$out3_3/$dir_name/fail_0.05" ;;
+    4) name="blc_PASS";          in="$out4_2/$dir_name/pass_loci" ;;
+    5) name="blc_FAIL";          in="$out4_2/$dir_name/fail_loci" ;;
+    # Intersection Groups
+    6) name="clades_PASS_blc_FAIL";   in="$out6_1/$dir_name/clades_PASS_blc_FAIL" ;;
+    7) name="blc_PASS_clades_FAIL";   in="$out6_1/$dir_name/blc_PASS_clades_FAIL" ;;
+    8) name="FAIL_at_least_one";      in="$out6_1/$dir_name/FAIL_at_least_one" ;;
+    9) name="PASS_at_least_one";      in="$out6_1/$dir_name/PASS_at_least_one" ;;
+esac
+
+WORK_DIR="$out6_2/$dir_name/$name"
+FINAL_TREE="$WORK_DIR/${name}_tree.treefile"
+
+# --- 2. Check for Existing Output ---
+if [ -f "$FINAL_TREE" ]; then
+    echo "Task ID $SLURM_ARRAY_TASK_ID ($name): Final tree found at $FINAL_TREE."
+    echo "Skipping to avoid re-running."
+    exit 0
+fi
+
+# --- 3. Safety Checks ---
+if [ ! -d "$in" ]; then
+    echo "ERROR: Input directory $in not found."
+    exit 1
+fi
+
+mkdir -p "$WORK_DIR"
+cd "$WORK_DIR" || exit
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+echo "Task ID $SLURM_ARRAY_TASK_ID: Starting inference for $name"
+
+# --- 4. Run AMAS ---
+# Get the RELATIVE path from WORK_DIR to the input alignments
+# This makes the paths in the command much shorter
+REL_IN=$(realpath --relative-to="." "$in")
+
+python3 "$run_amas" "$REL_IN" "${SLURM_CPUS_PER_TASK}" "${AMAS}" > amas_concat.log 2>&1
+
+if [ ! -f "concatenated.fasta" ]; then
+    echo "ERROR: AMAS FAILed to create concatenated.fasta in $WORK_DIR"
+    exit 1
+fi
+
+# --- 5. Run IQ-TREE ---
+
+# Generate a starting tree:
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -pre StartTree \
+    -m GTR+G -fast
+
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -spp "partitions.txt" \
+    -pre ${name}_tree \
+    -t StartTree.treefile \
+    -m MFP -mset GTR -cmax 8 \
+    -bb 1000 --alrt 1000 
+
+echo "Task $name complete."
+#---------------------------------
+Submitting subset trees array for random seed: 12345
+Submitted batch job 53846171
+sacct -j 53846171 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting subset trees array for random seed: 67890
+Submitted batch job 53846172
+sacct -j 53846172 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting subset trees array for random seed: 23456
+Submitted batch job 53846173
+sacct -j 53846173 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting subset trees array for random seed: 78901
+Submitted batch job 53846174
+sacct -j 53846174 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting subset trees array for random seed: 34567
+Submitted batch job 53846175
+sacct -j 53846175 -o JobID,ExitCode,Elapsed,MaxRSS
+
+
+
+Git Commit Message
+refactor(6.2): optimize subset inference with relative pathing and partitioned models
+Fixed OSError [Errno 7]: Implemented realpath --relative-to logic to calculate the relative path between the working directory and input alignments. This drastically reduces the character count of the AMAS command string, bypassing the "Argument list too long" shell buffer limit.
+Centralized Variables: Migrated all hardcoded paths (Project, Output, IQTREE, AMAS) to a source call of variables.sh, enabling seed-based parallelization across multiple simulation sets (set_$seed).
+Advanced Inference Strategy: Upgraded IQ-TREE workflow from a single-model search (GTR+F+R8) to a high-precision partitioned analysis:
+Phase 1: Rapid starting tree generation using -m GTR+G -fast.
+Phase 2: Full partitioned model search using -spp partitions.txt with ModelFinder (MFP) restricted to GTR-variants (-mset GTR).
+Dataset Consistency: Updated case-statement mapping and subdirectory names to align with Step 6.1 intersection categories (e.g., All_pass → all_PASS).
+Job Control: Removed the -redo flag from the final IQ-TREE call to allow for checkpoint recovery and integrated standardized SLURM headers for the URI cluster.

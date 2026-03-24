@@ -230,5 +230,13 @@ Intersects="$SCRIPTS/6_infer_and_compare_trees/create_intersections.sh"
 # Path to script-specific output directory:
 out6_1="$Output/6.1_intersection_data"
 
+## 6.2_submit_infer_subset_trees.sh
+
+# Path to infer_subset_trees.sh
+ISubTree="$SCRIPTS/6_infer_and_compare_trees/infer_subset_trees.sh"
+# Path to script-specific output directory:
+out6_2="$Output/6.2_subset_trees"
+
+
 set +a  # Stop automatically exporting
 ################################################
