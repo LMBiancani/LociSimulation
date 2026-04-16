@@ -253,6 +253,11 @@ Truth="$out1_1/s_tree.trees"
 # Path to script-specific output directory:
 out6_4="$Output/6.4_comparisons"
 
+## 6.5_gather_results.sh
+
+# Path to script-specific output directory:
+out6_5="$Output/6.5_results"
+
 
 
 set +a  # Stop automatically exporting

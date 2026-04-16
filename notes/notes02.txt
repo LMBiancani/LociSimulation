@@ -4329,3 +4329,69 @@ JobID        ExitCode    Elapsed     MaxRSS
 53890265.ba+      0:0   00:00:11    241732K 
 53890265.ex+      0:0   00:00:11       
 
+Git commit message:
+feat(6.4): finalize seed-based tree comparison pipeline and variable mapping
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.5_gather_results.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=gather_results
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --mem=1G
+
+# Source parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Define the results file location
+mkdir -p $out6_5
+ResultsCSV="$out6_5/Results_All_Seeds.csv"
+
+echo "Merging results from $out6_4 into $ResultsCSV"
+
+# 1. Create the results file with a header (Updated to "Simulation_Set")
+first_seed=$(echo $seeds | awk '{print $1}')
+header=$(head -n 1 "$out6_4/set_$first_seed/Tree_Comparison_Report.csv")
+echo "Simulation_Set,$header" > "$ResultsCSV"
+
+# 2. Loop through each seed and append the data
+for random_seed in $seeds; do
+    input_file="$out6_4/set_$random_seed/Tree_Comparison_Report.csv"
+    
+    if [ -f "$input_file" ]; then
+        echo "Processing Seed: $random_seed"
+        # Prepend "Set_" followed by the seed number to every line
+        # sed "s/^/Set_$random_seed,/" inserts the string at the start of the line
+        tail -n +2 "$input_file" | sed "s/^/Set_$random_seed,/" >> "$ResultsCSV"
+    else
+        echo "Warning: No results found for seed $random_seed"
+    fi
+done
+
+echo "Done! results file created with $(wc -l < $ResultsCSV) lines."
+#---------------------------------
+sbatch 6.5_gather_results.sh
+Submitted batch job 55634167
+sacct -j 55634167 -o JobID,ExitCode,Elapsed,MaxRSS
+
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+55634167          0:0   00:00:00            
+55634167.ba+      0:0   00:00:00      5564K 
+55634167.ex+      0:0   00:00:00   
+
+Merging results from /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.4_comparisons into /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.5_results/Results_All_Seeds.csv
+Processing Seed: 12345
+Processing Seed: 67890
+Processing Seed: 23456
+Processing Seed: 78901
+Processing Seed: 34567
+Done! results file created with 56 lines.
+
+Git commit message:
+feat(6.5): finalize results aggregation with categorical set labeling
