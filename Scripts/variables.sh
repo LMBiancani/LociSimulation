@@ -245,10 +245,13 @@ out6_3="$Output/6.3_filtered_sim_trees"
 ## 6.4_Submit_compare_trees.sh
 
 # Path to compare_trees.sh
-CompTree="$SCRIPS/6_infer_and_compare_trees/compare_trees.sh"
+CompTree="$SCRIPTS/6_infer_and_compare_trees/compare_trees.sh"
+# Path to compare_trees.R
+CompTreeR="$SCRIPTS/6_infer_and_compare_trees/compare_trees.R"
 # Path to "true" tree (ultrametric tree created by 1.1)
 Truth="$out1_1/s_tree.trees"
-
+# Path to script-specific output directory:
+out6_4="$Output/6.4_comparisons"
 
 
 

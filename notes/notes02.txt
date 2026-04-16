@@ -4009,3 +4009,323 @@ Seed-Based Organization: Structured the script to create seed-specific subdirect
 Improved Robustness: Replaced redundant manual cp commands with a dynamic loop and added file-existence checks to provide clear warnings if specific IQ-TREE inferences are missing.
 Variable Alignment: Corrected internal variable scoping (shifting from $dir_name to $set_dir) to ensure full compatibility with the master variables.sh environment.
 Standardization: Normalized filenames during the copy process to simplify the argument string for the final compare_trees.R execution.
+
+6.4
+Notes:
+1. for the truth tree, Use the ultrametric tree from 1.1
+2. Compare that to all the trees infered in 4.0 and 6.2
+3. Compare using Robinson Folds Distance, Weighted Robinson Folds Distance, path distance, quartet distance, mean SH, mean UF, # resolved nodes
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano compare_trees.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# Required libraries
+library(ape)
+library(phangorn)
+library(Quartet)
+
+# Capture arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 5) {
+  stop("Usage: Rscript compare_trees.R <truth_tree> <taxon_map> <output_csv> <test_tree1> <label1> ...")
+}
+
+truth_path <- args[1]
+map_path   <- args[2]
+out_csv    <- args[3]
+
+# 1. Load Truth Tree and Taxon Map
+truth_tree <- read.tree(truth_path)
+taxon_map  <- read.csv(map_path)
+
+# 2. Rename Truth Tree tips from numbers to names
+truth_tree$tip.label <- taxon_map$name[match(truth_tree$tip.label, taxon_map$number)]
+
+# 3. Setup Results dataframe (Updated with Support Columns)
+results <- data.frame(Dataset = character(),
+                      RF = numeric(),
+                      wRF = numeric(),
+                      Quartet_Dist = numeric(),
+                      Mean_SH = numeric(),
+                      Mean_UF = numeric(),
+                      Resolved_Nodes = numeric(),
+                      stringsAsFactors = FALSE)
+
+# 4. Iterate through test trees
+tree_args <- args[4:length(args)]
+for (i in seq(1, length(tree_args), by = 2)) {
+  tree_path <- tree_args[i]
+  label     <- tree_args[i+1]
+
+  if (file.exists(tree_path)) {
+    test_tree <- read.tree(tree_path)
+
+    # Ensure tip labels match exactly and are pruned to match truth
+    test_tree <- keep.tip(test_tree, truth_tree$tip.label)
+
+    # --- Metric 1: Standard RF ---
+    rf_val <- phangorn::RF.dist(truth_tree, test_tree)
+
+    # --- Metric 2: Weighted RF ---
+    wrf_val <- phangorn::wRF.dist(truth_tree, test_tree)
+
+    # --- Metric 3: Quartet Distance ---
+    q_status <- Quartet::QuartetStatus(truth_tree, test_tree)
+    quart_val <- q_status[,'N'] - q_status[,'s']
+
+    # --- Metric 4: Support Value Parsing (SH/UF) ---
+    # Extract labels, ignoring empty strings (often the root)
+    raw_supports <- test_tree$node.label[test_tree$node.label != ""]
+
+    if (length(raw_supports) > 0) {
+        # Split "98.5/100" into two columns
+        sup_matrix <- do.call(rbind, strsplit(raw_supports, "/"))
+        sh_vals <- as.numeric(sup_matrix[,1])
+        uf_vals <- as.numeric(sup_matrix[,2])
+
+        m_sh <- mean(sh_vals, na.rm = TRUE)
+        m_uf <- mean(uf_vals, na.rm = TRUE)
+
+        # Count nodes meeting both high-support thresholds
+        res_nodes <- sum(sh_vals >= 80 & uf_vals >= 95, na.rm = TRUE)
+    } else {
+        m_sh <- m_uf <- res_nodes <- NA
+    }
+
+    # Append to results
+    results <- rbind(results, data.frame(Dataset = label,
+                                         RF = rf_val,
+                                         wRF = wrf_val,
+                                         Quartet_Dist = quart_val,
+                                         Mean_SH = m_sh,
+                                         Mean_UF = m_uf,
+                                         Resolved_Nodes = res_nodes))
+
+    cat("Analyzed:", label, "| Mean UF:", round(m_uf, 1), "\n")
+  } else {
+    cat("Warning: File not found -", tree_path, "\n")
+  }
+}
+
+# 5. Write and Print Results
+write.csv(results, out_csv, row.names = FALSE)
+
+cat("\n==========================================================================================\n")
+cat("                                TREE COMPARISON & SUPPORT REPORT                           \n")
+cat("==========================================================================================\n")
+cat(sprintf("%-25s %-5s %-8s %-10s %-8s %-8s %-10s\n",
+            "Dataset", "RF", "wRF", "Quart_D", "Avg_SH", "Avg_UF", "Resolved"))
+cat("------------------------------------------------------------------------------------------\n")
+for(i in 1:nrow(results)){
+  cat(sprintf("%-25s %-5.0f %-8.3f %-10.0f %-8.1f %-8.1f %-10.0f\n",
+              results$Dataset[i],
+              results$RF[i],
+              results$wRF[i],
+              results$Quartet_Dist[i],
+              results$Mean_SH[i],
+              results$Mean_UF[i],
+              results$Resolved_Nodes[i]))
+}
+cat("==========================================================================================\n")
+cat("Note: Lower values indicate higher accuracy (closer to truth).\n")
+cat("Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.\n")
+cat("==========================================================================================\n")
+#---------------------------------
+
+nano 6.4_submit_subset_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting compare trees job for random seed: $random_seed";
+  sbatch $CompTree $random_seed
+done
+#---------------------------------
+sbatch 6.4_submit_subset_trees.sh
+Submitted batch job 53890249
+
+sacct -j 53890249 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53890249          0:0   00:00:00            
+53890249.ba+      0:0   00:00:00      5492K 
+53890249.ex+      0:0   00:00:00   
+
+Submitting compare trees job for random seed: 12345
+Submitted batch job 53890259
+Submitting compare trees job for random seed: 67890
+Submitted batch job 53890261
+Submitting compare trees job for random seed: 23456
+Submitted batch job 53890262
+Submitting compare trees job for random seed: 78901
+Submitted batch job 53890264
+Submitting compare trees job for random seed: 34567
+Submitted batch job 53890265
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano compare_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.4_RF_compare"
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=8G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+  
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# 1. Paths to Trees
+SimTrees="$out6_3/$dir_name/"
+ResultsCSV="Tree_Comparison_Report.csv"
+FinalOut="$out6_4/$dir_name"
+
+mkdir -p "$FinalOut"
+cd "$FinalOut"
+
+# --- 2. Safety Check for Required Files ---
+echo "--- Initializing Safety Checks ---"
+if [ ! -f "$Truth" ]; then echo "ERROR: Truth tree not found at $Truth"; exit 1; fi
+if [ ! -f "$Taxon_Map" ]; then echo "ERROR: Taxon map not found at $Taxon_Map"; exit 1; fi
+if [ ! -d "$SimTrees" ]; then echo "ERROR: Directory $SimTrees does not exist"; exit 1; fi
+
+# --- Environment ---
+module purge
+module load uri/main
+# Use the toolchain that R was built with (gfbf/2023a)
+module load R/4.3.2-gfbf-2023a
+
+# Maintain your library and library-path exports
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- 3. Dynamic Argument Builder (Bulletproof Version) ---
+CMD_ARGS=("$Truth" "$Taxon_Map" "$ResultsCSV")
+found_count=0
+
+# Define filenames
+FILES=(
+    "Unfiltered_all_Loci.treefile"
+    "all_PASS.treefile"
+    "all_FAIL.treefile"
+    "clades_PASS.treefile"
+    "clades_FAIL.treefile"
+    "blc_PASS.treefile"
+    "blc_FAIL.treefile"
+    "clades_PASS_blc_FAIL.treefile"
+    "blc_PASS_clades_FAIL.treefile"
+    "FAIL_at_least_one.treefile"
+    "PASS_at_least_one.treefile"
+)
+
+# Define labels in the EXACT same order
+LABELS=(
+    "Unfiltered_Baseline"
+    "Elite_all_PASS"
+    "Noisy_all_FAIL"
+    "clades_PASS"
+    "clades_FAIL"
+    "blc_PASS"
+    "blc_FAIL"
+    "clades_PASS_blc_FAIL"
+    "blc_PASS_clades_FAIL"
+    "FAIL_at_least_one"
+    "PASS_at_least_one"
+)
+
+# Iterate using an index
+for i in "${!FILES[@]}"; do
+    FILE="${FILES[$i]}"
+    LABEL="${LABELS[$i]}"
+    FULL_PATH="$SimTrees/$FILE"
+
+    if [ -f "$FULL_PATH" ]; then
+        echo "Adding to comparison: $LABEL"
+        CMD_ARGS+=("$FULL_PATH" "$LABEL")
+        ((found_count++))
+    else
+        echo "MISSING: $FILE"
+    fi
+done
+
+if [ "$found_count" -eq 0 ]; then
+    echo "FATAL ERROR: No trees found. Paths checked: $SimTrees"
+    exit 1
+fi
+
+# --- 4. Execute Comparison ---
+echo "--- Running R Comparison Script with $found_count trees ---"
+Rscript "$CompTreeR" "${CMD_ARGS[@]}"
+
+echo "6.4 Comparison complete."
+#---------------------------------
+
+Submitting compare trees job for random seed: 12345
+Submitted batch job 53890259
+sacct -j 53890259 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53890259          0:0   00:00:11            
+53890259.ba+      0:0   00:00:11    242060K 
+53890259.ex+      0:0   00:00:11     
+Submitting compare trees job for random seed: 67890
+Submitted batch job 53890261
+sacct -j 53890261 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53890261          0:0   00:00:11            
+53890261.ba+      0:0   00:00:11    243916K 
+53890261.ex+      0:0   00:00:11  
+Submitting compare trees job for random seed: 23456
+Submitted batch job 53890262
+sacct -j 53890262 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53890262          0:0   00:00:11            
+53890262.ba+      0:0   00:00:11    242404K 
+53890262.ex+      0:0   00:00:11   
+Submitting compare trees job for random seed: 78901
+Submitted batch job 53890264
+sacct -j 53890264 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53890264          0:0   00:00:11            
+53890264.ba+      0:0   00:00:11    242092K 
+53890264.ex+      0:0   00:00:11     
+Submitting compare trees job for random seed: 34567
+Submitted batch job 53890265
+sacct -j 53890265 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+53890265          0:0   00:00:11            
+53890265.ba+      0:0   00:00:11    241732K 
+53890265.ex+      0:0   00:00:11       
+
