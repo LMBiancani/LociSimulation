@@ -12,8 +12,8 @@ dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
 clade_df <- read.csv(CLADE_FILE, header = TRUE)
 all_clades <- split(clade_df$Taxa, clade_df$Group)
 
-# Process all alignments
-loci_files <- list.files(ALN_DIR, pattern = "\\.fas$")
+# Process all alignments (.fas, .fa, or .fasta)
+loci_files <- list.files(ALN_DIR, pattern = "\\.fast?a?$")
 
 for (f in loci_files) {
   locus_path <- file.path(ALN_DIR, f)
@@ -29,8 +29,8 @@ for (f in loci_files) {
     clade_strings <- sapply(valid_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
     final_constraint <- paste0("(", paste(clade_strings, collapse = ","), ");")
 
-    # Save as locus_i_constraint.newick
-    out_name <- gsub("\\.fas$", "_constraint.newick", f)
+    # Strip .fas or .fasta cleanly using regex substitution and Save as locus_i_constraint.newick
+    out_name <- gsub("\\.fast?a?$", "_constraint.newick", f)
     write(final_constraint, file = file.path(OUTPUT_DIR, out_name))
   }
 }
