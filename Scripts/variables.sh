@@ -258,6 +258,20 @@ out6_4="$Output/6.4_comparisons"
 # Path to script-specific output directory:
 out6_5="$Output/6.5_results"
 
+## 7. Filter Empirical by Known Clades
+
+## 7.0_generate_emp_constraints.sh
+
+# Path to script-specific output directory:
+out7_0="$Output/7.0_emp_constraint_trees"
+# Path to generate_constraints.R is specified above for 3.0_submit_generate_constraints.sh and stored as GenConR:
+# (GenConR): "$SCRIPTS/3_filter_by_known_clades/generate_constraints.R"
+# Path to Input clades is specified above for 3.0_submit_generate_constraints.sh and stored as clades:
+# (clades): "/scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/groups.csv"
+# Path to Input empirical alignments is specified above rof 0_data_prep and stored as DATA:
+# (DATA): "$WORK/mammal_loci/01_SISRS_loci_filtered"
+
+
 
 
 set +a  # Stop automatically exporting
