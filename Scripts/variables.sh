@@ -271,6 +271,14 @@ out7_0="$Output/7.0_emp_constraint_trees"
 # Path to Input empirical alignments is specified above rof 0_data_prep and stored as DATA:
 # (DATA): "$WORK/mammal_loci/01_SISRS_loci_filtered"
 
+## 7.1_iqtree_likelihoods.sh
+
+# Path to script-specific output directory:
+out7_1="$Output/7.1_emp_likelihoods"
+# Path to Input empirical alignments is specified above rof 0_data_prep and stored as DATA:
+# (DATA): "$WORK/mammal_loci/01_SISRS_loci_filtered"
+# Path to iqtree_likelihoods.sh is specified above for 3.1_submit_iqtree_likelihoods.sh and stored as IQTL:
+# (IQTL): "$SCRIPTS/3_filter_by_known_clades/iqtree_likelihoods.sh"
 
 
 
