@@ -1,0 +1,4642 @@
+NOTES 03 - LociSimulation
+/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/notes/notes03.txt
+***
+Same as notes02 until line 10/8/2026 (line 1895) when a re-run of step 3 was conducted
+***
+
+github: https://github.com/LMBiancani/LociSimulation.git
+Project="/scratch4/workspace/biancani_uri_edu-LociSimulation"
+
+2026.03.06
+
+Goal: create a master parameter script that can be sourced by all slurm scripts.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts
+nano variables.sh
+#---------------------------------
+#variables.sh
+
+#---------------------------------
+
+## 0_data_prep
+
+mkdir 0_data_prep
+cd 0_data_prep
+
+run_amas.py is a custom batch concatenation wrapper around AMAS.
+It processes FASTA alignments in chunks of 1000 files at a time (to avoid overloading AMAS input limitations), concatenates them, and appends the results into cumulative files.
+Outputs:
+concatenated.fasta
+partitions.txt
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
+nano run_amas.py
+#---------------------------------
+#!/usr/bin/env python3
+"""
+run_amas.py
+Concatenates FASTA alignments using AMAS (in batches of 1000 to avoid overloading AMAS input limitations).
+Creates a concatenated alignment file and a corresponding partition file:
+concatenated.fasta
+partitions.txt
+
+Usage:
+    python run_amas.py <fasta_folder> <num_cores> <path_to_AMAS.py>
+"""
+import sys
+import glob
+import subprocess
+import os
+
+batch_size = 1000
+
+# --- Input arguments ---
+fasta_folder = sys.argv[1]
+total_cores = sys.argv[2]
+amas = sys.argv[3]
+
+# --- Collect all fasta files (.fasta or .fas) ---
+files = [f for f in glob.glob(os.path.join(fasta_folder, "*")) if f.endswith((".fasta", ".fas"))]
+files.sort()  # ensure consistent, reproducible order
+
+if not files:
+    print(f"ERROR: No .fasta or .fas files found in {fasta_folder}")
+    sys.exit(1)
+
+batch_outputs = []
+batch_parts = []
+
+count = 0
+fileList = []
+batch_num = 1
+
+# --- Process loci in batches ---
+for f in files:
+    fileList.append(f)
+    count += 1
+
+    if count == batch_size:
+        batch_fasta = f"amas_batch_{batch_num}.fasta"
+        batch_part = f"partitions_batch_{batch_num}.txt"
+
+        cmd = (
+            f"python3 {amas} concat "
+            f"-f fasta -d dna --out-format fasta --part-format raxml "
+            f"-i {' '.join(fileList)} "
+            f"-c {total_cores} -t {batch_fasta} -p {batch_part}"
+        )
+        print(f"\n=== Running AMAS on batch {batch_num} ({len(fileList)} files) ===")
+        subprocess.call(cmd, shell=True)
+
+        batch_outputs.append(batch_fasta)
+        batch_parts.append(batch_part)
+        fileList = []
+        count = 0
+        batch_num += 1
+
+# --- Final partial batch (if any) ---
+if len(fileList) > 0:
+    batch_fasta = f"amas_batch_{batch_num}.fasta"
+    batch_part = f"partitions_batch_{batch_num}.txt"
+
+    cmd = (
+        f"python3 {amas} concat "
+        f"-f fasta -d dna --out-format fasta --part-format raxml "
+        f"-i {' '.join(fileList)} "
+        f"-c {total_cores} -t {batch_fasta} -p {batch_part}"
+    )
+    print(f"\n=== Running AMAS on final batch {batch_num} ({len(fileList)} files) ===")
+    subprocess.call(cmd, shell=True)
+
+    batch_outputs.append(batch_fasta)
+    batch_parts.append(batch_part)
+
+# --- Final concatenation across all batches ---
+print("\n=== Performing final concatenation across batches ===")
+
+# 1. Concatenate the FASTA files (This part is fine for sequences)
+cmd_final = (
+    f"python3 {amas} concat "
+    f"-f fasta -d dna --out-format fasta --out-format fasta " # No -p here, we do it manually
+    f"-i {' '.join(batch_outputs)} "
+    f"-c {total_cores} -t concatenated.fasta"
+)
+subprocess.call(cmd_final, shell=True)
+
+# 2. Manually Merge Partitions to preserve individual locus boundaries
+print("=== Merging batch partition files into final partitions.txt ===")
+offset = 0
+with open("partitions.txt", "w") as final_part:
+    for part_file in batch_parts:
+        with open(part_file, "r") as pf:
+            last_end = 0
+            for line in pf:
+                if "=" in line:
+                    # Example line: DNA, p799_SISRS_contig-999... = 1-500
+                    parts = line.strip().split("=")
+                    header = parts[0].strip() # "DNA, p799_SISRS_contig-999..."
+
+                    # 1. Remove the "p-number" prefix
+                    # We split by "DNA, " then split the remainder by "_" exactly once
+                    prefix_data = header.split("DNA, ")[1]
+                    clean_locus_name = prefix_data.split("_", 1)[1]
+
+                    # 2. Reconstruct coordinates with the offset
+                    coords = parts[1].strip().split("-")
+                    start = int(coords[0]) + offset
+                    end = int(coords[1]) + offset
+
+                    # 3. Write out the clean version
+                    final_part.write(f"DNA, {clean_locus_name} = {start}-{end}\n")
+                    last_end = int(coords[1])
+
+            # Increase offset by the total length of this batch for the next batch
+            offset += last_end
+
+print(f"Total alignment length: {offset} bp across {len(files)} clean partitions.")
+
+# --- Cleanup temporary batch files ---
+print("\n=== Cleaning up intermediate files ===")
+for f in batch_outputs + batch_parts:
+    try:
+        os.remove(f)
+    except OSError:
+        print(f"Warning: could not remove {f}")
+
+print("\n=== run_amas.py execution completed. ===")
+print("Output files:")
+print(" - concatenated.fasta")
+print(" - partitions.txt\n")
+#---------------------------------
+
+Git Commit Message:
+fix(run_amas): preserve individual locus partitions during batch concatenation
+
+Partition Integrity: Replaced the automated AMAS final partition step with a manual merge logic. This prevents AMAS from "flattening" the partitions into a few large batch blocks, ensuring each original locus is preserved for partitioned IQ-TREE analysis.
+Coordinate Offsetting: Implemented a global offset tracker to correctly recalculate start/end positions for each locus across multiple sequential batches.
+Name Cleaning: Added a string parser to strip AMAS-generated batch prefixes (e.g., p0_, p799_), restoring the original unique locus identifiers (e.g., SISRS_contig-X) to the partitions.txt file.
+Scalability: Retained the 1,000-file batching strategy to bypass the Linux shell's "Argument list too long" limitation while processing large datasets (100k+ files).
+
+0.0_amas_concat.sh runs AMAS on an empirical dataset to concatenate input fasta files and prepare partitions ahead of IQTree run.
+Uses a helper Python script (run_amas.py), which wraps around the AMAS.py concat command.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
+nano 0.0_amas_concat.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="AMAS"
+#SBATCH --time=1:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH --cpus-per-task=1
+#SBATCH --mem-per-cpu=10G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Number of processor cores per node:
+Cores=$SLURM_CPUS_ON_NODE
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+date
+mkdir -p $out0_0
+cd $out0_0
+
+#Concatenate input fasta files and prepare partitions ahead of IQTree run
+python3 $run_amas $DATA $Cores $AMAS
+
+date
+#---------------------------------
+sbatch 0.0_amas_concat.sh
+Submitted batch job 53764543
+sacct -j 53764543 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53764543          0:0   00:02:15
+53764543.ba+      0:0   00:02:15   6583540K
+53764543.ex+      0:0   00:02:15
+
+=== Performing final concatenation across batches ===
+=== Merging batch partition files into final partitions.txt ===
+Total alignment length: 25202245 bp across 109799 clean partitions.
+
+=== Cleaning up intermediate files ===
+
+=== run_amas.py execution completed. ===
+Output files:
+ - concatenated.fasta
+ - partitions.txt
+
+0.1_iqtree_empirical.sh will use iqtree to infer an empirical tree.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/0_data_prep
+nano 0.1_iqtree_empirical.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="IQTREE"
+#SBATCH --time=96:00:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=250G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE THIS to your user email address
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Number of cpus per task:
+Threads=${SLURM_CPUS_PER_TASK}
+
+module purge
+
+date
+mkdir -p $out0_1
+cd $out0_1
+
+# --- Check for input files produced by 0.0_amas_concat.sh---
+
+if [[ ! -f "$out0_0/concatenated.fasta" || ! -f "$out0_0/partitions.txt" ]]; then
+    echo "Error: concatenated.fasta or partitions.txt not found in ${out0_0}"
+    exit 1
+fi
+
+# --- Run IQ-TREE ---
+# Flags:
+#   -nt: number of CPU threads
+#   -spp: partition file allowing different evolutionary rates per partition
+#   -pre: prefix for output files
+#   -m MFP: ModelFinder Plus for best-fit model selection
+#   -bb: ultrafast bootstrap replicates
+#   -alrt: SH-like approximate likelihood test replicates
+
+${IQTREE} -nt AUTO -ntmax ${Threads} \
+    -s "$out0_0/concatenated.fasta" \
+    -spp "$out0_0/partitions.txt" \
+    -pre inferenceEmpirical \
+    -m MFP -mset GTR -cmax 8 \
+    -bb 1000 -alrt 1000
+
+date
+#---------------------------------
+sbatch 0.1_iqtree_empirical.sh
+Submitted batch job 53765421
+sacct -j 53765421 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53765421          0:0 2-08:41:10
+53765421.ba+      0:0 2-08:41:10 145015740K
+53765421.ex+      0:0 2-08:41:10
+
+Git Commit Message
+refine(0.1_iqtree): restrict ModelFinder search space for empirical inference
+Model Constraint: Added -mset GTR to restrict the ModelFinder search to the General Time-Reversible family of models, aligning with the biologically complex nature of the mammal simulation.
+Rate Heterogeneity Cap: Implemented -cmax 8 to limit FreeRate (+R) categories. This maintains a high level of accuracy for heterotachy while preventing over-parameterization and reducing computational overhead for the 100k+ partition dataset.
+Efficiency: Optimized the pre-analysis phase by narrowing the search space, ensuring the 96-hour walltime is primarily utilized for tree search rather than exhaustive model testing across all loci.
+
+## 1_prep_empirical_tree
+
+mkdir /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
+nano install.packages.R
+#---------------------------------
+# ==============================================================================
+# Script: install.packages.R
+# Description: Automated CRAN package installer and loader for CLI environments.
+# Usage: Rscript install.packages.R pkg1 pkg2 pkg3
+# ==============================================================================
+
+# Capture command-line arguments (package names to check and install)
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) == 0) {
+  stop("Error: No package names provided as arguments. Exiting.", call. = FALSE)
+}
+
+packages_to_install <- args
+
+# Function to check, install, and load packages
+install_and_load <- function(pkg) {
+  # Check if the package is installed
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    message(paste("Package", pkg, "not found. Installing..."))
+    # Install the package from CRAN
+    install.packages(pkg, dependencies = TRUE, repos = "https://cloud.r-project.org")
+  } else {
+    message(paste("Package", pkg, "is already installed."))
+  }
+
+  # Load the package (library function)
+  library(pkg, character.only = TRUE)
+  message(paste("Package", pkg, "loaded successfully."))
+}
+
+# Apply the function to the list of packages
+invisible(sapply(packages_to_install, install_and_load))
+#---------------------------------
+
+## INPUTS for empirical_tree_processor.R
+
+# generation scaling factor: Number of generations in the tree: absolute tree age in years divided by average generation time of species in the tree.
+total tree depth (years) / average generation time (years)
+
+# total tree depth: age of most recent common ancestor of all species in the tree.
+For this mammal data, this would be the age of Theria or age of the common ancestor of placental mammals (ingroup) and marsupials (outgroup)
+total tree depth (years) is estimated to be 168 mya
+Citations:
+2019 - Upham NS, Esselstyn JA, Jetz W (2019) Inferring the mammal tree: Species-level sets of phylogenies for questions in ecology, evolution, and conservation. PLoS Biol 17(12): e3000494.https://doi.org/10.1371/journal.pbio.3000494
+168 Fig 1
+2017 - Thomas L. Dunwell, Jordi Paps, Peter W. H. Holland; Novel and divergent genes in the evolution of placental mammals. Proc Biol Sci 1 October 2017; 284 (1864): 20171357. https://doi.org/10.1098/rspb.2017.1357
+140-191 "The common ancestor of placentals and marsupials dates to approximately 140 – 191 million years ago (Ma)"
+
+tree_depth=168000000
+
+# average generation time (years)
+We used a estimated generation time of 4.5 years for Theria. This value is chosen not as the arithmetic mean or median of all extant species (which is skewed by small-bodied rodents and bats), but as a phylogenetically-informed effective generation time that is consistent with the estimated rate of mutation at the deepest nodes of the mammalian tree. This approach accounts for the allometric relationship between body mass and generation length, a relationship thoroughly characterized across Mammalia [cite Pacifici et al., 2013]. Our chosen rate falls within the range utilized by major phylogenomic studies (e.g., Meredith et al., 2011), which established evolutionary rates for ancestral nodes that are consistent with a moderately sized stem mammal ancestor and a generation time in the 4–5 year range."
+Citation:
+Pacifici, Michela, et al. "Generation length for mammals." Nature Conservation 5 (2013): 89-94.
+Meredith, Robert W., et al. "Impacts of the Cretaceous Terrestrial Revolution and KPg extinction on mammal diversification." science 334.6055 (2011): 521-524.
+
+gen_time=4.5
+
+# --- Install MASS separately with a pinned, compatible version for R 4.3.2 ---
+# Version 7.3-60 is compatible with R 4.3.x
+salloc # open interactive session
+module purge
+module load uri/main
+module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
+module load R/4.3.2-gfbf-2023a # Loads updated R version
+export R_LIBS=~/R-packages
+R
+# --- Install MASS using the direct archive URL (CRITICAL FIX) ---
+# This forces the download of the compatible version (7.3-60) for R 4.3.2.
+install.packages("https://cran.r-project.org/src/contrib/Archive/MASS/MASS_7.3-60.tar.gz",
+                 repos = NULL, # MUST be NULL when installing from a URL
+                 type = "source",
+                 dependencies = TRUE)
+
+# --- Install devtools and ggtree (via interactive session) ---
+salloc
+module purge
+module load uri/main
+module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
+module load R/4.3.2-gfbf-2023a # Loads updated R version
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+R
+# 1. Install devtools (needed for install_github)
+if (!requireNamespace("devtools", quietly = TRUE)) {
+    install.packages("devtools", dependencies = TRUE, repos = "https://cloud.r-project.org")
+}
+# 2. Load devtools
+library(devtools)
+# 3. Install ggtree from GitHub (this often bypasses strict CRAN/Bioconductor version checks)
+# Note: You may also need to install the 'BiocManager' package first if this fails.
+install_github("YuLab-SMU/ggtree")
+
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
+nano 1.0_prep_R_env.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="R_pkgs"
+#SBATCH --time=8:00:00                 # Walltime limit (HH:MM:SS)
+#SBATCH --nodes=1                      # Number of nodes
+#SBATCH --ntasks=1                     # Total number of tasks (processes)
+#SBATCH --cpus-per-task=4              # Number of CPU cores per task
+#SBATCH --mem-per-cpu=16G              # Memory per cpu
+#SBATCH --mail-user="biancani@uri.edu" # CHANGE TO user email address
+#SBATCH --mail-type=ALL
+#SBATCH -p uri-cpu                     # Partition/queue to submit job to
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+module purge
+module load uri/main
+module load ImageMagick/7.1.1-15-GCCcore-12.3.0 # system dependency for the R 'magick' package
+module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
+module load R/4.3.2-gfbf-2023a # Loads updated R version
+# This forces the linker to find the correct, newest C++ library that contains GLIBCXX_3.4.32.
+# This must be done AFTER module loading to override potential downgrades.
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+
+## Install R packages
+
+# add local space for R packages (won't ask about install location):
+mkdir -p ${R_package_DIR}
+export R_LIBS=${R_package_DIR}
+
+# install R packages
+Rscript ${SCRIPTS}/1_prep_empirical_tree/install.packages.R $R_packages
+
+date
+#---------------------------------
+sbatch 1.0_prep_R_env.sh
+Submitted batch job 53486133
+sacct -j 53486133 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53486133          0:0   00:00:25
+53486133.ba+      0:0   00:00:25    380980K
+53486133.ex+      0:0   00:00:25
+(all packages were already installed)
+
+FEAT: Implement clade-based tree rooting via MRCA
+Replaces single-taxon rooting with support for multi-taxa outgroups. Uses ape::getMRCA() to find the common ancestor node index for a comma-separated list of outgroup tips, ensuring accurate clade-based tree rooting.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
+nano empirical_tree_processor.R
+#---------------------------------
+# ==============================================================================
+# Script: empirical_tree_processor.R
+# Description: Processes IQ-TREE output into an ultrametric, rescaled tree
+#              compatible with SimPhy. Performs rooting via MRCA,
+#              chronos-based smoothing, and taxon name-to-number mapping.
+# Usage: Rscript empirical_tree_processor.R <mod_script> <treefile> <out_dir> \
+#                <outgroup_list> <root_age> <gen_time>
+# ==============================================================================
+## Capture Command Line Arguments
+# Arguments must be passed in the following order:
+# [1] mod_write_tree2     (Path to modified.write.tree2.R - script that adjusts how ape handles tree files)
+# [2] treefile            (Path to the input .treefile - generated by 0.1_iqtree_empirical.sh)
+# [3] format_tree_out     (Base directory for output files - must exist!)
+# [4] outgroup            (List of comma separated outgroup taxa for tree rooting)
+# [5] tree_depth          (Estimated age in years of most recent common ancestor of all species in the tree)
+# [6] gen_time            (Estimated generation time in years for all species in the tree)
+
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check if the correct number of arguments was provided
+if (length(args) < 6) {
+  stop("Error: Not enough arguments provided. Expected 6.", call. = FALSE)
+}
+
+# Assign arguments to variables
+mod_write_tree2 <- args[1]
+treefile <- args[2]
+format_tree_out <- args[3]
+outgroup <- args[4]
+
+# Calculate the scale factor (Total Generations) from args[5] (depth) and args[6] (gen_time)
+scale_factor <- as.numeric(args[5])/as.numeric(args[6])
+
+# --- 2. Load Libraries and Setup ---
+
+library(ape)
+library(ggplot2)
+library(geiger)
+library(ggtree)
+
+## Force a headless friendly bitmap device for the session
+options(bitmapType = "cairo")
+
+# Adjust path to modified.write.tree2.R
+source(mod_write_tree2)
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+
+# --- 3. Process and Save Empirical Tree ---
+
+# Empirical tree:
+tree <- read.tree(treefile)
+
+# 1. Convert the comma-separated string into a vector of tip labels
+outgroup_taxa <- unlist(strsplit(outgroup, ","))
+
+# 2. Check that the taxa are actually in the tree
+if (!all(outgroup_taxa %in% tree$tip.label)) {
+    # Check if any taxa in the list are missing from the tree
+    missing_taxa <- setdiff(outgroup_taxa, tree$tip.label)
+    stop(paste("Error: The following outgroup taxa were not found in the tree:", paste(missing_taxa, collapse=", ")), call.=FALSE)
+}
+
+# 3. Find the Most Recent Common Ancestor (MRCA) node index
+# getMRCA returns the node index that is ancestral to all tips in the vector
+outgroup_node <- getMRCA(phy = tree, tip = outgroup_taxa)
+
+# 4. Root the tree using the identified MRCA node index
+# Use the node= argument instead of outgroup=
+tree <- root(tree, node = outgroup_node, resolve.root = TRUE)
+
+# Save the check image
+p <- ggtree(tree) + theme_tree2() + geom_tiplab()
+ggsave(p, file=paste0(format_tree_out, "/tree_check_root.png"))
+
+# Check the tree rooted correctly. Then transform to ultrametric and rescale
+
+tree_um <- chronos(tree)
+class(tree_um) <- "phylo" # Ensure it is a 'phylo' object after chronos
+tree_um <- rescale(tree_um, model = "depth", scale_factor)
+
+# Save the ultrametric tree check image
+q <- ggtree(tree_um) + theme_tree2() + geom_tiplab()
+ggsave(q, file=paste0(format_tree_out, "/tree_um.png"))
+
+# --- 4. Prepare for SimPhy and Write Outputs ---
+
+taxon_map <- data.frame(number = 1:length(tree_um$tip.label), name = tree_um$tip.label)
+write.csv(taxon_map, paste0(format_tree_out, "/taxon_map.csv"), row.names = FALSE)
+
+# Replace labels with numbers, strip node labels, and write out the tree
+tree_um$tip.label <- as.character(1:length(tree_um$tip.label))
+tree_um$node.label <- NULL
+write.tree(tree_um, paste0(format_tree_out, "/s_tree.trees"), digits=8)
+
+print("Tree processing complete and output files saved.")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/1_prep_empirical_tree
+
+nano 1.1_format_tree.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="process_tree"
+#SBATCH --time=00:20:00                # Walltime limit (HH:MM:SS)
+#SBATCH --nodes=1                      # Number of nodes
+#SBATCH --ntasks=1                     # Total number of tasks (processes)
+#SBATCH --cpus-per-task=1              # Number of CPU cores per task
+#SBATCH --mem-per-cpu=4G               # Memory per cpu
+#SBATCH --mail-user="biancani@uri.edu" # CHANGE TO user email address
+#SBATCH --mail-type=ALL
+#SBATCH -p uri-cpu                     # Partition/queue to submit job to
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+date
+mkdir -p $out1_1
+cd $out1_1
+
+module purge
+module load uri/main
+module load ImageMagick/7.1.1-15-GCCcore-12.3.0 # system dependency for the R 'magick' package
+module load foss/2024a # Loads an updated toolchain to provide the required C++ library: GLIBCXX_3.4.32 (fixes GLIBCXX error)
+module load R/4.3.2-gfbf-2023a # Loads updated R version
+# This forces the linker to find the correct, newest C++ library that contains GLIBCXX_3.4.32.
+# This must be done AFTER module loading to override potential downgrades.
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=$R_package_DIR
+
+## Process Empirical tree
+Rscript $SCRIPTS/1_prep_empirical_tree/empirical_tree_processor.R $mod_write_tree2 $input1_1 $out1_1 $outgroup $tree_depth $gen_time
+
+date
+#---------------------------------
+sbatch 1.1_format_tree.sh
+Submitted batch job 53803607
+sacct -j 53803607 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803607          0:0   00:00:25
+53803607.ba+      0:0   00:00:25    457096K
+53803607.ex+      0:0   00:00:25
+
+mkdir /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+Skipping simulation_prep.sh and run_sptree_SimPhy.R because they generate simulated species trees which I don’t need for now. I just need loci simulated from the empirical tree above.
+
+Updates to generate_sim_properties.R:
+Expanded Command-Line Argument Control: transitioned from hardcoded values to command-line argument system.
+Weighted Protein-Coding Status: replaced the default 50/50 "coin flip" for coding vs. non-coding status with a weighted probability variable (PropCoding).
+Proportional Paralogy Scaling: updated the paralogy logic so that the number of impacted taxa scales with the size of the tree (ParalogyIntensity) rather than a fixed average.
+Corrected Contamination Math: I adjusted the contamination logic to use ContaminantIntensity / 2 when calculating the number of events. This correctly accounts for the fact that one contamination "swap" impacts two distinct taxa, ensuring the total proportion of affected species matches my intended target.
+Safety Safeguards (pmax): I implemented pmax(1, ...) logic within the Zero-Inflated Poisson calculations. This ensures that if a locus is flagged as "non-orthologous" or "contaminated," it will always have at least one error event, even if the proportional math results in a value less than one.
+Argument Data Type Enforcement: I added explicit as.numeric() wrappers for all incoming command-line arguments. This prevents R from treating numeric inputs as strings, which would otherwise cause crashes during mathematical operations or sequence sampling.
+
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano generate_sim_properties.R
+#---------------------------------
+# ==============================================================================
+# Script: generate_sim_properties.R
+# Description: Generates a stochastic "blueprint" (df.csv) for Run_SimPhy.R
+#              containing evolutionary parameters for simulated loci.
+#              Simulates biological realism including substitution rates (ABL),
+#              heterotachy (VBL), ILS (Ne), and complex data loss patterns.
+# Usage: Rscript generate_sim_properties.R <22 parameters>
+# ==============================================================================
+# --- 1. Capture Command Line Arguments ---
+# Arguments must be passed in the following order:
+# [1] treefile         (Path to ultrametric species tree rescaled in generations)
+# [2] mod_write_tree2  (Path to modified.write.tree2.R - custom ape patch for NEXUS output)
+# [3] random_seed      (Random number seed for reproducibility)
+#                      Loci Simulation Parameters:
+# [4] nloci            (number of loci to simulate)
+# [5] Ne               (Effective Population Size - ILS level Scales discordance based on Ne of the empirical group)
+# [6] ABLmin           (minimum (natural log) for Average Branch Length range (ABL))
+# [7] ABLmax           (maximum (natural log) for Average Branch Length range (ABL))
+# [8] LLmin            (minimum locus length (bp))
+# [9] LLmax            (maximum locus length (bp))
+# [10] lambdaPSmin     (minimum for Pagel's Lambda)
+# [11] lambdaPSmax     (maximum for Pagel's Lambda)
+# [12] VBLmin          (minimum Variance in Branch Length (VBL) - models heterotachy)
+# [13] VBLmax          (maximum Variance in Branch Length (VBL) - models heterotachy)
+# [14] MissTaxa        (maximum proportion of missing taxa per locus)
+# [15] PartLoss        (proportion of non-missing taxa exhibiting partial data loss per locus)
+# [16] MissPropMIN     (minimum proportion of locus sequence removed (for taxa exhibiting partial loss))
+# [17] MissPropMAX     (maximum proportion of locus sequence removed (for taxa exhibiting partial loss))
+# [18] PropCoding      (proportion of loci to be protein coding - CODON model (vs. NUCLEOTIDE))
+# [19] NoParalogy      (proportion of loci exhibiting no paralogy (clean))
+# [20] ParalogyIntensity  (average proportion of taxa exhibiting paralogous signal in a given non-orthologous locus)
+# [21] NoContaminant   (proportion of loci exhibiting no contamination (clean))
+# [22] ContaminantIntensity   (average proportion of taxa exhibiting contamination (swaps) in a given contaminated locus)
+
+
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check if the correct number of arguments was provided
+if (length(args) < 22) {
+  stop("Error: Missing arguments. Expected: [1] treefile [2] mod_write_tree2 [3] random_seed [4] n_loci [5] Ne [6] ABLmin [7] ABLmax [8] LLmin [9] LLmax [10] lambdaPSmin [11] lambdaPSmax [12] VBLmin [13] VBLmax [14] MissTaxa [15] PartLoss [16] MissPropMIN [17] MissPropMAX [18] PropCoding [19] NoParalogy [20] ParalogyIntensity [21] NoContaminant [22] ContaminantIntensity", call. = FALSE)
+}
+
+# Assign arguments to variables
+tree_path       <- args[1]
+mod_write_tree2 <- args[2]
+random_seed     <- args[3]
+nloci           <- as.numeric(args[4])
+Ne              <- as.numeric(args[5])
+ABLmin          <- as.numeric(args[6])
+ABLmax          <- as.numeric(args[7])
+LLmin           <- as.numeric(args[8])
+LLmax           <- as.numeric(args[9])
+lambdaPSmin     <- as.numeric(args[10])
+lambdaPSmax     <- as.numeric(args[11])
+VBLmin          <- as.numeric(args[12])
+VBLmax          <- as.numeric(args[13])
+MissTaxa        <- as.numeric(args[14])
+PartLoss        <- as.numeric(args[15])
+MissPropMIN     <- as.numeric(args[16])
+MissPropMAX     <- as.numeric(args[17])
+PropCoding      <- as.numeric(args[18])
+NoParalogy      <- as.numeric(args[19])
+ParalogyIntensity <- as.numeric(args[20])
+NoContaminant   <- as.numeric(args[21])
+ContaminantIntensity  <- as.numeric(args[22])
+
+# --- 2. Load Simulation Libraries ---
+library(ape)        # Phylogenetics core
+library(geiger)     # Tree transformation
+library(MultiRNG)   # Multivariate random number generation
+library(EnvStats)   # Statistical distributions
+library(extraDistr) # Zero-inflated Poisson (rzip) for paralogs/contaminants
+
+# --- 3. Setup and Data Loading ---
+
+# Load the scaled, ultrametric species tree
+sptree <- read.tree(tree_path)
+ntaxa <- length(sptree$tip.label)
+
+# Apply ape patch to ensure SimPhy-compatible NEXUS formatting
+source(mod_write_tree2)
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+
+# Set global seed for exact replication of the 2000-locus parameter set
+set.seed(random_seed)
+
+# Initialize dataframe
+df <- data.frame(loci = paste0("loc_", as.character(1:nloci)))
+
+# [ABL] Average Branch Length (Substitution Rate)
+abl <- round(runif(nloci, min = ABLmin, max = ABLmax), 3)
+df$abl <- abl
+
+# Write Species Tree to NEXUS with the [&R] Rooted tag required by SimPhy
+write("#NEXUS", file="sptree.nex")
+write("begin trees;", file="sptree.nex", append=T)
+write(paste0("\ttree tree_1 = [&R] ", write.tree(sptree, digits=8, file="")), file="sptree.nex", append=T)
+write("end;", file="sptree.nex", append=T)
+
+# [VBL] Variance in branch length: Heterotachy (Rate Variance)
+# Models rate variation across the tree
+vbl <- round(runif(nloci,min=VBLmin,max=VBLmax),3)
+df <- cbind(df, vbl)
+
+# [Coding Status] CDS? Determines if locus evolves under NUCLEOTIDE or CODON models
+proteinCoding <- sample(c(TRUE, FALSE), nloci, replace = TRUE, prob = c(PropCoding, 1-PropCoding))
+df <- cbind(df, proteinCoding)
+
+# [Model Seed] Unique seed for individual locus evolution models
+modelseed <- sample(100000:999999,nloci, replace=F)
+df <- cbind(df, modelseed)
+
+# [Locus Length]
+# Longer loci strongly correlate with improved RF similarity/utility
+loclen <- sample(LLmin:LLmax,nloci, replace=T)
+df <- cbind(df, loclen)
+
+# [LambdaPS] Pagel's Lambda
+# Scales proportion of phylogenetic signal on internal branches
+lambdaPS <- round(runif(nloci,min=lambdaPSmin,max=lambdaPSmax),5)
+df <- cbind(df, lambdaPS)
+
+# [ILS] Proportional to Effective Population Size (Ne)
+# Dictates the level of Incomplete Lineage Sorting
+Ne <- rep(Ne, nloci)
+df <- cbind(df, Ne)
+
+# [Seeds] Specific seeds for downstream software execution
+df$seed1 <- sample(10000:99999, nloci, replace = FALSE) # SimPhy seed
+df$seed2 <- ifelse(df$proteinCoding, 54321, 12345)      # INDELible seed
+
+# --- 5. Missing Data Simulation ---
+# Simulates stochastic and systematic data loss
+
+# Entirely missing taxa (up to specified proportion (MissTaxa) of total taxa)
+ntaxa_missing <- sample(0:round(ntaxa*MissTaxa), nloci, replace = TRUE)
+taxa_missing <- list()
+remaining_taxa <- list()
+
+for (f in ntaxa_missing){
+  txm <- sample(c(1:ntaxa), f, replace = FALSE)
+	taxa_missing <- c(taxa_missing, list(txm))
+	remaining_taxa <- c(remaining_taxa, list(setdiff(c(1:ntaxa), txm)))
+}
+df$remaining_taxa <- remaining_taxa
+df$taxa_missing <- taxa_missing
+
+# Partially missing segments within remaining taxa
+taxa_missing_segments <- lapply(remaining_taxa, function(x) sample(x, round(length(x)*PartLoss)))
+df$taxa_missing_segments <- taxa_missing_segments
+df$missing_segments_prop <- lapply(taxa_missing_segments, function(x) round(runif(length(x), MissPropMIN, MissPropMAX), 3))
+df$missing_segments_bias <- lapply(taxa_missing_segments, function(x) round(runif(length(x), 0, 1), 2))
+
+# --- 6. Paralogy and Contamination ---
+# Simulates non-orthologous signal that can confound species tree error[cite: 35, 36, 556].
+nremaining_taxa <- lapply(remaining_taxa, length)
+
+# Deep paralogs via Zero-Inflated Poisson distribution
+
+# here lambda is the average number of taxa exhibiting paralogous signal in a given non-orthologous locus
+lambda <- pmax(1, unlist(nremaining_taxa)*ParalogyIntensity)
+df$paralog_cont <- extraDistr::rzip(nloci, lambda, NoParalogy)
+df$paralog_branch_mod <- round(runif(nloci, 1.0, 10.0), 2)
+df$paralog_taxa <- apply(df, 1, function(x) sample(x$remaining_taxa, x$paralog_cont))
+
+# Contaminant groups
+
+# here lambda is the average number of taxa exhibiting contamination (swaps) in a given contaminated locus
+lambda <- pmax(1, unlist(nremaining_taxa)*ContaminantIntensity/2) #ContaminantIntensity is divided by 2 because one swap will impact 2 taxa
+df$cont_pair_cont <- extraDistr::rzip(nloci, lambda, NoContaminant)
+df$cont_pairs <- apply(df, 1, function(x) sample(x$remaining_taxa, x$cont_pair_cont * 2))
+
+# --- 7. Save Blueprint ---
+# Convert lists to character strings to prevent CSV formatting errors
+df <- as.data.frame(df)
+df$remaining_taxa <- gsub("\n", " ", as.character(df$remaining_taxa))
+df_out <- apply(df, 2, as.character)
+
+write.csv(df_out, "df.csv", row.names = FALSE)
+#---------------------------------
+
+git commit message:
+refactor: generate_sim_properties.R - replace hardcoded params with CLI arguments
+Transitioned all simulation parameters to a CLI argument system
+Implemented weighted probability for protein-coding status
+Scaled paralogy and contamination intensity to taxon count
+Fixed contamination math to account for pair-wise swaps
+Added pmax(1, ...) safeguards for Poisson error events
+Enforced numeric data types for all incoming R arguments
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.0_prep_simphy.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="prep_simphy"
+#SBATCH --time=00:20:00  # walltime limit (HH:MM:SS)
+#SBATCH --nodes=1   # number of nodes
+#SBATCH --ntasks-per-node=1   # processor core(s) per node
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+#SBATCH -p uri-cpu
+#SBATCH -c 1
+#SBATCH --mem-per-cpu=2G
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Module Management ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+# --- Critical Environment Fixes ---
+# 1. Fix for the C++ library (GLIBCXX) errors
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+
+# 2. Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- generate_sim_properties.R ---
+
+# create output subdirectory:
+mkdir -p $out2_0
+cd $out2_0
+
+# loop through random number $seeds and generate a set of simulation properties for each seed:
+
+sets=$(echo $seeds | wc -w)
+echo "Generating simulation properties for $sets set(s) of $nloci loci"
+for random_seed in $seeds;
+  do
+  echo "Generating simulation properties for random seed: $random_seed";
+  set_dir="set_$random_seed"
+  mkdir -p "$set_dir"
+  cd "$set_dir" || exit # Exit if directory change fails
+  Rscript $GSP $input2_0 $mod_write_tree2 $random_seed $nloci $Ne $ABLmin $ABLmax $LLmin $LLmax $lambdaPSmin $lambdaPSmax $VBLmin $VBLmax $MissTaxa $PartLoss $MissPropMIN $MissPropMAX $PropCoding $NoParalogy $ParalogyIntensity $NoContaminant $ContaminantIntensity
+  cd ..
+  echo "Simulation properties for $set_dir have been generated."
+done
+
+date
+#---------------------------------
+sbatch 2.0_prep_simphy.sh
+Submitted batch job 53803621
+sacct -j 53803621 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803621          0:0   00:00:19
+53803621.ba+      0:0   00:00:19    252352K
+53803621.ex+      0:0   00:00:19
+
+git commit message:
+feat: refactor 2.0_prep_simphy.sh to support multi-seed loops and centralized variables
+Replaced local variable definitions with centralized variables.sh sourcing
+Implemented a for loop to iterate through multiple random number seeds (generating multiple simulation sets)
+Added automated subdirectory creation (set_dir) for each simulation set
+Updated Rscript call to pass all 22 evolutionary and error parameters
+Enhanced directory safety with cd exit checks and mkdir -p
+Cleaned up variable naming for consistency with downstream scripts
+Fixed variable errors in generate_sim_properties.R
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano run_SimPhy.R
+#---------------------------------
+# ==============================================================================
+# Script: Run_SimPhy.R
+# Purpose: Generate a list of SimPhy commands based on generated parameters.
+# ==============================================================================
+
+library(tidyverse)
+
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check for the 5 arguments passed from the shell script
+if (length(args) < 5) {
+  stop("Usage: Rscript Run_SimPhy.R <sptree_path> <df_path> <output_list> <loci_dir> <simphy_path>", call. = FALSE)
+}
+
+species_tree_path <- args[1]
+df_path           <- args[2]
+output_list_path  <- args[3]
+loci_dir          <- args[4]
+simphy            <- args[5]
+
+
+# Load the parameter blueprint generated in the previous step
+df <- read.csv(df_path)
+nloci <- nrow(df)
+
+# Generate the command strings
+# Using mutate and paste0 for a clean 'tidyverse' approach
+df_cmds <- df %>%
+  mutate(command = paste0(
+    simphy,
+    " -rl f:1",                          # Replicates per locus
+    " -sr ", species_tree_path,          # Input species tree
+    " -sp f:", Ne,                       # Population size for ILS
+    " -su ln:", abl, ",0.1",             # Subst. rate (ln scale)
+    " -hs ln:", vbl, ",1",               # Heterotachy (vbl)
+    " -cs ", seed1,                      # Random seed
+    " -o ", loci_dir, loci               # Locus-specific output folder
+  ))
+
+# Write the command list to the text file
+writeLines(df_cmds$command, con = output_list_path)
+
+cat(paste("Successfully generated  ", nloci, "SimPhy commands in:", output_list_path, "\n"))
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.1_simphy_commands.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=simphy_cmd
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH -p uri-cpu
+#SBATCH --time=0:20:00  # walltime limit (HH:MM:SS)
+#SBATCH --mail-user="biancani@uri.edu" #CHANGE TO user email address
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# create output subdirectory:
+mkdir -p $out2_1
+cd $out2_1
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+# Fix for the C++ library (GLIBCXX) errors:
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+# Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- run_SimPhy.R ---
+
+sets=$(echo $seeds | wc -w)
+echo "Generating SimPhy commands for $sets set(s) of loci"
+for random_seed in $seeds;
+  do
+  echo "Generating SimPhy commands for random seed: $random_seed";
+  set_dir="set_$random_seed"
+  mkdir -p "$set_dir"
+  #input files (generated by 2.0_prep_simphy.sh):
+  tree_file="$input2_1/$set_dir/sptree.nex"
+  df_file="$input2_1/$set_dir/df.csv"
+  #output files (to be generated)
+  cmd_list="$out2_1/$set_dir/simphy_command_list.txt"
+  loci_out_dir="$out2_2/$set_dir/" ## note: terminal "/" is necessary! ##
+  mkdir -p $loci_out_dir
+  Rscript "$RSP" \
+      "$tree_file" \
+      "$df_file" \
+      "$cmd_list" \
+      "$loci_out_dir" \
+      "$simphy_exe"
+  echo "SimPhy commands for $set_dir have been generated."
+done
+
+date
+#---------------------------------
+sbatch 2.1_simphy_commands.sh
+Submitted batch job 53803626
+sacct -j 53803626 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803626          0:0   00:00:18
+53803626.ba+      0:0   00:00:18    222268K
+53803626.ex+      0:0   00:00:18
+
+Git Commit message:
+feat: refactor 2.1 to support multi-seed looping and centralized variables
+Migrated local paths to centralized variables.sh sourcing
+Implemented for loop to generate command lists across multiple random seeds
+Added automated subdirectory creation for nested input/output structures
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.2_submit_sim_jobs.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting simulation job for random seed: $random_seed";
+  sbatch $RSim $random_seed
+done
+#---------------------------------
+sbatch 2.2_submit_sim_jobs.sh
+Submitted batch job 53803629
+sacct -j 53803629 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803629          0:0   00:00:00
+53803629.ba+      0:0   00:00:00      5644K
+53803629.ex+      0:0   00:00:00
+
+Submitting simulation job for random seed: 12345
+Submitted batch job 53803630
+Submitting simulation job for random seed: 67890
+Submitted batch job 53803631
+Submitting simulation job for random seed: 23456
+Submitted batch job 53803632
+Submitting simulation job for random seed: 78901
+Submitted batch job 53803633
+Submitting simulation job for random seed: 34567
+Submitted batch job 53803634
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano run_simulations.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=simphy_run
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32        # Number of simulations to run in parallel
+#SBATCH --mem=16G                 # Adjust based on node availability
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512       # Required for foss/2024a on this cluster
+#SBATCH --time=00:30:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input file (generated by 2.1_simphy_commands.sh):
+cmd_list="$out2_1/set_$random_seed/simphy_command_list.txt"
+echo "Path to SimPhy commands: $cmd_list"
+
+# Output subdirectory for the simulations:
+out_dir="$out2_2/set_$random_seed"
+mkdir -p "$out_dir"
+
+# Output: final combined gene tree file
+master_trees="$out_dir/gene_trees.tre"
+
+# Log: Tracks which simulations succeeded
+job_log="$out_dir/2.2_parallel_joblog.log"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load parallel/20240822
+
+# --- 1. Initial Parallel Execution ---
+echo "Starting initial SimPhy simulations..."
+
+parallel --jobs $SLURM_CPUS_PER_TASK --joblog "$job_log" --no-notice < "$cmd_list"
+# --jobs $SLURM_CPUS_PER_TASK: Uses the cores requested above
+# --joblog: Records completion; if job fails, re-running will skip finished tasks
+
+# --- 2. Validation & Auto-Recovery Loop ---
+echo "Verifying simulation integrity..."
+sleep 10 # Give the filesystem a moment to catch up
+
+# We will loop until all files exist, or set a max number of retry attempts
+MAX_RETRIES=5
+RETRY_COUNT=0
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    FAILED_LOCI=()
+
+    # Check each of the 2000 expected tree files
+    for i in {1..2000}; do
+        tree_file="$out_dir/loc_$i/1/g_trees1.trees"
+
+        # If file doesn't exist (-f) OR is empty (! -s)
+        if [[ ! -f "$tree_file" || ! -s "$tree_file" ]]; then
+            FAILED_LOCI+=($i)
+        fi
+    done
+
+    # If no failures, break the loop
+    if [ ${#FAILED_LOCI[@]} -eq 0 ]; then
+        echo "All 2,000 simulations verified successfully."
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "WARNING: ${#FAILED_LOCI[@]} simulations failed. Starting Retry #$RETRY_COUNT..."
+
+        # Log the failures
+        echo "$(date): Attempt $RETRY_COUNT - Failed Loci: ${FAILED_LOCI[*]}" >> "$out_dir/retry_log.txt"
+
+        # Re-run only the failed commands
+        for locus_id in "${FAILED_LOCI[@]}"; do
+            # Extract the specific line from the original command list
+            # Since loci are loc_1 to loc_2000, we pull line $locus_id
+            cmd=$(sed -n "${locus_id}p" "$cmd_list")
+
+            echo "Re-running Locus $locus_id..."
+            eval "$cmd"
+        done
+    fi
+done
+
+echo "Final check after retries..."
+if [ ${#FAILED_LOCI[@]} -gt 0 ]; then
+    echo "CRITICAL: ${#FAILED_LOCI[@]} loci still failing after $MAX_RETRIES retries. Check retry_log.txt"
+    exit 1
+fi
+
+# --- 3. Sequential Harvesting ---
+echo "All simulations verified. Starting sequential harvest into $master_trees..."
+
+# Initialize/clear the master file
+> "$master_trees"
+
+# Loop from 1 to 2000 to ensure perfect numerical order
+# Line 1 in the tree file will correspond to Locus 1 (Row 1 in df.csv)
+for i in {1..2000}
+do
+    # Define the path to the replicate 1 tree file
+    tree_file="$out_dir/loc_$i/1/g_trees1.trees"
+
+    # Append the tree to the master file
+    cat "$tree_file" >> "$master_trees"
+done
+
+echo "Harvesting complete at $(date)"
+
+# --- 4. Final Verification ---
+echo "Performing final audit of $master_trees..."
+
+# Count the number of Newick trees (lines starting with '(')
+actual_count=$(grep -c "(" "$master_trees")
+expected_count=2000
+
+if [ "$actual_count" -eq "$expected_count" ]; then
+    echo "-------------------------------------------------------"
+    echo " SUCCESS: run_simulations.sh finished successfully."
+    echo " Total Trees: $actual_count"
+    echo " Order: Sequential (Locus 1 to 2000)"
+    echo " Output file: $master_trees"
+    echo "-------------------------------------------------------"
+else
+    echo "-------------------------------------------------------"
+    echo " ERROR: Final tree count ($actual_count) does not match"
+    echo " expected count ($expected_count)."
+    echo " Please check $out_dir/retry_log.txt for clues."
+    echo "-------------------------------------------------------"
+    exit 1
+fi
+
+date
+#---------------------------------
+
+Submitting simulation job for random seed: 12345
+Submitted batch job 53803630
+sacct -j 53803630 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803630          0:0   00:00:45
+53803630.ba+      0:0   00:00:45    183160K
+53803630.ex+      0:0   00:00:45
+Submitting simulation job for random seed: 67890
+Submitted batch job 53803631
+sacct -j 53803631 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803631          0:0   00:00:40
+53803631.ba+      0:0   00:00:40    199772K
+53803631.ex+      0:0   00:00:41
+Submitting simulation job for random seed: 23456
+Submitted batch job 53803632
+sacct -j 53803632 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803632          0:0   00:00:40
+53803632.ba+      0:0   00:00:40    198492K
+53803632.ex+      0:0   00:00:40
+Submitting simulation job for random seed: 78901
+Submitted batch job 53803633
+sacct -j 53803633 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803633          0:0   00:00:39
+53803633.ba+      0:0   00:00:39    169012K
+53803633.ex+      0:0   00:00:39
+Submitting simulation job for random seed: 34567
+Submitted batch job 53803634
+sacct -j 53803634 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803634          0:0   00:00:40
+53803634.ba+      0:0   00:00:40    180072K
+53803634.ex+      0:0   00:00:40
+
+Git Commit Message:
+feat: refactor 2.2 for automation of multiple simulation sets
+Integrated variables.sh to replace hardcoded project paths
+Added sleep 10 safeguard to prevent filesystem metadata lag during verification
+Increased MAX_RETRIES to 5 and doubled memory allocation to 16GB
+Suppressed parallel terminal warnings with --no-notice
+Improved directory logic to support nested set_$seed output structures
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano prep_INDELible.R
+#---------------------------------
+library(ape)
+library(geiger)
+library(extraDistr)
+library(MultiRNG)
+library(EnvStats)
+library(castor)
+library(phangorn)
+library(tidyverse)
+
+# --- 1. Capture Arguments ---
+args = commandArgs(trailingOnly=TRUE)
+gene_trees_path   <- args[1]
+df_path           <- args[2]
+out_dir           <- args[3]
+mod_write_tree2   <- args[4]
+modify_gene_tree  <- args[5]
+
+# --- 2. Dynamic Sourcing ---
+source(mod_write_tree2)
+source(modify_gene_tree)
+
+# Apply the custom tree-writing function to the ape namespace
+assignInNamespace(".write.tree2", .write.tree2, "ape")
+options(scipen = 999)
+
+# --- 3. Data Loading ---
+gene_trees <- read.tree(gene_trees_path)
+df <- read.csv(df_path)
+nloci <- length(df[,1])
+
+# --- 4. Main Processing Loop ---
+# We loop through each locus and create a UNIQUE control file for it
+df2_list <- list()
+
+for (f in 1:nloci) {
+  # Define the specific control file for this locus
+  locus_control <- file.path(out_dir, paste0("control_", f, ".txt"))
+
+  # Set seed for model parameters
+  set.seed(df$modelseed[f])
+
+  # --- Model Block Initialization ---
+  if (df$proteinCoding[f] == "TRUE") {
+    write("[TYPE] CODON 1", file=locus_control)
+    write("[SETTINGS]", file=locus_control, append=T)
+    write(paste("\t[randomseed]", df$seed2[f]), file=locus_control, append=T)
+  } else {
+    write("[TYPE] NUCLEOTIDE 1", file=locus_control)
+    write("[SETTINGS]", file=locus_control, append=T)
+    write(paste("\t[randomseed]", df$seed2[f]), file=locus_control, append=T)
+  }
+
+  # --- Tree Modification Logic (Paralogs/Shifts) ---
+  # (Keeping your original logic for modifying the tree structure)
+  new_tree <- modify_tree(gene_trees[[f]], df$lambdaPS[f], df$paralog_taxa[f], df$paralog_branch_mod[f])
+  new_tree2 <- new_tree
+  new_tree2$node.label <- rep("", new_tree2$Nnode)
+
+  # Model shift logic...
+  edges0 <- new_tree$edge.length
+  names(edges0) <- 1:length(edges0)
+  edges1 <- sort(edges0, decreasing = T)
+  edges2 <- edges1[which(cumsum(edges1)<sum(edges1)/4)]
+  edges3 <- as.numeric(names(edges2))
+  nEdges <- rtpois(1, 0.5, -1,length(edges3))
+  edges4 <- sample(edges3,nEdges)
+
+  modelnames <- c()
+  traversal <- get_tree_traversal_root_to_tips(new_tree2, T)
+
+  for (x in traversal$queue){
+    if (Ancestors(new_tree2,x,'parent') == 0) {
+      current_model <- paste0("#mRoot")
+      modelnames <- c(modelnames, current_model)
+      new_tree2$node.label[x-length(new_tree2$tip.label)] <- current_model
+    } else {
+      current_branch <- which(new_tree2$edge[,2]==x)
+      parent_model <- new_tree2$node.label[Ancestors(new_tree2,x,'parent')-length(new_tree2$tip.label)]
+      if (current_branch %in% edges4) {
+        current_model <- paste0("#m", x)
+        modelnames <- c(modelnames, current_model)
+      } else {
+        if (current_model != parent_model) { current_model <- parent_model }
+      }
+      if (x <= length(new_tree2$tip.label)) {
+        new_tree2$tip.label[x] <- paste0(new_tree2$tip.label[x], current_model)
+      } else {
+        new_tree2$node.label[x-length(new_tree2$tip.label)] <- current_model
+      }
+    }
+  }
+
+  # --- Write MODEL definitions to the file ---
+  clean_modelnames <- gsub('#','', modelnames)
+
+  if (df$proteinCoding[f] == "TRUE") {
+    # Codon Model Parameters...
+    pInv <- round(runif(1,0,0.25),3); pNeutral <- round(runif(1,0,1-pInv),3)
+    for (m in clean_modelnames) {
+      basefreqs <- draw.dirichlet(1,61,rep(10,61),1)[1,]
+      basefreqs <- c(basefreqs[1:10], 0, 0, basefreqs[11:12], 0, basefreqs[13:61])
+      kappa <- round(rlnormTrunc(1,log(4), log(2.5),max=14),3)
+      omegaSelect <- round(runif(1,0,3),3)
+
+      write(paste("[MODEL]", m), file=locus_control, append=T)
+      write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")), file=locus_control, append=T)
+      write(paste("\t[submodel]", paste(kappa, pInv, pNeutral, 0, 1, omegaSelect, collapse=" ")), file=locus_control, append=T)
+      write(paste("\t[indelmodel] POW", round(runif(1,1.5,2),3), "10"), file=locus_control, append=T)
+      write(paste("\t[indelrate]", round(runif(1,0.001,0.002),5)), file=locus_control, append=T)
+    }
+    } else {
+      # Nucleotide Model Parameters...
+      pInv <- round(runif(1,0,0.25),5)
+      ngamcat <- sample(c(0,1),1)
+      alpha <- if(ngamcat==0) round(rlnormTrunc(1,log(0.3), log(2.5),max=1.4),5) else 0
+
+      for (m in clean_modelnames) {
+        modelType <- sample(c("GTR", "SYM", "TVM", "TVMef", "TIM", "TIMef", "K81uf", "K81", "TrN", "TrNef", "HKY", "K80", "F81", "JC"),1)
+        paramvector <- get_param_vector(modelType)
+
+        # Determine base frequencies for specific models
+        basefreqs <- NA
+        if (modelType %in% c("GTR", "TVM", "TIM", "K81uf", "TrN", "HKY", "F81")) {
+          basefreqs <- draw.dirichlet(1,4,c(10,10,10,10),1)[1,]
+        }
+
+        # --- BUILD THE SUBMODEL STRING ---
+        # This part is mandatory for INDELible to understand the modelType
+        if (modelType %in% c("GTR", "SYM")) {
+          modelstring <- paste(modelType, paste(paramvector[1:5], collapse=" "))
+        } else if (modelType %in% c("TVM", "TVMef")) {
+          modelstring <- paste(modelType, paste(paramvector[2:5], collapse=" "))
+        } else if (modelType %in% c("TIM", "TIMef")) {
+          modelstring <- paste(modelType, paste(paramvector[1:3], collapse=" "))
+        } else if (modelType %in% c("K81uf", "K81")) {
+          modelstring <- paste(modelType, paste(paramvector[2:3], collapse=" "))
+        } else if (modelType %in% c("TrN", "TrNef")) {
+          modelstring <- paste(modelType, paste(paramvector[c(1,6)], collapse=" "))
+        } else if (modelType %in% c("HKY", "K80")) {
+          modelstring <- paste(modelType, paramvector[1])
+        } else {
+          modelstring <- modelType # Covers JC and F81
+        }
+
+        # --- WRITE TO CONTROL FILE ---
+        write(paste("[MODEL]", m), file=locus_control, append=T)
+        write(paste("\t[submodel]", modelstring), file=locus_control, append=T)
+
+        if (!all(is.na(basefreqs))) {
+          write(paste("\t[statefreq]", paste(basefreqs, collapse=" ")), file=locus_control, append=T)
+        }
+
+        write(paste("\t[rates]", pInv, alpha, ngamcat), file=locus_control, append=T)
+        write(paste("\t[indelmodel] POW", paramvector[7], "10"), file=locus_control, append=T)
+        write(paste("\t[indelrate]", paramvector[8]), file=locus_control, append=T)
+      }
+    }
+
+  # --- Write TREE, BRANCHES, and PARTITIONS to the file ---
+  write(paste0("[TREE] t1 ", write.tree(new_tree, file="")), file=locus_control, append=T)
+
+  new_tree2$edge.length <- NULL
+  write(paste0("[BRANCHES] b1 ", write.tree(new_tree2, file="")), file=locus_control, append=T)
+
+  seq_len <- if(df$proteinCoding[f]=="TRUE") round(df$loclen[f]/3) else df$loclen[f]
+  write(paste0("[PARTITIONS] p1 [t1 b1 ", seq_len, "]"), file=locus_control, append=T)
+
+  # --- Final EVOLVE block ---
+  write("[EVOLVE] p1 1 output", file=locus_control, append = T)
+}
+
+# (Optional: df2.csv logging logic remains here) # logging simulated model params: the original script, was tracking things like modelkappasd and modelratesd.
+# Since we are now using a loop, keeping that log would require initialize a data frame before the loop and fill it as you go.
+# Not sure yet if we strictly need those specific standard deviation metrics for downstream analysis, so leaving it out for now to keep the script faster.
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano post_INDELible.R
+#---------------------------------
+library(ape)
+
+# --- 1. Capture Arguments ---
+args = commandArgs(trailingOnly=TRUE)
+alignment_folder_path <- args[1] # This is $indel_dir from the .sh
+df_path <- args[2]
+df <- read.csv(df_path)
+
+nloci <- length(df[,1])
+
+# Create output directory for modified fasta files
+# We'll use file.path for safety
+final_aln_dir <- file.path(alignment_folder_path, "alignments_final")
+if (!dir.exists(final_aln_dir)) dir.create(final_aln_dir)
+
+# --- 2. Modification Loop ---
+for (f in 1:nloci){
+    # Identify the simulated file from INDELible
+    # Matches the 'mv' command in our bash script: locus_i.phy
+    seqpath <- file.path(alignment_folder_path, paste0("locus_", f, ".phy"))
+
+    if (!file.exists(seqpath)) {
+        message(paste("Warning: File missing for Locus", f))
+        next
+    }
+
+    # Read DNA (Sequential Phylip format)
+    locus <- read.dna(seqpath, format="sequential", as.character = T)
+
+    # Filter for remaining taxa
+    remaining_taxa <- as.character(eval(parse(text=df$remaining_taxa[f])))
+    locus <- locus[rownames(locus) %in% remaining_taxa,]
+
+    # --- Contamination Processing ---
+    # Swaps sequence data between pairs to simulate lab contamination
+    contaminant_tips <- eval(parse(text=df$cont_pairs[f]))
+    lencon <- length(contaminant_tips)
+    if (lencon > 0) {
+        for (t in seq(2, lencon, 2)) {
+            # Taxon t gets the sequence of Taxon t-1
+            locus[which(rownames(locus) == contaminant_tips[t]), ] <-
+                locus[which(rownames(locus) == contaminant_tips[t-1]), ]
+        }
+    }
+
+    # --- Missing Data Simulation ---
+    # Adds gaps (-) to the 5' or 3' ends based on prop and bias in df.csv
+    loclen <- ncol(locus)
+    taxa_vector <- as.character(eval(parse(text=df$taxa_missing_segments[f])))
+    missing_segments_prop_vector <- eval(parse(text=df$missing_segments_prop[f]))
+    missing_segments_bias_vector <- eval(parse(text=df$missing_segments_bias[f]))
+
+    if (length(taxa_vector) > 0) {
+        for (t in 1:length(taxa_vector)) {
+            taxon_name <- taxa_vector[t]
+            taxon_index <- which(rownames(locus) == taxon_name)
+
+            if (length(taxon_index) > 0) {
+                gapLen <- loclen * missing_segments_prop_vector[t]
+                gapLen5 <- round(gapLen * missing_segments_bias_vector[t])
+                gapLen3 <- round(gapLen - gapLen5)
+
+                if (gapLen5 > 0) locus[taxon_index, 1:gapLen5] <- "-"
+                if (gapLen3 > 0) locus[taxon_index, (loclen - gapLen3 + 1):loclen] <- "-"
+            }
+        }
+    }
+
+    # --- Cleanup: Remove empty columns ---
+    # If all taxa have a gap at a site, delete the site
+    badpos <- which(apply(locus, 2, function(col) all(col == "-")))
+    if (length(badpos) > 0) {
+        locus <- locus[, -badpos]
+    }
+
+    # --- Write Result ---
+    # Save as FASTA in the new alignments_final folder
+    locus_bin <- as.DNAbin(locus)
+    write.FASTA(locus_bin, file.path(final_aln_dir, paste0("loc_", f, ".fas")))
+}
+
+message("Post-processing complete. Modified alignments are in: ", final_aln_dir)
+#---------------------------------
+
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.3_submit_INDELible.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting INDELible job for random seed: $random_seed";
+  sbatch $RIND $random_seed
+done
+#---------------------------------
+sbatch 2.3_submit_INDELible.sh
+Submitted batch job 53803651
+sacct -j 53803651 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803651          0:0   00:00:00
+53803651.ba+      0:0   00:00:00      5496K
+53803651.ex+      0:0   00:00:00
+
+Submitting INDELible job for random seed: 12345
+Submitted batch job 53803652
+Submitting INDELible job for random seed: 67890
+Submitted batch job 53803653
+Submitting INDELible job for random seed: 23456
+Submitted batch job 53803654
+Submitting INDELible job for random seed: 78901
+Submitted batch job 53803655
+Submitting INDELible job for random seed: 34567
+Submitted batch job 53803656
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano run_INDELible.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=indelible_para
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32        # Number of INDELible instances to run at once
+#SBATCH --mem=4G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --time=00:20:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input from 2.2:
+tree_file="$out2_2/$set_dir/gene_trees.tre"
+# Input from 2.0
+df_file="$out2_0/$set_dir/df.csv"
+
+# Output subdirectory:
+indel_dir="$out2_3/$set_dir"
+mkdir -p "$indel_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+module load parallel/20240822
+# Fix for the C++ library (GLIBCXX) errors:
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+# Point R to your custom package library
+export R_LIBS=~/R-packages
+
+# --- 1. Prep Control Files ---
+# Ensure your R script creates 'control_1.txt' through 'control_2000.txt' in $indel_dir
+echo "Generating 2,000 INDELible control files..."
+# Passing: [1]tree_file [2]df_file [3]output_dir [4]mod_write_tree2 [5]modify_gene_tree
+Rscript "$prepIND" \
+    "$tree_file" \
+    "$df_file" \
+    "$indel_dir" \
+    "$mod_write_tree2" \
+    "$modify_gene_tree"
+
+# --- 2. Parallel Execution ---
+echo "Running INDELible in parallel across $SLURM_CPUS_PER_TASK cores..."
+cd "$indel_dir"
+
+# Generate a list of tasks for parallel
+# We create a unique temporary folder for each locus to prevent control.txt collisions
+for i in {1..2000}; do
+    echo "mkdir -p tmp_$i && cp control_$i.txt tmp_$i/control.txt && cd tmp_$i && $indel_exe > /dev/null && mv output_TRUE.phy ../locus_$i.phy && cd .. && rm -rf tmp_$i"
+done > indelible_tasks.txt
+
+# Run the tasks
+parallel --jobs $SLURM_CPUS_PER_TASK < indelible_tasks.txt
+
+# --- 3. Post-Processing ---
+echo "Running post-simulation sequence modification..."
+Rscript "$postIND" "$indel_dir" "$df_file"
+
+date
+#---------------------------------
+
+Submitting INDELible job for random seed: 12345
+Submitted batch job 53803652
+sacct -j 53803652 -o JobID,ExitCode,Elapsed,MaxRSS
+sacct -j 53803652 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803652          0:0   00:01:58
+53803652.ba+      0:0   00:01:58    418732K
+53803652.ex+      0:0   00:01:58
+Submitting INDELible job for random seed: 67890
+Submitted batch job 53803653
+sacct -j 53803653 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803653          0:0   00:02:03
+53803653.ba+      0:0   00:02:03    447368K
+53803653.ex+      0:0   00:02:03
+Submitting INDELible job for random seed: 23456
+Submitted batch job 53803654
+sacct -j 53803654 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803654          0:0   00:02:02
+53803654.ba+      0:0   00:02:02    410088K
+53803654.ex+      0:0   00:02:02
+Submitting INDELible job for random seed: 78901
+Submitted batch job 53803655
+sacct -j 53803655 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803655          0:0   00:01:55
+53803655.ba+      0:0   00:01:55    399684K
+53803655.ex+      0:0   00:01:55
+Submitting INDELible job for random seed: 34567
+Submitted batch job 53803656
+sacct -j 53803656 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53803656          0:0   00:02:02
+53803656.ba+      0:0   00:02:02    445584K
+53803656.ex+      0:0   00:02:02
+
+Check outputs:
+# Source variables to get the path to out2_3
+source /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh
+
+for seed in $seeds; do
+    echo "----------------------------------------------------------"
+    echo "CHECKING SEED: $seed (Directory: set_$seed)"
+    dir="$out2_3/set_$seed"
+
+    # 1. Count raw Phylip files from INDELible (Expect 2000)
+    raw_count=$(ls $dir/locus_*.phy 2>/dev/null | wc -l)
+    echo "Raw Phylip files:    $raw_count / 2000"
+
+    # 2. Count final FASTA files from Post-Processing (Expect 2000)
+    fasta_count=$(ls $dir/alignments_final/*.fas 2>/dev/null | wc -l)
+    echo "Final FASTA files:  $fasta_count / 2000"
+
+    # 3. Check for "Empty" or "Failed" files (Under 100 bytes)
+    # If this returns nothing, it means all 2000 files have data.
+    failed_files=$(find $dir/alignments_final/ -name "*.fas" -size -100c)
+    if [ -z "$failed_files" ]; then
+        echo "Integrity Check:    PASSED (No empty/corrupt files found)"
+    else
+        echo "Integrity Check:    FAILED (Some files are suspiciously small:)"
+        echo "$failed_files"
+    fi
+
+    # 4. Visual Inspection (Spot check Locus 500)
+    echo "Previewing loc_500.fas:"
+    head -n 4 $dir/alignments_final/loc_500.fas
+done
+----------------------------------------------------------
+CHECKING SEED: 12345 (Directory: set_12345)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>36
+------GGCGAATTA---GAGGAGTACGATAGAGCTACTGATTTTAACCAAACAGCATTGACC---------AGGGGTAATTTAGCATATCTTGACATGCTTTGGGCATCTTGCACTGAAGTCCCAGCAGCTCGGCGTGTGGTTACACGGATCCTCCTATGTCGTCCA---------AGAGATTCAGAACTGTCC------------------------GCCCTTCGCCCCCATTTGTAC------CTGCCTCATATGCTGAAGGAAGCAATTCACATCCGCTATGATTCGCGT---TTATCGACTGACGTC---ATACTTAGCTCAGTGGGTCAACAGTTTGTGCACAGA---TCTGTCCGCATTCCGCTATCTAACTCTCCCAATACGTACAGAGGC---AAGGCTACTGGCGTTCCCGGC------------CCTGGGTTGACAGGTTGGCGCGCTAAG---GCACCACACCGCGATAACAATCTGAACAACGAGGTGACCCCAGAGGGATACCGATACGCTGACCCCCTAACCCTACCTTCTGCTGCTCCTGTCTCAAATACACGCGCCGCC---CGCTCATCCTGCACCTTACGCTGCATCGCTATCGTGCTCCCGTACTTTCGGAAGTTTCCAGCTATAGGCCAGTCATCACCTCGTCTGCTAAGCTATGGGCGCAATGCTCTACTCGCGAAAGATACAGTC---TCAATC
+>1
+------TTGAAACTT---CTTAAGACTAATCGCGCGCCACGCTTCAACAGGCGAAACCCGACT---------AGAGATCTTCTAGCTCGTAAGAAGCTCACTTGGCTATCACCATGCGTTAGACCGGCGGTTCGATGGCGCGTCGCACGGTACAGAGCCGACGCTCCA---------CTGATCCGCGGGCTCGTT------------------------TCTTTGGCTGCTCACTCTCGG------GCCGCGTCGGAACTTAAAGAGCTCCATGCTAAGTACCCAGGTCACACA---GCGACTCTTGACTTG---ATCTGCAGATCAGAGTGTACGCAAAACCGGATCAGA---TTCTATTCGATACCTGATTTTAACCCGAAAGTAACCTACGCAGCT------TCGTCTGGTGTACCACGT------------CGGACACTCCCGGGTCTTAGGGCAAAG---GCTCCACATGTCGTTATCCTGCTAGATTGCGCAGTCAGGGTAGAGCGCGGCACGAGGGCGGACGTTCTAACCCAGTTGGTGATCTCGCCAGACTCAATAACGCCTGCAATC---CGCTCGTCCGTTTCTCTTGTCAGGAGGTCTAACGTGCAGGCGGAATGCGCATGTTTCCCATGCCGTGGGCTCGATACCCCAGATCTACTAACTCGCAGAAGAAATGCGATTTACAGAGTCGGTAAACGC---CAGGCG
+----------------------------------------------------------
+CHECKING SEED: 67890 (Directory: set_67890)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>26
+---------------------------TAAGCCGGTAAATTTTATGAATAACCGCTACAACCGAAACTTCGTACCATTCAGAGACCTAGCAAGCTCATAAATAGTATACCAACAATCGGTACAGCGTTCACAATATGCATGGGCCCATGAAAAGAGCATGGAGTTGGAGCGAGTTCGCAATTTAGTGCAAACGTGTCCACGGAAATCAATTAAGCACTACGACGAACCCGTATTGAGAGTGTTCAGTGGCCTCGAATAATGTCGCGCGTAACCTATCTAAAGTGATGTGAACTCCAAAAGCCTCCAGTACAAAAGGATATCACATACAGGCGGAGGAGGTGCGAAAGATAGGGAACGAAAAAAATAAAG----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>25
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AGTGGCCTCGAGTAATGTCGCGCGCAACCTATCTAAAGTGATGTGAACTCCACAAGCCTCCAGTGCAAAAGAATATCACATAAAGGCGGAGGAGGTGCGAAAGTTAGGGAACGAAAAAAATAAAGACGCAGCTAGAAACAAAACGAGATATACTAGGCTAAATCATCGTCATTTAAACGTGACATGAAACTGACCCACACCACAGAACAATTAGGGACTACTAAGACCTACCCCCAAGAATCAGCCTGAACGACAGGCCACATTGCGCACAACAGCGACCAACAAGACTGATAAGACATTTAGGACCTGAGACCATACGACAATTATAGCACAAAATCGG-----------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------
+CHECKING SEED: 23456 (Directory: set_23456)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>17
+TA--GATA----A-C-TTGGC---TT-GCA-A----GC-GA-CTCGG-GAATG---GAAAAC-TGGCGCA-GTTTTTTGG-T-CAAA-TTTGA-G--------------G---GA-----C----C----------ATAA-GTA----A---GTTGA-ACAG-------------------------C--T---GGCGC--TC---TCC-A--TT------TT-A-GCC---TGAATCATG----GT-----TT-G------T---CCAT--T----------TCG-----G---TG---GG-T-TGCTGTAAG-CAA--G--CGC-CCGATC--G---TTTTG----GTCA-C--------CTT---A-GTTG-CTA-AGGA-----CT-T----TAC---CTATTCCCGGC-GGGGCGA--CCT-GCC-CAG-G--CT--AACTCGC-TGTGTA-GA---T-T---T-A------TTT--GTATCT-CG-CAGCCTCA----C-AC--TAACAAA---GA--ACCTACAC---T-TATG--TG--T-CG--GCGT------T-------GCT--CAAAA--------CG-GCAAC---------------GACC-GC----------C-CG-GTC-TCA--CTGGC-----C-TGT-GCGCTGA-TA---------------ATCTT-T--AA------TA-CCT--GGT--GCA----GATCGGTC----ACCT--TTTGA------G--GCT---GC--G------GAG-CAT--------T--G--CT--TGTG--------ACCAACT--AAGA--T--A-TCC----CC-GA----------T------------ATA--GCA--C--C--AC-G----CAAC--C-CCCT------TTGTG--T---AT-C--------CCC--C-A----G--CT-GT--A---CC--GTTTGGTTTAC-C-C----GGAT----------------------G---------------------C---CGG-T-C-TC--ACC-GGGTG--T-TTAT-CATA------------GGCTC------TACTGT-G------CGT--AA-----C--ATGG---------TTAATT-T--A---GGCGGAACGAGG-CTGTC-----C-A------GGG-CC-----T-GGATCC-G----G-C-AC--CC-G-----GCC--G-------GTA--CTTTG-T-T-------ATA---CAG---TGGCCTGC--G-G------CCC-TGG-GC----------TCGAGTTATT-TC-----------TGT--AG---CGCCA----GT----------C-G-------TG-GCA-ATTCT---G-G----------CAT-G-TGACCG---GT------ATATC-T-CA-ATTCACGC----------GCGAG----GCG--CCCACGCAA-------GT----TT-C-C--GGAC----C-C-TT-TGT-TT----TT----AG----AGTCC-CT---TA-AGGC--TT-CTAG--A-TCGG-ATCAACAAAATAGC-----C-------GA---A--AT---G-GGA-T-AC---G-AG-C--------------T-A-----GTG---TG--C-TTATT-A-----AT---T--GG-------ATTCGC------GAA---T-AGGTTC--TAGGG-C--TTA------T-CTAA-GGTT-T-A-CGTA-TCGGATCG------TCT--------------------TATG----CTGGTGCAC----A---C----G---------GAC---------AGCAC-GTCGA----A--GC--------G--GCTG----CTA-C---CG------T----AA---ACT--TCT-CCTCGCCA--CGATG----T--AG---TAA-----CAGTATTT-GG---CGTCG-G-TA--GTG----------A-----C---TTATG-------A---ACA-G--ATGGCA----G-C--GCA--GA---AGTAC---------A-TAG-----CAT-----AT------AT--GG-----T--TTTCT--AA----TC-------C-TGGG--TTAGCTGTGG---GCC----T----CTTGACA-TTTA----GTCTAGC-A-----TA-TTC-GA-----GGC--TGG--TT---AGAGCA-T--TGGTCTATA---A-----------------------AA-A-T------GTTC-----G-----------GCTGT---AAGTG--G-AATACT-T---------GCATTA-TCGG-TCT---TCT--AG-------ACGCC-CAT-------GCAT--T---TG-C-CATC-AG--CTGCCGAAG-----ACACGGC----GT----------------TATCG-AT---C--GTCGT------TTCGAT---AACGATT-C-G--------A-A-CTTAAGCTA----CGG-A--TG-TG----CGGA-G---T----C-CAA--ACTA--CCCGAG---CG--GAGTC-G--ACGG-------C-CCGTG
+>16
+-------T----G-T-ACCGT---CC-CTA-A----AG-AA-CACACCCTCGT--GTTTAGG-TCGCACAGGG--------A--GAA-TTGTC-T--------------G---AA-----G----C----------ATGC-GTC----A---CGCTA-ATCCTAG---------------------GA--C---AAATG--CG---GTG-A--TT------TA-T-ATATA-AGA-TGAAT----AG-----CT-A------A---TGCG--C----------GCG-----C---TT---AACC-CTGGT------AG--C--TCT-ACCCCG--T---AGGTT----CAGGAT--------CTG---A-GTCG-TGTATCAA-----AC-T----TCA---CGTTCCTGCTC-GATCTAA--CTT-CTT-TA--G--GA--CCCCG-TGGGTGTA-GGACTT-T---G-C------CAC--GAAAAT-CA-CGGGGCAT----T-CT--CAAGAGGTGAGACCCCGGGCTC---T-CGT---CGCTC-CA--TTGT------T-------CCA--CTTTA--------TA-CGGGT---------------TACA-TC----------T-GC-TGC-TCT--ACAAC-----T-A-G-TAGGGAC-AA---------------CCCCG-T--CA------AA-AT-----A--GTA----GATCAGTC----CAAT--CCTAG---------CGA---CA--G------AAT-CAG--------C--C--AG--TGCC--------ACCTAAT-CTGAA--G--G-TCG----GT-GC----------G------------CCT--TGT--G--T--GC-G----ACCGG-C-TCCT------AGAT---T---GC-C--------GCC--GCC----G--CG-AT--C---TCCAA-----------T-G----GCAT---------------------TGAGGACCAC-------------C---CCC-T-T-CT--TAC-TGGAA--G-TCTC-TCCC------------TTCGA------ATCTGG-C------ATT--GC-----A--AATT---------TCAACA-A--T---GGTAGACCTAAG-ACTAG-----T-C------TCG-TG-----T-CTTCGT-G----T-A-CC--TC-C-----CAC--C-------AAG--C-------T-------TTA---ATT---GTAGAGCTAG--------------GG-GGGCCGTCATGATACCGCATCC-TA-----------AAC--GC---GATGC----GG----------T-C-------AG-GC--CGTGTT--T-C----------GCA-G-CAAATA---GT------GGTGC-A-TC-T----CGC----------TATCG----AGG--CCCAAATTA-------TA----GC-GGC--TG------CGG-ATTTGC-TG----TG----AG----TTGTTTAA---GTGATGT--GA-CTT---A-TCGG-ATGA-AATTATACC-----G-------CA---T--AT---G-TCA-A-GC---A-GG-G--------------A-C-----GTG---AC--G-GGTTC-T-----AG------TT-------TTTTGT------AAG---T-AAGTGACG-TCGA-T--TTC------CTGATA-A-TT-T-C-TTGG-AAGGACGA------TTG----------------------AA----CTCACGAAC-A-TC---G----A---------TCC---------TGCGG-GCCACGG-TG--GA--------T--ATAC----TTA-A---TT------A--C-AC---GCT--CGC-GCTCTCCT--C-TAG----T--CA---TAC-----ATTTGCCT-GG---CGTCG-A-CA--TGC----------T-----A---TCTGG-------A---AAT-C--ATAGGC----G-C-ACAA--CG---TCGCA---------C-TCC-----ACG-----GA------T----------T-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------
+CHECKING SEED: 78901 (Directory: set_78901)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>23
+ACAGTTCGGCTAACAGGCCGCCATCGGCGTGTCAAGGTTCTCCTGGCGCATGGATGCTCGGACCGCCAAAATGGCTTCAAGGCGTGGCACGGTGACCTCCGCAATACAGTGTCTTTCTGCCATCCAGTATTTGTGGAAATGTTCGCAGACTCTTCGCACAGAGATCGTATGCAGCTCCGATCCTTACTCTGTTCACACCACGCGAATGCAGATCCTACATTGGCTTGCCACACATCCGACGATTATGTCTGCGCTCGACAGTGCAGATCGTGTTCCTGCTATTGGGGGATTAGATTTCGTTTAGGCTCGCACGATCAC---GGGGGCCCTACATCCAAGACCCGTAAACTACCGCCAGCTTCTTCAAATATGCACAACCGAACGATGGTACACAGGTATCTCGATGTCGTGTACAACTGGGGGTACCCCTGGAACACTCTGCTACGGCACATGTCTGATTTTGCTAACTTACAGCCACGTAACGCGAATCTGGGTCGACGCTCGGTGCGTACACAT---AATCCTTTAGCGCTCGCTCTGTACATGCACAACATCGGCTTGACGATGGCTGTGACAAGGACCCGGGATGTGCATCAAGTGATCTTGGACGTGTTGATGCCTATTTCCGGATTAATGCAGGTTACTCTCACGATCTTAGATCATTCTCTCGAATTCCTGCCGGTGAGACGTCTTTTAATGAGGTGCATAAATTACGTTCTTCAGATGGCC------------CTCACAATGCGACACCATTATCATAAGGGCGGTGCACGCAGTGCGCTTGAATACGACAATAGATGTCCAAACGTGCTCCGTCGCGTTCGGCGCATTTCATCGTCTGGACTACTCAATAATCACAGTGGCTTTTCTCTAATGCCCCATGTTTCGCTCACAGATCGGAATCTCGTTGGGGCTAACGTTGCTCAACTCGACAATTTGCTTAATAGGATGAGCTCAAAACCAACTTTAGTTTGCTTGAGCTGGTGGGACTCAGAGTCGTGTTCGTGTAGCGATGTAAATGAGCGATGGGCCTTTCGCCCTAGGTGGAGTTCCACCGCCCTAGCTCATCATCACAGCATCCTCCCATCTAAGAGCGACCTTGACTACAGCGTTTTGAGTGCTGGCTCACCAGTGCCTAGAAGGCGGTCAGGGCTGTACACGCCTCTACGGTTCTCGCTACTGCGCAATAACCGGCTCAAGCGTACATTCGCCTCCAACATTCACCTAACAGGTCATGACCACCCCGTGGATGTCACTGTGCCTTTGACAAGCGATAAGGGG
+>20
+ACAGCTCAGCAAGTAGTCCACCATCGGCGGGCCAAGGGGCTC---GCTGTTGGATGCTCAGACCGCCAAAATGACTTTAAGATGTGGCGCGTTGGCTGCCACCATACAATGCCTTTATGGCATCCAGCATTTGCGGAAATGTCCAGAGAC---ATGCACAGTGATCCTATGCAGCTCGTATCCTTACTCTGTTCTAACCACGTGAACGCAGATCGTGTATTGGCATGCCACACAACGAGCGATTATGTGTGCGTTCGGCAGTGCATAGTGCGTTCCTGCTATTGGGGGATGAGACTTCACTTCGAGTCGCACGGTCAC---GGCGGCCCTACATTCAAGACCTGTAAACTATCGCCAACTGTTTCAAATATGCACAACCGAACGATGGTACATAGGTATCTCGACGCCAAGTACAACTGGGGGTACCCCGGTTACAATCTGCTTCGGCACATGTCCGGTTTTGCTAACTTACAGCCACGTAACGCGAGTTTGGGTCGACGCTCGGTGCGTATATGT---AATCACTTAGCGCTCGGGCTGGCCATGCACAAAATCGGCGCGACAAAGGTTGTGACCAGGATCGCGGATGTGCATCAAGTGATGTTGGACGTACTAGGGCCTGTTTCTGGAATATTGCAGGTTATTCTCCTGCTCTTCGATCATCATCTCGAATTCCTGACGGTGAGAGGTCTTTTATTGAGGCTTATAGATTACGATCTTCAGATGGCC------------CTCACAATGCGCCACCATTATGATATGGCCGATGCACGCCGTGCGTTTCAAAACGACGATAGATGTCCATACATGTGCCGTCGTGTATGGCGCGTTTCGAAGTCTAAACTTCTTAATAATCACAATGGCCTTTCCCTGATTCCCCATGTTTCGCTAACAGATCGCTATCTCGTTAGGGATAACGTAGATCAATTCAATCTTTTGCTAACTAGTACGAGATTAAGACTAACTTTAGTTTACTTATGCTGGTGCAACTCGGAGTGTTGTTCGTATGGCGTTGTATATGGGCGATGGGCATTTCGCCCTCGGTGGAGTTCCACCGCCCTAGCTCAGCATCACAGCATCCTCCCACCTAAGAGCGACCTCGACCACAACGCTTTGAGTGCTGACTCACCAGCGCCTAGGAGGTGGTCAGGGCTGTATTCGCGTCTAAGGTTCTCGTTGCTGGCCACGAACCGGTTCGAGCATACATTCGCCTCCAGGTTTCACCTAATAGGTTGTAGCCACTCAGTGGACGTCTCCATAACATCGACGAGCGCCATGGGG
+----------------------------------------------------------
+CHECKING SEED: 34567 (Directory: set_34567)
+Raw Phylip files:    2000 / 2000
+Final FASTA files:  2000 / 2000
+Integrity Check:    PASSED (No empty/corrupt files found)
+Previewing loc_500.fas:
+>27
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAAGGGGCTTCTAGACGTTGGATGTTATGAGCGGCAACATGAGCTCAAGGATTGGCAAGGAGGGCGCCACCATACAGTGTTCTTGTGTCGTACTGATTTTGATGGTATACTAGTAAAGGCTACGCACAGTGATCGCATACGGCTTCTGTCACTGTTG---TGCACCCACGATAATGATGGCCGCACGTCCGATTACCCGACATCGAATAATTACACTTGCCCTATCTCTTGCAGCTCTTGTTCATGCTACGGTGGA---ACTAGCTTTCGATTTACTTATCACGGCGAGGGAAGACCCACGTGCAAGACCGGTATACCATATCCTGCCAAGTCGAATATGGAAAAGCGGTTTTTGACTATGGTACACAGGGATCGCGACAGCAAGAGTAATAAGAGATACCCAGGCTATACTTGTTTAATGCAGACGTCCGACTATGATAACTTACGTCCAAGCACCATTAATTTGAGACTGCGATATGTGATTAGTCGTAAGCATTTAGATCGCTCTCTGTGTATTCACAATATCGCAAATACGGCTGCTGTGTCAGGGATCATTGACGTGCCGCAAGTGACCTTGGAGGGAGTAGTATCTTTTTACGTAATCTCTTGTGTTATTTTCCTAATCTTGGGCCCGCCTATCGGATTACTGCAAGTAAGCGGACCTTTCGTGAGATGCATAGACTGTGAGTTTCGTATAGTTCTTACGATACCACAACACTGTGACATGGAGGGCGATCGAAAGGCGTTT------------------------------------------------
+>20
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------AAGATGTTGGTTACTATGAGCGGCAAAATGAGCTCAAGGATTGGAAAGGACGCCGCCACGACACGCTGTTCTTGTGTCGTACAGACTTCGATGGAATATTAGGAAGGGCTACGCACAGCGACCGCATCCGCCTGCTGTCCTTGCGCTGTTCCACCCACGATAATGATGGCCGCACGGCCGATTACCAAACATCGATTGATTACGTCTGCCCTATTCTTTGCCTATCTTGTTCATGCTACTGTGAA---ACTTGCCTTCGGTTTGCATATCGCGACGAGGGAAAACCAACGTGCAAGCCTTATATCCCATATCCTGCTAAGTTGGATATGCACAAGGGG------ACAACGGCACATAGGTATTGCAAGGGCAAGTGTAGTTGGGGAGACGCAGGCGACACTTGTTTAAATCAAACGTCAGACGATGATAACTTACGTCCAGGCAACACTAGTTTGGGAATGCGATATGTGTTTATTCGCATACACGTAGATATCGCTCTGAGTACTCACAACATAAAAGATACGACTGCTGTGACAAGGGACATTGACGTGCCACAAGTGACGTTGCGGGGAGTAGTACCTGTTAACGGAATCCCTTGTGTTGCTCTCCTGATCGTAGGCCCGTGTAGCGGATTACTGCCCGTACGCGGTCCTCTAACGGGATGCATAGACTATAGCATTAGTATAGTTCTCGCGATACGACCA---------------------------------------------------------------------------------
+
+Git Commit Message:
+feat: refactor 2.3 for multi-seed automation and modular R sourcing
+Integrated variables.sh to replace hardcoded project paths and executable locations
+Updated Rscript calls to pass absolute paths for mod_write_tree2 and modify_gene_tree
+Standardized directory structure to use nested set_$seed folders for all inputs/outputs
+Synchronized prep_INDELible.R and post_INDELible.R arguments with the new centralized variable system
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano restore_names.R
+#---------------------------------
+library(ape)
+
+# --- 1. Capture Arguments ---
+args <- commandArgs(trailingOnly=TRUE)
+input_dir  <- args[1]
+output_dir <- args[2]
+map_path   <- args[3]
+
+# --- 2. Load Taxon Map ---
+taxon_map <- read.csv(map_path)
+# Ensure columns are treated as strings to avoid matching errors
+taxon_map$number <- as.character(taxon_map$number)
+
+# --- 3. Renaming Loop ---
+fas_files <- list.files(input_dir, pattern = "\\.fas$", full.names = TRUE)
+message(paste("Renaming taxa in", length(fas_files), "alignments..."))
+
+for (f in fas_files) {
+  # Read alignment (as character matrix for easy renaming)
+  aln <- read.dna(f, format = "fasta", as.character = TRUE)
+
+  # Map numerical rownames back to names using the CSV
+  # match() finds the row index in taxon_map where 'number' matches the rowname
+  new_names <- taxon_map$name[match(rownames(aln), taxon_map$number)]
+
+  # Apply new names
+  rownames(aln) <- new_names
+
+  # Save output
+  out_name <- file.path(output_dir, basename(f))
+  write.FASTA(as.DNAbin(aln), out_name)
+}
+
+message("All names restored successfully.")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/2_simulation_scripts
+
+nano 2.4_restore_names.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=restore_names
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=4G
+#SBATCH -p uri-cpu
+#SBATCH --time=00:20:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute Renaming ---
+for random_seed in $seeds;
+  do
+  set_dir="set_$random_seed"
+  echo "Restoring empirical taxon names for $set_dir...";
+  # Input: final alignments with numbered taxa (generated by 2.3)
+  Input_Aln="$input2_4/$set_dir/alignments_final"
+  # Output path for final alignment with restored names (will be created if needed)
+  Final_Aln="$out2_4/$set_dir"
+  mkdir -p "$Final_Aln"
+  Rscript "$ReName" \
+      "$Input_Aln" \
+      "$Final_Aln" \
+      "$Taxon_Map"
+  echo "Name restoration complete. Final alignments located in: $Final_Aln"
+done
+#---------------------------------
+sbatch 2.4_restore_names.sh
+Submitted batch job 53804138
+sacct -j 53804138 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804138          0:0   00:01:31
+53804138.ba+      0:0   00:01:31    835340K
+53804138.ex+      0:0   00:01:31
+
+Git Commit Message
+feat: update 2.4 to support multiple simulation sets (multiple seeds)
+Centralized Variables: Migrated hardcoded project and script paths to variables.sh.
+Multi-Seed Support: Added a for loop to iterate through multiple random number seeds.
+Dynamic Directory Handling: Updated input and output paths to use nested set_$random_seed structures.
+
+10/8/2026
+
+Module 3: Filter_by_Known_Clades
+Filter all loci for support for Established Clades
+
+git commit message:
+fix(generate_constraints.R): include singleton taxa to prevent IQ-TREE mismatch errors
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano generate_constraints.R
+#---------------------------------
+library(ape)
+
+# Capture arguments from shell
+args <- commandArgs(trailingOnly = TRUE)
+ALN_DIR     <- args[1]
+OUTPUT_DIR  <- args[2]
+CLADE_FILE  <- args[3]
+
+dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
+
+# Load Clade Definitions (Group, Taxa)
+clade_df <- read.csv(CLADE_FILE, header = TRUE)
+all_clades <- split(clade_df$Taxa, clade_df$Group)
+
+# Process all alignments (.fas, .fa, or .fasta)
+loci_files <- list.files(ALN_DIR, pattern = "\\.fast?a?$")
+
+for (f in loci_files) {
+  locus_path <- file.path(ALN_DIR, f)
+  fasta <- read.FASTA(locus_path)
+  present_taxa <- names(fasta)
+
+  # Intersect defined clades with what is actually present in this locus
+  pruned_clades <- lapply(all_clades, function(x) intersect(x, present_taxa))
+
+  # Multi-taxon clades that can be constrained
+  multi_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+
+  # Singleton taxa (only 1 representative of the group present in this locus)
+  single_taxa <- unlist(pruned_clades[sapply(pruned_clades, length) == 1])
+
+  # A constraint is only meaningful if at least one multi-taxon clade exists
+  if (length(multi_clades) > 0) {
+    clade_strings <- sapply(multi_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
+
+    # Combine multi-taxon constrained groups and any singleton tips
+    all_elements <- c(clade_strings, single_taxa)
+    final_constraint <- paste0("(", paste(all_elements, collapse = ","), ");")
+
+    out_name <- gsub("\\.fast?a?$", "_constraint.newick", f)
+    write(final_constraint, file = file.path(OUTPUT_DIR, out_name))
+  }
+}
+cat(paste("Generated", length(list.files(OUTPUT_DIR)), "constraint files.\n"))
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano generate_constraints.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=constraints
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input alignment (generated by 2.4_restore_names.sh):
+Alignments="$out2_4/$set_dir"
+
+# Output subdirectory for the constraint tree:
+out_dir="$out3_0/$set_dir"
+mkdir -p "$out_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute ---
+Rscript $GenConR "$Alignments" "$out_dir" "$clades"
+
+# --- Audit & Confirmation ---
+echo "------------------------------------------------"
+echo "Post-Processing Audit:"
+expected_count=$(ls -1 "$Alignments"/*.fas | wc -l)
+actual_count=$(ls -1 "$out_dir"/*_constraint.newick 2>/dev/null | wc -l)
+
+echo "Expected constraints: $expected_count"
+echo "Generated constraints: $actual_count"
+
+if [ "$expected_count" -eq "$actual_count" ]; then
+    echo "SUCCESS: All constraint files were generated correctly."
+else
+    echo "WARNING: Count mismatch! Some loci may not have enough taxa to form a constraint."
+fi
+echo "------------------------------------------------"
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano 3.0_submit_generate_constraints.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting generate constraints job for random seed: $random_seed";
+  sbatch $GenCon $random_seed
+done
+#---------------------------------
+sbatch 3.0_submit_generate_constraints.sh
+Submitted batch job 65434754
+sacct -j 65434754 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65434754          0:0   00:00:02
+65434754.ba+      0:0   00:00:02      5248K
+65434754.ex+      0:0   00:00:02
+
+Submitting generate constraints job for random seed: 12345
+Submitted batch job 65434755
+sacct -j 65434755 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65434755          0:0   00:00:19
+65434755.ba+      0:0   00:00:19    201568K
+65434755.ex+      0:0   00:00:19
+Generated 2000 constraint files.
+------------------------------------------------
+Post-Processing Audit:
+Expected constraints: 2000
+Generated constraints: 2000
+SUCCESS: All constraint files were generated correctly.
+------------------------------------------------
+Submitting generate constraints job for random seed: 67890
+Submitted batch job 65434756
+sacct -j 65434756 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65434756          0:0   00:00:19
+65434756.ba+      0:0   00:00:19    207232K
+65434756.ex+      0:0   00:00:19
+Generated 2000 constraint files.
+------------------------------------------------
+Post-Processing Audit:
+Expected constraints: 2000
+Generated constraints: 2000
+SUCCESS: All constraint files were generated correctly.
+------------------------------------------------
+Submitting generate constraints job for random seed: 23456
+Submitted batch job 65434757
+sacct -j 65434757 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65434757          0:0   00:00:19
+65434757.ba+      0:0   00:00:19    189940K
+65434757.ex+      0:0   00:00:19
+Generated 2000 constraint files.
+------------------------------------------------
+Post-Processing Audit:
+Expected constraints: 2000
+Generated constraints: 2000
+SUCCESS: All constraint files were generated correctly.
+------------------------------------------------
+Submitting generate constraints job for random seed: 78901
+Submitted batch job 65434758
+sacct -j 65434758 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65434758          0:0   00:00:19
+65434758.ba+      0:0   00:00:19    203972K
+65434758.ex+      0:0   00:00:19
+Generated 2000 constraint files.
+------------------------------------------------
+Post-Processing Audit:
+Expected constraints: 2000
+Generated constraints: 2000
+SUCCESS: All constraint files were generated correctly.
+------------------------------------------------
+Submitting generate constraints job for random seed: 34567
+Submitted batch job 65434759
+sacct -j 65434759 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65434759          0:0   00:00:19
+65434759.ba+      0:0   00:00:19    207896K
+65434759.ex+      0:0   00:00:19
+Generated 2000 constraint files.
+------------------------------------------------
+Post-Processing Audit:
+Expected constraints: 2000
+Generated constraints: 2000
+SUCCESS: All constraint files were generated correctly.
+------------------------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano iqtree_likelihoods.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=iqtree
+#SBATCH --partition=uri-cpu
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=30
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=4G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input alignment (generated by 2.4):
+Alignments="$out2_4/$set_dir"
+# Input constraint trees (generated by 3.0)
+Constraints="$out3_0/$set_dir"
+
+OutDir="$out3_1/$set_dir"
+mkdir -p "$OutDir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load parallel/20240822
+
+# --- Command Factory Logic ---
+run_iqtree() {
+    locus_fas=$1
+    locus_id=$(basename "$locus_fas" .fas)
+    out_path=$2
+    const_path=$3
+    iqtree_exe=$4  # Receive the path variable here
+
+    # 1. Unconstrained Run
+    $iqtree_exe -s "$locus_fas" -m GTR+G -pre "$out_path/${locus_id}_uncon" -nt 1 -redo -quiet
+
+    # 2. Constrained Run
+    $iqtree_exe -s "$locus_fas" -m GTR+G -g "$const_path/${locus_id}_constraint.newick" -pre "$out_path/${locus_id}_con" -nt 1 -redo -quiet
+
+    # Cleanup auxiliary files
+    rm -f "$out_path/${locus_id}_"*".ckp.gz" "$out_path/${locus_id}_"*".bionj" "$out_path/${locus_id}_"*".mldist"
+}
+
+export -f run_iqtree
+
+# --- Execute with GNU Parallel ---
+# We pass $IQTREE as the 4th argument to the function
+ls "$Alignments"/*.fas | parallel -j 30 --no-notice run_iqtree {} "$OutDir" "$Constraints" "$IQTREE"
+
+echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano 3.1_submit_iqtree_likelihoods.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting iqtree likelihood job for random seed: $random_seed";
+  sbatch $IQTL $random_seed
+done
+#---------------------------------
+sbatch 3.1_submit_iqtree_likelihoods.sh
+Submitted batch job 65435458
+sacct -j 65435458 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65435458          0:0   00:00:00
+65435458.ba+      0:0   00:00:00      5356K
+65435458.ex+      0:0   00:00:00
+
+Submitting iqtree likelihood job for random seed: 12345
+Submitted batch job 65435459
+sacct -j 65435459 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting iqtree likelihood job for random seed: 67890
+Submitted batch job 65435460
+sacct -j 65435460 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting iqtree likelihood job for random seed: 23456
+Submitted batch job 65435461
+sacct -j 65435461 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting iqtree likelihood job for random seed: 78901
+Submitted batch job 65435462
+sacct -j 65435462 -o JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting iqtree likelihood job for random seed: 34567
+Submitted batch job 65435463
+sacct -j 65435463 -o JobID,ExitCode,Elapsed,MaxRSS
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+
+
+Submitting iqtree likelihood job for random seed: 12345
+Submitted batch job 53804487
+sacct -j 53804487 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804487          0:0   00:32:04
+53804487.ba+      0:0   00:32:04    478496K
+53804487.ex+      0:0   00:32:04
+Submitting iqtree likelihood job for random seed: 67890
+Submitted batch job 53804488
+sacct -j 53804488 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804488          0:0   00:31:10
+53804488.ba+      0:0   00:31:10    479292K
+53804488.ex+      0:0   00:31:10
+Submitting iqtree likelihood job for random seed: 23456
+Submitted batch job 53804489
+sacct -j 53804489 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804489          0:0   00:30:34
+53804489.ba+      0:0   00:30:34    468604K
+53804489.ex+      0:0   00:30:34
+Submitting iqtree likelihood job for random seed: 78901
+Submitted batch job 53804490
+sacct -j 53804490 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804490          0:0   00:39:53
+53804490.ba+      0:0   00:39:53    481576K
+53804490.ex+      0:0   00:39:53
+Submitting iqtree likelihood job for random seed: 34567
+Submitted batch job 53804491
+sacct -j 53804491 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804491          0:0   00:40:13
+53804491.ba+      0:0   00:40:13    487996K
+53804491.ex+      0:0   00:40:14
+
+Git Commit Message
+feat: refactor 3.1 for multi-seed (multiple simulation sets) automation and increased memory
+Multi-Seed Support: Added a for loop and positional argument $1 to support automated execution across all simulation sets.
+Variable Integration: Migrated hardcoded project and executable paths to the centralized variables.sh system.
+Dynamic Directory Handling: Updated Alignments, Constraints, and OutDir to handle nested set_$random_seed structures.
+Removed old scripts.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano LRT_filter.R
+#---------------------------------
+#!/usr/bin/env Rscript
+
+# --- Load Libraries ---
+library(stringr)
+
+# --- Argument Handling ---
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 2) {
+  stop("Usage: Rscript 3.2_LRT_filter.R <IQ_DIR> <OUT_CSV>")
+}
+
+IQ_DIR  <- args[1]
+OUT_CSV <- args[2]
+
+# Get list of all unconstrained iqtree files
+uncon_files <- list.files(IQ_DIR, pattern = "_uncon.iqtree", full.names = TRUE)
+
+cat("Found", length(uncon_files), "loci to process...\n")
+
+# --- Extraction Function ---
+get_lnl <- function(filepath) {
+  if(!file.exists(filepath)) return(NA)
+  lines <- tryCatch(readLines(filepath), error = function(e) return(NULL))
+  if(is.null(lines)) return(NA)
+
+  # Search for the Likelihood line
+  lnl_line <- lines[grep("Log-likelihood of the tree:", lines)]
+  if(length(lnl_line) == 0) return(NA)
+
+  # Extract numeric value using regex (matches number before the space/bracket)
+  val <- str_extract(lnl_line, "-?[0-9.]+(?= \\()")
+  return(as.numeric(val))
+}
+
+# --- Build Results Table ---
+results <- data.frame(
+  Locus = gsub("_uncon.iqtree", "", basename(uncon_files)),
+  lnL_Uncon = sapply(uncon_files, get_lnl),
+  stringsAsFactors = FALSE
+)
+
+cat("Extracting constrained likelihoods...\n")
+results$lnL_Con <- sapply(results$Locus, function(x) {
+  get_lnl(file.path(IQ_DIR, paste0(x, "_con.iqtree")))
+})
+
+# --- Statistics ---
+# Calculate Delta lnL (Likelihood Penalty)
+results$delta_lnL <- results$lnL_Uncon - results$lnL_Con
+
+# Calculate LRT p-value (df=1 for a simple topological constraint)
+results$LRT_stat <- 2 * results$delta_lnL
+results$p_value <- pchisq(results$LRT_stat, df = 1, lower.tail = FALSE)
+
+# Sort by delta_lnL (highest penalty at the top)
+results <- results[order(results$delta_lnL, decreasing = TRUE), ]
+
+# --- Save Output ---
+write.csv(results, OUT_CSV, row.names = FALSE)
+
+cat("--- Summary ---\n")
+cat("Total loci processed:", nrow(results), "\n")
+cat("Loci failing backbone (p < 0.05):", sum(results$p_value < 0.05, na.rm=TRUE), "\n")
+cat("Results saved to:", OUT_CSV, "\n\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano 3.2_LRT_filter.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=3.2_LRT_filter
+#SBATCH --partition=uri-cpu
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Environment Setup (Proven Unity Config) ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute ---
+for random_seed in $seeds;
+  do
+  set_dir="set_$random_seed"
+  echo "Running Likelihood Ratio Test for Simulation $set_dir";
+  # input (generated by 3.1)
+  IQ_DIR="$out3_1/$set_dir"
+  OutDir="$out3_2/$set_dir"
+  mkdir -p "$OutDir"
+  OUT_FILE="$OutDir/lrt_results.csv"
+  Rscript $LRTfilter "$IQ_DIR" "$OUT_FILE"
+done
+#---------------------------------
+sbatch 3.2_LRT_filter.sh
+Submitted batch job 53808651
+sacct -j 53808651 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808651          0:0   00:00:26
+53808651.ba+      0:0   00:00:26
+53808651.ex+      0:0   00:00:26
+
+Running Likelihood Ratio Test for Simulation set_12345
+Found 2000 loci to process...
+Extracting constrained likelihoods...
+--- Summary ---
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1519
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_12345/lrt_results.csv
+
+Running Likelihood Ratio Test for Simulation set_67890
+Found 2000 loci to process...
+Extracting constrained likelihoods...
+--- Summary ---
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1547
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_67890/lrt_results.csv
+
+Running Likelihood Ratio Test for Simulation set_23456
+Found 2000 loci to process...
+Extracting constrained likelihoods...
+--- Summary ---
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1542
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_23456/lrt_results.csv
+
+Running Likelihood Ratio Test for Simulation set_78901
+Found 1999 loci to process...
+Extracting constrained likelihoods...
+--- Summary ---
+Total loci processed: 1999
+Loci failing backbone (p < 0.05): 1569
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_78901/lrt_results.csv
+
+Running Likelihood Ratio Test for Simulation set_34567
+Found 2000 loci to process...
+Extracting constrained likelihoods...
+--- Summary ---
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1499
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_34567/lrt_results.csv
+
+Git Commit Message
+feat: refactor 3.2 for automated multi-seed LRT processing
+Multi-Seed Support: Added a for loop to iterate through all simulation sets defined in variables.sh.
+Centralized Configuration: Replaced hardcoded project and script paths with sourced global variables.
+Dynamic Directory Handling: Updated IQ_DIR and OutDir to process and store results within seed-specific subdirectories (e.g., set_12345).
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano collect_filtered_loci.R
+#---------------------------------
+#!/usr/bin/env Rscript
+
+# --- Setup ---
+args <- commandArgs(trailingOnly = TRUE)
+LRT_CSV    <- args[1]
+IN_DIR     <- args[2]
+OUT_BASE   <- args[3] # Base output path
+P_THRESH   <- as.numeric(args[4])
+
+# Load results
+df <- read.csv(LRT_CSV)
+
+# Define paths for both groups using paste0 to keep the name clean
+PASS_DIR <- file.path(OUT_BASE, paste0("pass_", P_THRESH))
+FAIL_DIR <- file.path(OUT_BASE, paste0("fail_", P_THRESH))
+
+# Create directories
+if(!dir.exists(PASS_DIR)) dir.create(PASS_DIR, recursive = TRUE)
+if(!dir.exists(FAIL_DIR)) dir.create(FAIL_DIR, recursive = TRUE)
+
+# Categorize loci
+passing_loci <- df$Locus[df$p_value >= P_THRESH]
+failing_loci <- df$Locus[df$p_value <  P_THRESH]
+
+cat("Threshold:", P_THRESH, "\n")
+cat("Loci to copy to PASS:", length(passing_loci), "\n")
+cat("Loci to copy to FAIL:", length(failing_loci), "\n")
+
+# Function to copy files
+move_files <- function(locus_list, destination) {
+  for(locus in locus_list) {
+    file_name <- paste0(locus, ".fas")
+    file.copy(from = file.path(IN_DIR, file_name),
+              to   = destination)
+  }
+}
+
+# Execute copies
+move_files(passing_loci, PASS_DIR)
+move_files(failing_loci, FAIL_DIR)
+
+cat("Assembly complete.\n")
+cat("  Pass folder:", PASS_DIR, "\n")
+cat(length(passing_loci), " loci passed.\n")
+cat("  Fail folder:", FAIL_DIR, "\n")
+cat(length(failing_loci), " loci failed.\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+
+nano 3.3_collect_filtered_loci.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=filter_loci
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --mem=1G
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+
+# --- Execute ---
+for random_seed in $seeds;
+  do
+  set_dir="set_$random_seed"
+  echo "Collecting filtered loci for Simulation $set_dir";
+  # input (LRT csv generated by 3.2)
+  LRT_CSV="$out3_2/$set_dir/lrt_results.csv"
+  # input (path to aligned loci generated by 2.4)
+  Alignments="$out2_4/$set_dir"
+  # output
+  FinalDir="$out3_3/$set_dir"
+  mkdir -p "$FinalDir"
+  # Arguments: <CSV> <SourceDir> <DestDir> <P-Threshold>
+  Rscript "$CFL" "$LRT_CSV" "$Alignments" "$FinalDir" "$Pvalue3_3"
+done
+#---------------------------------
+sbatch 3.3_collect_filtered_loci.sh
+Submitted batch job 53808652
+sacct -j 53808652 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808652          0:0   00:00:23
+53808652.ba+      0:0   00:00:23    442492K
+53808652.ex+      0:0   00:00:23
+
+Collecting filtered loci for Simulation set_12345
+Threshold: 0.05
+Loci to copy to PASS: 481
+Loci to copy to FAIL: 1519
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_kno
+wn_clades/set_12345/pass_0.05
+481  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/fail_0.05
+1519  loci failed.
+Collecting filtered loci for Simulation set_67890
+Threshold: 0.05
+Loci to copy to PASS: 453
+Loci to copy to FAIL: 1547
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/pass_0.05
+453  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/fail_0.05
+1547  loci failed.
+Collecting filtered loci for Simulation set_23456
+Threshold: 0.05
+Loci to copy to PASS: 458
+Loci to copy to FAIL: 1542
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/pass_0.05
+458  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/fail_0.05
+1542  loci failed.
+Collecting filtered loci for Simulation set_78901
+Threshold: 0.05
+Loci to copy to PASS: 430
+Loci to copy to FAIL: 1569
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/pass_0.05
+430  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/fail_0.05
+1569  loci failed.
+Collecting filtered loci for Simulation set_34567
+Threshold: 0.05
+Loci to copy to PASS: 501
+Loci to copy to FAIL: 1499
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/pass_0.05
+501  loci passed.
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/fail_0.05
+1499  loci failed.
+
+Git Commit Message
+feat: implement 3.3 automated collection of filtered loci for all simulation seeds
+
+Starting Module 4: branch length correlation
+
+step 4.0:
+Purpose: To construct a comprehensive Maximum Likelihood "unfiltered" reference species tree for each simulation set using all 2000 simulated loci.
+
+Phylogenetic inference was performed using IQ-TREE 2.1.2 on a concatenated alignment of 2,000 simulated loci. To account for diverse evolutionary rates across the genome, a partitioned analysis was implemented using the -spp flag, which allows for proportional branch lengths across partitions.
+Model selection was performed using ModelFinder Plus, with the search space restricted to the GTR family of substitution models (-mset GTR) to maintain high parameter complexity while optimizing computational efficiency. Branch support was assessed using two independent metrics: 1,000 ultrafast bootstrap (UFB) replicates and 1,000 SH-like approximate likelihood ratio test (SH-aLRT) replicates.
+Why These Parameters Make Sense
+0. -m GTR+G -fast
+Quickly generate a topology to use as a start tree file (-t) - more reliable than internal parsimony for complex alignments (which was causing the script to crash previously).
+1. Proportional Partitioning (-spp)
+In the simulations, significant heterotachy was introduced (VBLmin=0.5 to VBLmax=5.0).
+A standard concatenated analysis assumes all sites share the same branch lenghts, which would potentially average out the topological conflict of interest.
+The Logic: The -spp flag allows each locus (partition) to have its own scaling factor.
+If one locus evolved significantly faster than another, IQ-TREE can scale those branches accordingly without changing the overall tree shape.
+2. Restricted GTR Search (-mset GTR)
+A full ModelFinder (-m MFP) tests hundreds of models (HKY, JC, TN93, etc.).
+However, nearly all complex simulations involving SimPhy and INDELible are inherently grounded in GTR-based matrices.
+The Logic: Forcing IQ-TREE to only consider GTR-family models bypasses the time spent testing simpler models that are statistically unlikely to fit the noisy, simulated data.
+This reduces pre-analysis overhead time.
+3. Dual Support Metrics (-bb and --alrt)
+The Logic: * UFBoot (-bb) measures how much of your total data (loci/sites) supports a branch.
+Standard bootstrapping is notoriously slow for 2,000 loci. The Ultrafast Bootstrap is specifically designed for phylogenomics. It is less prone to the "over-support" bias seen in traditional methods and provides a reliable measure of clade confidence in a fraction of the time.
+SH-aLRT (--alrt) measures if the inferred branch is statistically better than alternative topological arrangements.
+Conflict Identification: Clades with high Bootstrap (e.g., 98%) but low SH-aLRT (e.g., 65%) are classic indicators of phylogenetic conflict or "rogue" signal.
+4. Hardware Optimization (-nt AUTO)
+The Logic: This allows IQ-TREE to benchmark the specific hardware it's running on and pick the core count that minimizes slow down due to "communication overhead" between too many cores.
+5. c-max 8
+rate limit. 8 categories aims to capture the simulated rate variance without over-parameterizing the model.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.0_submit_concat_tree.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting concatenated tree job for random seed: $random_seed";
+  sbatch $concat_tree $random_seed
+done
+#---------------------------------
+sbatch 4.0_submit_concat_tree.sh
+Submitted batch job 53804501
+sacct -j 53804501 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804501          0:0   00:00:00
+53804501.ba+      0:0   00:00:00      5620K
+53804501.ex+      0:0   00:00:00
+
+Submitting concatenated tree job for random seed: 12345
+Submitted batch job 53804502
+Submitting concatenated tree job for random seed: 67890
+Submitted batch job 53804503
+Submitting concatenated tree job for random seed: 23456
+Submitted batch job 53804504
+Submitting concatenated tree job for random seed: 78901
+Submitted batch job 53804505
+Submitting concatenated tree job for random seed: 34567
+Submitted batch job 53804506
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano concat_tree.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="unfiltered_tree"
+#SBATCH --time=48:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=62G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input (final named alignments from 2.4)
+Data="$out2_4/$set_dir"
+
+# Output directory
+OutDir="$out4_0/$set_dir"
+mkdir -p ${OutDir}
+cd ${OutDir}
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+# 1. Run the AMAS script to produce concatenated loci and partitions files
+python3 $run_amas ${Data} ${SLURM_CPUS_PER_TASK} ${AMAS}
+
+# 2. Run IQ-TREE on the result
+
+# Generate a starting tree:
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -pre StartTree \
+    -m GTR+G -fast
+
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -spp "partitions.txt" \
+    -pre Unfiltered_loci_ref_tree \
+    -t StartTree.treefile \
+    -m MFP -mset GTR -cmax 8 \
+    -bb 1000 --alrt 1000
+#---------------------------------
+
+Submitting concatenated tree job for random seed: 12345
+Submitted batch job 53804502
+sacct -j 53804502 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804502          0:0   02:14:52
+53804502.ba+      0:0   02:14:52  15447980K
+53804502.ex+      0:0   02:14:53
+Submitting concatenated tree job for random seed: 67890
+Submitted batch job 53804503
+sacct -j 53804503 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804503          0:0   02:56:38
+53804503.ba+      0:0   02:56:38  15157288K
+53804503.ex+      0:0   02:56:38
+Submitting concatenated tree job for random seed: 23456
+Submitted batch job 53804504
+sacct -j 53804504 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804504          0:0   02:40:09
+53804504.ba+      0:0   02:40:09  15364260K
+53804504.ex+      0:0   02:40:09
+Submitting concatenated tree job for random seed: 78901
+Submitted batch job 53804505
+sacct -j 53804505 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804505          0:0   02:25:32
+53804505.ba+      0:0   02:25:32  15644668K
+53804505.ex+      0:0   02:25:32
+Submitting concatenated tree job for random seed: 34567
+Submitted batch job 53804506
+sacct -j 53804506 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53804506          0:0   03:06:20
+53804506.ba+      0:0   03:06:20  15223008K
+53804506.ex+      0:0   03:06:20
+
+Output:
+concatenated.fasta  StartTree.mldist                          Unfiltered_loci_ref_tree.contree
+partitions.txt      StartTree.treefile                        Unfiltered_loci_ref_tree.iqtree
+StartTree.bionj     Unfiltered_loci_ref_tree.best_model.nex   Unfiltered_loci_ref_tree.log
+StartTree.ckp.gz    Unfiltered_loci_ref_tree.best_scheme      Unfiltered_loci_ref_tree.model.gz
+StartTree.iqtree    Unfiltered_loci_ref_tree.best_scheme.nex  Unfiltered_loci_ref_tree.splits.nex
+StartTree.log       Unfiltered_loci_ref_tree.ckp.gz           Unfiltered_loci_ref_tree.treefile
+
+Unfiltered_loci_ref_tree.treefile
+
+Git Commit Message
+feat 4.0: implement two-step phylogenomic inference with guide tree
+Stability: Added a preliminary unpartitioned IQ-TREE run using -m GTR+G -fast to generate a high-quality starting tree (StartTree.treefile).
+Initialization: Resolved the "Reading input tree file" crash by explicitly passing the guide tree to the partitioned analysis via the -t flag.
+Model Optimization: Refined the partitioned search using -m MFP (ModelFinder Plus) restricted to the GTR family (-mset GTR) and capped rate categories (-cmax 8) to balance biological accuracy with computational efficiency.
+
+4.1
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano trimConstraintTree.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# trimConstraintTree.R
+# Purpose: Prune a reference species tree to match the taxa present in a specific locus alignment.
+
+library(ape)
+
+# Capture command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 3) {
+  stop("Usage: Rscript trimConstraintTree.R <alignment.fas> <reference.treefile> <output.tre>")
+}
+
+# 1. Load the alignment to see which taxa are present
+alignment <- read.dna(args[1], format="fasta")
+taxapresent <- rownames(alignment)
+
+# 2. Load the Reference Species Tree (from Step 4.0)
+tree <- read.tree(args[2])
+treetips <- tree$tip.label
+
+# 3. Identify tips in the tree that are NOT in the alignment
+tipstoremove <- treetips[!(treetips %in% taxapresent)]
+
+# 4. Prune the tree and write to file
+# drop.tip removes the missing taxa while maintaining the relative branch lengths of the rest
+outtree <- drop.tip(tree, tipstoremove)
+write.tree(outtree, args[3])
+
+cat("Successfully pruned tree to", length(outtree$tip.label), "taxa.\n")
+#---------------------------------
+
+4.1_constrained_gtrees.sh
+This script uses a Command Factory function to handle the R-pruning and the IQ-TREE inference in one go, distributed across your CPU cores.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.1_submit_constrained_gtrees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting constrained gene trees job for random seed: $random_seed";
+  sbatch $CGT $random_seed
+done
+#---------------------------------
+sbatch 4.1_submit_constrained_gtrees.sh
+Submitted batch job 53808674
+sacct -j 53808674 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808674          0:0   00:00:00
+53808674.ba+      0:0   00:00:00      5512K
+53808674.ex+      0:0   00:00:00
+
+Submitting constrained gene trees job for random seed: 12345
+Submitted batch job 53808675
+Submitting constrained gene trees job for random seed: 67890
+Submitted batch job 53808676
+Submitting constrained gene trees job for random seed: 23456
+Submitted batch job 53808677
+Submitting constrained gene trees job for random seed: 78901
+Submitted batch job 53808678
+Submitting constrained gene trees job for random seed: 34567
+Submitted batch job 53808679
+
+nano constrained_gtrees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=BLC_gtrees
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=32
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Variables ---
+# Input (final named alignments from 2.4)
+Alignments="$out2_4/$set_dir"
+# The Reference Tree from Step 4.0:
+RefTree="$out4_0/$set_dir/Unfiltered_loci_ref_tree.treefile"
+MODEL_FILE="$out4_0/$set_dir/Unfiltered_loci_ref_tree.iqtree"
+
+# Output
+OutDir="$out4_1/$set_dir"
+mkdir -p "$OutDir"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+module load parallel/20240822
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Command Factory Logic ---
+run_constrained_inference() {
+    locus_fas=$1
+    locus_id=$(basename "$locus_fas" .fas)
+    out_path=$2
+    ref_tree=$3
+    iqtree_exe=$4
+    trimconstraint_R=$5
+    model_info_file=$6
+
+    # Optional: add this right before the Rscript line to stagger starts (preventing library loading issues)
+    sleep $(( (RANDOM % 5) + 1 ))
+
+    # 1. Prune the reference tree to match this locus
+    Rscript "$trimconstraint_R" "$locus_fas" "$ref_tree" "$out_path/${locus_id}.constraint.tre"
+
+    # 2. Look up the specific model for this locus from the BIC summary block
+        # We turn the comma-separated list into lines, find the locus, and grab the model part
+        SPECIFIC_MODEL=$(grep -A 100 "Best-fit model according to BIC:" "$model_info_file" | \
+                         grep -m 1 -v "BIC:" | \
+                         tr ',' '\n' | \
+                         grep -w "$locus_id" | \
+                         cut -d ":" -f 1 | \
+                         tr -d '[:space:]')
+
+        # Fallback to GTR+G if the lookup fails for any reason
+        if [ -z "$SPECIFIC_MODEL" ]; then SPECIFIC_MODEL="GTR+G"; fi
+
+    # 3. Run IQ-TREE constrained to that pruned topology
+    $iqtree_exe -s "$locus_fas" -m "$SPECIFIC_MODEL" -g "$out_path/${locus_id}.constraint.tre" -pre "$out_path/${locus_id}" -nt 1 -redo
+
+    # Cleanup auxiliary files
+    rm -f "$out_path/${locus_id}."{ckp.gz,bionj,mldist,log}
+}
+
+export -f run_constrained_inference
+
+# --- Execute with GNU Parallel ---
+echo "Starting constrained branch length estimation..."
+find "$Alignments" -name "*.fas" | parallel -j 32 --progress run_constrained_inference {} "$OutDir" "$RefTree" "$IQTREE" "$TCT" "$MODEL_FILE"
+echo "Step 4.1 complete. Constrained trees are in $OutDir"
+#---------------------------------
+
+i=JobID,ExitCode,Elapsed,MaxRSS
+Submitting constrained gene trees job for random seed: 12345
+Submitted batch job 53808675
+sacct -j 53808675 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808675          0:0   00:04:20
+53808675.ba+      0:0   00:04:20    800424K
+53808675.ex+      0:0   00:04:20
+Submitting constrained gene trees job for random seed: 67890
+Submitted batch job 53808676
+sacct -j 53808676 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808676          0:0   00:04:17
+53808676.ba+      0:0   00:04:17    703284K
+53808676.ex+      0:0   00:04:17
+Submitting constrained gene trees job for random seed: 23456
+Submitted batch job 53808677
+sacct -j 53808677 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808677          0:0   00:04:12
+53808677.ba+      0:0   00:04:12    723428K
+53808677.ex+      0:0   00:04:12
+Submitting constrained gene trees job for random seed: 78901
+Submitted batch job 53808678
+sacct -j 53808678 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808678          0:0   00:04:58
+53808678.ba+      0:0   00:04:58    763676K
+53808678.ex+      0:0   00:04:58
+Submitting constrained gene trees job for random seed: 34567
+Submitted batch job 53808679
+sacct -j 53808679 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808679          0:0   00:04:58
+53808679.ba+      0:0   00:04:58    854248K
+53808679.ex+      0:0   00:04:58
+
+Git Commit Message
+refactor(4.1): transition to per-locus model lookup and dynamic seed handling
+Dynamic Model Mapping: Replaced the global GEN_MODEL extraction with a per-locus lookup logic within the GNU Parallel function. The script now parses the Step 4.0 .iqtree BIC summary block to apply the specific best-fit substitution model to each locus (e.g., GTR+F+R4 vs GTR+F+I).
+Simulation Set Support: Updated the script to accept a random_seed argument, enabling it to process specific simulation sets (set_$seed) rather than a hardcoded single directory.
+Variable Sourcing: Replaced manual path definitions with a centralized variables.sh source, ensuring consistency across the simulation pipeline and reducing path-related errors.
+Resource Header Optimization: Standardized SLURM headers and explicitly added avx512 constraints to match the computational requirements of IQ-TREE 2.1.2 on the URI cluster.
+Code Robustness: Improved the model parsing regex to handle the comma-separated BIC block formatting and added a GTR+G fallback to prevent job failure if a specific model lookup returns null.
+
+4.2
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano treescreen.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# treescreen.R
+# Purpose: Calculate Pearson correlation (R2) between gene trees and reference tree.
+
+library(ape)
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 3) {
+  stop("Usage: Rscript treescreen.R <ref_tree.treefile> <gtrees_dir> <output.csv>")
+}
+
+ref_tree_path <- args[1]
+gtrees_dir    <- args[2]
+output_csv    <- args[3]
+
+# 1. Extract reference terminal branch lengths
+ref_tree <- read.tree(ref_tree_path)
+ref_bl <- setNames(ref_tree$edge.length[sapply(1:length(ref_tree$tip.label),
+                  function(x,y) which(y==x), y=ref_tree$edge[,2])],
+                  ref_tree$tip.label)
+
+# 2. Identify all constrained treefiles
+tree_files <- list.files(gtrees_dir, pattern = "\\.treefile$", full.names = TRUE)
+
+# 3. Process each locus
+results_list <- list()
+
+for (f in tree_files) {
+    locus_id <- gsub("\\.treefile$", "", basename(f))
+    gtree    <- read.tree(f)
+
+    # Extract gene tree branch lengths
+    gtree_bl <- setNames(gtree$edge.length[sapply(1:length(gtree$tip.label),
+                         function(x,y) which(y==x), y=gtree$edge[,2])],
+                         gtree$tip.label)
+
+    # Align tips (handles cases where gene trees have fewer taxa)
+    common_tips <- intersect(names(ref_bl), names(gtree_bl))
+
+    if (length(common_tips) > 2) {
+        # Regression: Reference Lengths ~ Gene Tree Lengths
+        regress  <- lm(gtree_bl[common_tips] ~ ref_bl[common_tips])
+        rsq      <- summary(regress)$r.squared
+        slope    <- coef(regress)[2]
+        results_list[[locus_id]] <- data.frame(Locus=locus_id, Slope=slope, Rsq=rsq)
+    }
+}
+
+results <- do.call(rbind, results_list)
+
+# 4. Calculate filtering thresholds (Simion et al. 2017: Mean +/- 1.96 * SD)
+mean_rsq <- mean(results$Rsq, na.rm=TRUE)
+sd_rsq   <- sd(results$Rsq, na.rm=TRUE)
+lower_limit <- mean_rsq - (1.96 * sd_rsq)
+upper_limit <- mean_rsq + (1.96 * sd_rsq)
+
+results$Status <- ifelse(results$Rsq >= lower_limit & results$Rsq <= upper_limit, "Pass", "Fail")
+
+# 5. Save output
+write.csv(results, output_csv, row.names = FALSE)
+
+cat("\n--- BLC Screening Summary ---\n")
+cat("Mean Rsq:    ", round(mean_rsq, 4), "\n")
+cat("SD Rsq:      ", round(sd_rsq, 4), "\n")
+cat("Lower Limit: ", round(lower_limit, 4), "\n")
+cat("Loci Passed: ", sum(results$Status == "Pass"), "\n")
+cat("Loci Failed: ", sum(results$Status == "Fail"), "\n")
+#---------------------------------
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+
+nano 4.2_submit_treescreen.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting treescreen job for random seed: $random_seed";
+  sbatch $TScreen $random_seed
+done
+#---------------------------------
+sbatch 4.2_submit_treescreen.sh
+Submitted batch job 53808687
+sacct -j 53808687 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808687          0:0   00:00:00
+53808687.ba+      0:0   00:00:00      5368K
+53808687.ex+      0:0   00:00:00
+
+Submitting treescreen job for random seed: 12345
+Submitted batch job 53808688
+Submitting treescreen job for random seed: 67890
+Submitted batch job 53808689
+Submitting treescreen job for random seed: 23456
+Submitted batch job 53808690
+Submitting treescreen job for random seed: 78901
+Submitted batch job 53808691
+Submitting treescreen job for random seed: 34567
+Submitted batch job 53808692
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/4_filter_by_branch_length/
+nano treescreen.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=BLC_screen
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:20:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Inputs ---
+# The Reference Tree from Step 4.0:
+RefTree="$out4_0/$set_dir/Unfiltered_loci_ref_tree.treefile"
+# Constrained Gene trees from Step 4.1:
+Gtrees="$out4_1/$set_dir"
+# Final named alignments from 2.4)
+Alignments="$out2_4/$set_dir"
+
+# Output
+OutDir="$out4_2/$set_dir"
+mkdir -p "$OutDir/pass_loci"
+mkdir -p "$OutDir/fail_loci"
+
+# --- Environment ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute R Screening ---
+echo "Calculating Branch Length Correlations..."
+Rscript "$TScreenR" "$RefTree" "$Gtrees" "$OutDir/blc_results.csv"
+
+# --- Assemble Filtered Datasets ---
+echo "Sorting alignments into pass/fail directories..."
+
+# Use tail to skip CSV header, IFS to parse columns
+while IFS=, read -r locus slope rsq status; do
+    # Remove possible carriage returns or quotes
+    locus=$(echo $locus | tr -d '"\r')
+    status=$(echo $status | tr -d '"\r')
+
+    if [ "$status" == "Pass" ]; then
+        cp "$Alignments/${locus}.fas" "$OutDir/pass_loci/"
+    elif [ "$status" == "Fail" ]; then
+        cp "$Alignments/${locus}.fas" "$OutDir/fail_loci/"
+    fi
+done < <(tail -n +2 "$OutDir/blc_results.csv")
+
+echo "Process complete. Final alignments are in $OutDir/pass_loci"
+date
+#---------------------------------
+
+Submitting treescreen job for random seed: 12345
+Submitted batch job 53808688
+sacct -j 53808688 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808688          0:0   00:00:32
+53808688.ba+      0:0   00:00:32    200360K
+53808688.ex+      0:0   00:00:32
+--- BLC Screening Summary ---
+Mean Rsq:     0.1524
+SD Rsq:       0.1921
+Lower Limit:  -0.2241
+Loci Passed:  1847
+Loci Failed:  153
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_12345/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
+
+Submitting treescreen job for random seed: 67890
+Submitted batch job 53808689
+sacct -j 53808689 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808689          0:0   00:00:32
+53808689.ba+      0:0   00:00:32    196328K
+53808689.ex+      0:0   00:00:32
+--- BLC Screening Summary ---
+Mean Rsq:     0.1537
+SD Rsq:       0.197
+Lower Limit:  -0.2325
+Loci Passed:  1854
+Loci Failed:  146
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_67890/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
+
+Submitting treescreen job for random seed: 23456
+Submitted batch job 53808690
+sacct -j 53808690 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808690          0:0   00:00:32
+53808690.ba+      0:0   00:00:32    204484K
+53808690.ex+      0:0   00:00:32
+--- BLC Screening Summary ---
+Mean Rsq:     0.1528
+SD Rsq:       0.1953
+Lower Limit:  -0.2301
+Loci Passed:  1863
+Loci Failed:  137
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_23456/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
+
+Submitting treescreen job for random seed: 78901
+Submitted batch job 53808691
+sacct -j 53808691 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808691          0:0   00:00:32
+53808691.ba+      0:0   00:00:32       214M
+53808691.ex+      0:0   00:00:32
+--- BLC Screening Summary ---
+Mean Rsq:     0.1491
+SD Rsq:       0.1918
+Lower Limit:  -0.2268
+Loci Passed:  1856
+Loci Failed:  144
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_78901/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
+
+Submitting treescreen job for random seed: 34567
+Submitted batch job 53808692
+sacct -j 53808692 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53808692          0:0   00:00:32
+53808692.ba+      0:0   00:00:32    192040K
+53808692.ex+      0:0   00:00:32
+--- BLC Screening Summary ---
+Mean Rsq:     0.1535
+SD Rsq:       0.1942
+Lower Limit:  -0.2272
+Loci Passed:  1858
+Loci Failed:  142
+Sorting alignments into pass/fail directories...
+Process complete. Final alignments are in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/4.2_BLC_filtered/set_34567/pass_loci
+Mon Mar 23 12:20:56 PM UTC 2026
+
+Git Commit Message
+refactor(4.2): modernize treescreen script for seed-based simulation sets
+Dynamic Seed Handling: Updated the script to accept a random_seed argument, enabling it to process specific simulation subdirectories (set_$seed) rather than relying on a hardcoded single path.
+Centralized Variables: Replaced manual path definitions with a source call to variables.sh, improving maintainability and ensuring the script correctly references global output variables like $out4_0, $out4_1, and $out4_2.
+Path Correction: Refined the logic for locating the reference tree and constrained gene trees to ensure compatibility with the partitioned analysis outputs generated in Steps 4.0 and 4.1.
+Directory Management: Standardized output subdirectory creation within the seed-specific path to prevent data overwrites between different simulation runs.
+
+Skipping module 5 for now (will be another filtering step later)
+
+Module 6 - Infer and Compare Trees
+
+Step 6.0: Unfiltered Reference Tree Inference
+Step removed because it is exactly the same as step 4.0.
+
+Git commit message: remove step 6.0 (redundant with step 4.0)
+
+Step 6.1: Intersection Dataset Generation
+Purpose: To isolate the most reliable "Elite" loci and the most problematic "Bottom-Tier" loci by identifying the intersection of results from two independent quality control filters.
+Methods:
+Intersection Logic: Using the comm -12 command on sorted lists of filenames, the script identifies loci that appears in both "Pass" directories (Step 3.3 and Step 4.2) and both "Fail" directories.
+Categorization: * All-Pass (Elite): Loci that passed the clade-based p-value screening (noise filter) and the Branch Length Correlation test (rate filter).
+All-Fail (Bottom-Tier): Loci that were rejected by both the clade-based screening and the BLC test.
+Data Integrity: The script copies the raw .fas files from the original named alignments directory to ensure that downstream tree building starts from clean, un-modified sequence data.
+Significance: This step creates the polarized datasets necessary for a robust sensitivity analysis. By comparing trees built from "Elite" loci against those built from "Bottom-Tier" loci, you can quantify how much phylogenetic signal is lost or distorted by specific types of genomic noise.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.1_submit_create_intersections.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting create intersections job for random seed: $random_seed";
+  sbatch $Intersects $random_seed
+done
+#---------------------------------
+sbatch 6.1_submit_create_intersections.sh
+Submitted batch job 53818494
+sacct -j 53818494 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818494          0:0   00:00:01
+53818494.ba+      0:0   00:00:01      5644K
+53818494.ex+      0:0   00:00:01
+
+Submitting create intersections job for random seed: 12345
+Submitted batch job 53818495
+Submitting create intersections job for random seed: 67890
+Submitted batch job 53818496
+Submitting create intersections job for random seed: 23456
+Submitted batch job 53818497
+Submitting create intersections job for random seed: 78901
+Submitted batch job 53818498
+Submitting create intersections job for random seed: 34567
+Submitted batch job 53818499
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+nano create_intersections.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.1_intersection"
+#SBATCH --time=00:15:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=1G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- Variables ---
+
+# Final named alignments from 2.4)
+Alignments="$out2_4/$set_dir"
+
+# Input Directories
+clades_PASS="$out3_3/$set_dir/pass_0.05"
+clades_FAIL="$out3_3/$set_dir/fail_0.05"
+blc_PASS="$out4_2/$set_dir/pass_loci"
+blc_FAIL="$out4_2/$set_dir/fail_loci"
+
+# Define and Create Output Directory
+OutDir="$out6_1/$set_dir"
+mkdir -p "$OutDir/all_PASS" "$OutDir/all_FAIL" \
+         "$OutDir/clades_PASS_blc_FAIL" "$OutDir/blc_PASS_clades_FAIL" \
+         "$OutDir/FAIL_at_least_one" "$OutDir/PASS_at_least_one"
+
+# Move to output directory for generating lists
+cd "$OutDir"
+
+# Ensure consistent sorting for comm command
+export LC_ALL=C
+
+# --- Function to copy files based on the generated lists ---
+copy_loci() {
+    local list=$1
+    local dest=$2
+    if [ -s "$list" ]; then
+        count=$(wc -l < "$list")
+        echo "Processing $dest: Copying $count loci..."
+        # -r prevents backslash interpretation, IFS= prevents trimming whitespace
+        while IFS= read -r locus; do
+            cp "$Alignments/$locus" "$dest/"
+        done < "$list"
+    else
+        echo "Warning: No names found in $list for $dest"
+    fi
+}
+
+# Generate a master list of all 2000 loci for subtraction logic
+ls "$Alignments" | sort > master_list.txt
+
+# Existing list files
+ls "$clades_PASS" | sort > clades_PASS_list.txt
+ls "$clades_FAIL" | sort > clades_FAIL_list.txt
+ls "$blc_PASS" | sort > blc_PASS_list.txt
+ls "$blc_FAIL" | sort > blc_FAIL_list.txt
+
+# --- Intersection Logic ---
+
+# 1. ALL PASS (Elite: 529)
+comm -12 clades_PASS_list.txt blc_PASS_list.txt > elite_names.txt
+
+# 2. ALL FAIL (Noisy: 28)
+comm -12 clades_FAIL_list.txt blc_FAIL_list.txt > noisy_names.txt
+
+# 3. clades PASS / blc FAIL (104)
+comm -12 clades_PASS_list.txt blc_FAIL_list.txt > cladesP_blcF_names.txt
+
+# 4. blc PASS / clades FAIL (1,339)
+comm -12 blc_PASS_list.txt clades_FAIL_list.txt > blcP_cladesF_names.txt
+
+# 5. FAIL AT LEAST ONE (Everything except Elite: 1,471)
+comm -23 master_list.txt elite_names.txt > FAIL_at_least_one_names.txt
+
+# 6. PASS AT LEAST ONE (Everything except Noisy: 1,972)
+comm -23 master_list.txt noisy_names.txt > PASS_at_least_one_names.txt
+
+echo "------------------------------------------------"
+echo "INTERSECTION SUMMARY REPORT"
+echo "------------------------------------------------"
+copy_loci elite_names.txt "all_PASS"
+copy_loci noisy_names.txt "all_FAIL"
+copy_loci cladesP_blcF_names.txt "clades_PASS_blc_FAIL"
+copy_loci blcP_cladesF_names.txt "blc_PASS_clades_FAIL"
+copy_loci FAIL_at_least_one_names.txt "FAIL_at_least_one"
+copy_loci PASS_at_least_one_names.txt "PASS_at_least_one"
+echo "------------------------------------------------"
+
+# --- Cleanup ---
+rm *_list.txt *_names.txt
+
+echo "Step 6.1 Complete. Intersection datasets are ready."
+#---------------------------------
+
+i=JobID,ExitCode,Elapsed,MaxRSS
+
+Submitting create intersections job for random seed: 12345
+Submitted batch job 53818495
+sacct -j 53818495 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818495          0:0   00:00:17
+53818495.ba+      0:0   00:00:17    214680K
+53818495.ex+      0:0   00:00:17
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 375 loci...
+Processing all_FAIL: Copying 47 loci...
+Processing clades_PASS_blc_FAIL: Copying 106 loci...
+Processing blc_PASS_clades_FAIL: Copying 1472 loci...
+Processing FAIL_at_least_one: Copying 1625 loci...
+Processing PASS_at_least_one: Copying 1953 loci...
+------------------------------------------------
+
+Submitting create intersections job for random seed: 67890
+Submitted batch job 53818496
+sacct -j 53818496 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818496          0:0   00:00:18
+53818496.ba+      0:0   00:00:18    211304K
+53818496.ex+      0:0   00:00:18
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 349 loci...
+Processing all_FAIL: Copying 42 loci...
+Processing clades_PASS_blc_FAIL: Copying 104 loci...
+Processing blc_PASS_clades_FAIL: Copying 1505 loci...
+Processing FAIL_at_least_one: Copying 1651 loci...
+Processing PASS_at_least_one: Copying 1958 loci...
+------------------------------------------------
+
+Submitting create intersections job for random seed: 23456
+Submitted batch job 53818497
+sacct -j 53818497 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818497          0:0   00:00:17
+53818497.ba+      0:0   00:00:17    217220K
+53818497.ex+      0:0   00:00:17
+Submitting create intersections job for random seed: 78901
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 360 loci...
+Processing all_FAIL: Copying 39 loci...
+Processing clades_PASS_blc_FAIL: Copying 98 loci...
+Processing blc_PASS_clades_FAIL: Copying 1503 loci...
+Processing FAIL_at_least_one: Copying 1640 loci...
+Processing PASS_at_least_one: Copying 1961 loci...
+------------------------------------------------
+
+Submitted batch job 53818498
+sacct -j 53818498 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818498          0:0   00:00:17
+53818498.ba+      0:0   00:00:17    220680K
+53818498.ex+      0:0   00:00:17
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 328 loci...
+Processing all_FAIL: Copying 42 loci...
+Processing clades_PASS_blc_FAIL: Copying 102 loci...
+Processing blc_PASS_clades_FAIL: Copying 1527 loci...
+Processing FAIL_at_least_one: Copying 1672 loci...
+Processing PASS_at_least_one: Copying 1958 loci...
+------------------------------------------------
+
+Submitting create intersections job for random seed: 34567
+Submitted batch job 53818499
+sacct -j 53818499 -o $i
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53818499          0:0   00:00:17
+53818499.ba+      0:0   00:00:17    213924K
+53818499.ex+      0:0   00:00:17
+------------------------------------------------
+INTERSECTION SUMMARY REPORT
+------------------------------------------------
+Processing all_PASS: Copying 399 loci...
+Processing all_FAIL: Copying 40 loci...
+Processing clades_PASS_blc_FAIL: Copying 102 loci...
+Processing blc_PASS_clades_FAIL: Copying 1459 loci...
+Processing FAIL_at_least_one: Copying 1601 loci...
+Processing PASS_at_least_one: Copying 1960 loci...
+------------------------------------------------
+
+Git Commit Message
+refactor(6.1): migrate to centralized variables and seed-based directory handling
+Centralized Configuration: Replaced local path variables (Project, Output, Original_Alignments) with a source call to variables.sh. This ensures the script uses the globally defined $outX_Y output variables, maintaining consistency across the entire simulation pipeline.
+Seed-Aware Execution: Refactored input and output paths to use $set_dir (derived from random_seed). This allows the script to be submitted via the batch wrapper to process all simulation sets (set_12345, set_67890, etc.) in parallel.
+Revised Directory Structure: Updated subdirectory names to be more descriptive and consistent with the project's terminology (e.g., changing S3_pass_S4_fail to clades_PASS_blc_FAIL).
+Path Correction: Updated input directory references to point to the correct seed-specific subfolders for Clade filtering (Step 3.3) and BLC filtering (Step 4.2).
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.2_submit_subset_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting subset trees array for random seed: $random_seed";
+  sbatch $ISubTree $random_seed
+done
+#---------------------------------
+sbatch 6.2_submit_subset_trees.sh
+
+Submitted batch job 53846170
+sacct -j 53846170 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53846170          0:0   00:00:00
+53846170.ba+      0:0   00:00:00      5492K
+53846170.ex+      0:0   00:00:00
+
+Submitting subset trees array for random seed: 12345
+Submitted batch job 53846171
+Submitting subset trees array for random seed: 67890
+Submitted batch job 53846172
+Submitting subset trees array for random seed: 23456
+Submitted batch job 53846173
+Submitting subset trees array for random seed: 78901
+Submitted batch job 53846174
+Submitting subset trees array for random seed: 34567
+Submitted batch job 53846175
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano infer_subset_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.2_trees"
+#SBATCH --time=36:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=20
+#SBATCH --mem=62G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --array=0-9
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+set_dir="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# --- 1. Mapping via Case Statement ---
+case $SLURM_ARRAY_TASK_ID in
+    0) name="all_PASS";          in="$out6_1/$set_dir/all_PASS" ;;
+    1) name="all_FAIL";          in="$out6_1/$set_dir/all_FAIL" ;;
+    2) name="clades_PASS";       in="$out3_3/$set_dir/pass_0.05" ;;
+    3) name="clades_FAIL";       in="$out3_3/$set_dir/fail_0.05" ;;
+    4) name="blc_PASS";          in="$out4_2/$set_dir/pass_loci" ;;
+    5) name="blc_FAIL";          in="$out4_2/$set_dir/fail_loci" ;;
+    # Intersection Groups
+    6) name="clades_PASS_blc_FAIL";   in="$out6_1/$set_dir/clades_PASS_blc_FAIL" ;;
+    7) name="blc_PASS_clades_FAIL";   in="$out6_1/$set_dir/blc_PASS_clades_FAIL" ;;
+    8) name="FAIL_at_least_one";      in="$out6_1/$set_dir/FAIL_at_least_one" ;;
+    9) name="PASS_at_least_one";      in="$out6_1/$set_dir/PASS_at_least_one" ;;
+esac
+
+WORK_DIR="$out6_2/$set_dir/$name"
+FINAL_TREE="$WORK_DIR/${name}_tree.treefile"
+
+# --- 2. Check for Existing Output ---
+if [ -f "$FINAL_TREE" ]; then
+    echo "Task ID $SLURM_ARRAY_TASK_ID ($name): Final tree found at $FINAL_TREE."
+    echo "Skipping to avoid re-running."
+    exit 0
+fi
+
+# --- 3. Safety Checks ---
+if [ ! -d "$in" ]; then
+    echo "ERROR: Input directory $in not found."
+    exit 1
+fi
+
+mkdir -p "$WORK_DIR"
+cd "$WORK_DIR" || exit
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+echo "Task ID $SLURM_ARRAY_TASK_ID: Starting inference for $name"
+
+# --- 4. Run AMAS ---
+# Get the RELATIVE path from WORK_DIR to the input alignments
+# This makes the paths in the command much shorter
+REL_IN=$(realpath --relative-to="." "$in")
+
+python3 "$run_amas" "$REL_IN" "${SLURM_CPUS_PER_TASK}" "${AMAS}" > amas_concat.log 2>&1
+
+if [ ! -f "concatenated.fasta" ]; then
+    echo "ERROR: AMAS FAILed to create concatenated.fasta in $WORK_DIR"
+    exit 1
+fi
+
+# --- 5. Run IQ-TREE ---
+
+# Generate a starting tree:
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -pre StartTree \
+    -m GTR+G -fast
+
+${IQTREE} -nt AUTO -ntmax ${SLURM_CPUS_PER_TASK} \
+    -s "concatenated.fasta" \
+    -spp "partitions.txt" \
+    -pre ${name}_tree \
+    -t StartTree.treefile \
+    -m MFP -mset GTR -cmax 8 \
+    -bb 1000 --alrt 1000
+
+echo "Task $name complete."
+#---------------------------------
+Submitting subset trees array for random seed: 12345
+Submitted batch job 53846171
+sacct -j 53846171 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53846171_0        0:0   00:13:12
+53846171_0.+      0:0   00:13:12   2910616K
+53846171_0.+      0:0   00:13:12
+53846171_1        0:0   00:04:42
+53846171_1.+      0:0   00:04:42    456920K
+53846171_1.+      0:0   00:04:42
+53846171_2        0:0   00:29:22
+53846171_2.+      0:0   00:29:22   3782080K
+53846171_2.+      0:0   00:29:22
+53846171_3        0:0   02:28:03
+53846171_3.+      0:0   02:28:03  11762396K
+53846171_3.+      0:0   02:28:03
+53846171_4        0:0   02:13:25
+53846171_4.+      0:0   02:13:25  14101804K
+53846171_4.+      0:0   02:13:25
+53846171_5        0:0   00:11:12
+53846171_5.+      0:0   00:11:12   1419796K
+53846171_5.+      0:0   00:11:12
+53846171_6        0:0   00:09:16
+53846171_6.+      0:0   00:09:16   1018228K
+53846171_6.+      0:0   00:09:16
+53846171_7        0:0   02:15:43
+53846171_7.+      0:0   02:15:43  11408996K
+53846171_7.+      0:0   02:15:43
+53846171_8        0:0   01:46:24
+53846171_8.+      0:0   01:46:24  12703644K
+53846171_8.+      0:0   01:46:24
+53846171_9        0:0   02:22:08
+53846171_9.+      0:0   02:22:08  15063324K
+53846171_9.+      0:0   02:22:08
+
+Submitting subset trees array for random seed: 67890
+Submitted batch job 53846172
+sacct -j 53846172 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53846172_0        0:0   00:17:08
+53846172_0.+      0:0   00:17:08   2845452K
+53846172_0.+      0:0   00:17:08
+53846172_1        0:0   00:07:16
+53846172_1.+      0:0   00:07:16    603028K
+53846172_1.+      0:0   00:07:16
+53846172_2        0:0   00:29:45
+53846172_2.+      0:0   00:29:45   3716876K
+53846172_2.+      0:0   00:29:45
+53846172_3        0:0   01:56:55
+53846172_3.+      0:0   01:56:55  11567160K
+53846172_3.+      0:0   01:56:55
+53846172_4        0:0   01:51:12
+53846172_4.+      0:0   01:51:12  13806424K
+53846172_4.+      0:0   01:51:12
+53846172_5        0:0   00:14:22
+53846172_5.+      0:0   00:14:22   1423168K
+53846172_5.+      0:0   00:14:22
+53846172_6        0:0   00:09:47
+53846172_6.+      0:0   00:09:47   1029484K
+53846172_6.+      0:0   00:09:47
+53846172_7        0:0   02:12:46
+53846172_7.+      0:0   02:12:46  11193476K
+53846172_7.+      0:0   02:12:46
+53846172_8        0:0   03:02:10
+53846172_8.+      0:0   03:02:10  12508568K
+53846172_8.+      0:0   03:02:10
+53846172_9        0:0   03:49:21
+53846172_9.+      0:0   03:49:21  14591840K
+53846172_9.+      0:0   03:49:21
+
+Submitting subset trees array for random seed: 23456
+Submitted batch job 53846173
+sacct -j 53846173 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53846173_0        0:0   00:24:14
+53846173_0.+      0:0   00:24:14   2863808K
+53846173_0.+      0:0   00:24:14
+53846173_1        0:0   00:04:46
+53846173_1.+      0:0   00:04:46    442920K
+53846173_1.+      0:0   00:04:46
+53846173_2        0:0   00:21:10
+53846173_2.+      0:0   00:21:10   3800248K
+53846173_2.+      0:0   00:21:10
+53846173_3        0:0   01:59:31
+53846173_3.+      0:0   01:59:31  11819124K
+53846173_3.+      0:0   01:59:31
+53846173_4        0:0   03:55:47
+53846173_4.+      0:0   03:55:47  14050576K
+53846173_4.+      0:0   03:55:47
+53846173_5        0:0   00:10:02
+53846173_5.+      0:0   00:10:02   1353732K
+53846173_5.+      0:0   00:10:02
+53846173_6        0:0   00:06:40
+53846173_6.+      0:0   00:06:40   1076800K
+53846173_6.+      0:0   00:06:40
+53846173_7        0:0   02:38:11
+53846173_7.+      0:0   02:38:11  11436532K
+53846173_7.+      0:0   02:38:11
+53846173_8        0:0   02:07:49
+53846173_8.+      0:0   02:07:49  12713096K
+53846173_8.+      0:0   02:07:49
+53846173_9        0:0   01:57:12
+53846173_9.+      0:0   01:57:12  15079788K
+53846173_9.+      0:0   01:57:12
+
+Submitting subset trees array for random seed: 78901
+Submitted batch job 53846174
+sacct -j 53846174 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53846174_0        0:0   00:29:38
+53846174_0.+      0:0   00:29:38   2601156K
+53846174_0.+      0:0   00:29:38
+53846174_1        0:0   00:05:07
+53846174_1.+      0:0   00:05:07    469308K
+53846174_1.+      0:0   00:05:07
+53846174_2        0:0   00:17:25
+53846174_2.+      0:0   00:17:25   3546984K
+53846174_2.+      0:0   00:17:25
+53846174_3        0:0   02:16:30
+53846174_3.+      0:0   02:16:30  12180756K
+53846174_3.+      0:0   02:16:30
+53846174_4        0:0   01:21:33
+53846174_4.+      0:0   01:21:33  14542916K
+53846174_4.+      0:0   01:21:33
+53846174_5        0:0   00:06:59
+53846174_5.+      0:0   00:06:59   1370700K
+53846174_5.+      0:0   00:06:59
+53846174_6        0:0   00:06:48
+53846174_6.+      0:0   00:06:48   1034000K
+53846174_6.+      0:0   00:06:48
+53846174_7        0:0   01:07:18
+53846174_7.+      0:0   01:07:18     11652M
+53846174_7.+      0:0   01:07:18
+53846174_8        0:0   01:40:36
+53846174_8.+      0:0   01:40:36  13123556K
+53846174_8.+      0:0   01:40:36
+53846174_9        0:0   02:05:34
+53846174_9.+      0:0   02:05:34  15311680K
+53846174_9.+      0:0   02:05:34
+
+Submitting subset trees array for random seed: 34567
+Submitted batch job 53846175
+sacct -j 53846175 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53846175_0        0:0   00:23:11
+53846175_0.+      0:0   00:23:11   3058364K
+53846175_0.+      0:0   00:23:11
+53846175_1        0:0   00:04:33
+53846175_1.+      0:0   00:04:33    440716K
+53846175_1.+      0:0   00:04:33
+53846175_2        0:0   00:25:46
+53846175_2.+      0:0   00:25:46   3938072K
+53846175_2.+      0:0   00:25:46
+53846175_3        0:0   01:06:54
+53846175_3.+      0:0   01:06:54  11521616K
+53846175_3.+      0:0   01:06:55
+53846175_4        0:0   02:03:19
+53846175_4.+      0:0   02:03:19  14036868K
+53846175_4.+      0:0   02:03:19
+53846175_5        0:0   00:10:11
+53846175_5.+      0:0   00:10:11   1379456K
+53846175_5.+      0:0   00:10:11
+53846175_6        0:0   00:07:38
+53846175_6.+      0:0   00:07:38   1108532K
+53846175_6.+      0:0   00:07:38
+53846175_7        0:0   01:33:03
+53846175_7.+      0:0   01:33:03  11190244K
+53846175_7.+      0:0   01:33:03
+53846175_8        0:0   02:10:41
+53846175_8.+      0:0   02:10:41  12378128K
+53846175_8.+      0:0   02:10:41
+53846175_9        0:0   02:23:34
+53846175_9.+      0:0   02:23:34  14786464K
+53846175_9.+      0:0   02:23:34
+
+Git Commit Message
+refactor(6.2): optimize subset inference with relative pathing and partitioned models
+Fixed OSError [Errno 7]: Implemented realpath --relative-to logic to calculate the relative path between the working directory and input alignments. This drastically reduces the character count of the AMAS command string, bypassing the "Argument list too long" shell buffer limit.
+Centralized Variables: Migrated all hardcoded paths (Project, Output, IQTREE, AMAS) to a source call of variables.sh, enabling seed-based parallelization across multiple simulation sets (set_$seed).
+Advanced Inference Strategy: Upgraded IQ-TREE workflow from a single-model search (GTR+F+R8) to a high-precision partitioned analysis:
+Phase 1: Rapid starting tree generation using -m GTR+G -fast.
+Phase 2: Full partitioned model search using -spp partitions.txt with ModelFinder (MFP) restricted to GTR-variants (-mset GTR).
+Dataset Consistency: Updated case-statement mapping and subdirectory names to align with Step 6.1 intersection categories (e.g., All_pass → all_PASS).
+Job Control: Removed the -redo flag from the final IQ-TREE call to allow for checkpoint recovery and integrated standardized SLURM headers for the URI cluster.
+
+6.3 - removed (was make ultrametric, which is unnecessary)
+Option - add scale trees step here for branch length comparison metrics
+
+new 6.3: gather trees (before comparisons)
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.3_gather_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=filter_loci
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --mem=1G
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds; do
+  set_dir="set_$random_seed"
+  echo "Gathering trees for simulation $set_dir";
+
+  FinalDir="$out6_3/$set_dir"
+  mkdir -p "$FinalDir"
+
+  # 1. Unfiltered (Note: out4_0 path)
+  cp "$out4_0/$set_dir/Unfiltered_loci_ref_tree.treefile" "$FinalDir/Unfiltered_all_Loci.treefile"
+
+  # 2. Subset Trees (Tasks 0-9 from Step 6.2)
+  # We use a list to make the code cleaner and less prone to typos
+  subsets="all_PASS all_FAIL clades_PASS clades_FAIL blc_PASS blc_FAIL \
+           clades_PASS_blc_FAIL blc_PASS_clades_FAIL FAIL_at_least_one PASS_at_least_one"
+
+  for name in $subsets; do
+    SOURCE_FILE="$out6_2/$set_dir/$name/${name}_tree.treefile"
+    if [ -f "$SOURCE_FILE" ]; then
+        cp "$SOURCE_FILE" "$FinalDir/${name}.treefile"
+    else
+        echo "Warning: $name tree not found for $set_dir"
+    fi
+  done
+
+  echo "Gathered trees in $FinalDir:"
+  ls "$FinalDir"
+done
+#---------------------------------
+sbatch 6.3_gather_trees.sh
+Submitted batch job 53882130
+sacct -j 53882130 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53882130          0:0   00:00:00
+53882130.ba+      0:0   00:00:00      5636K
+53882130.ex+      0:0   00:00:00
+
+Gathering trees for simulation set_12345
+Gathered trees in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_filtered_sim_trees/
+set_12345:
+all_FAIL.treefile
+all_PASS.treefile
+blc_FAIL.treefile
+blc_PASS_clades_FAIL.treefile
+blc_PASS.treefile
+clades_FAIL.treefile
+clades_PASS_blc_FAIL.treefile
+clades_PASS.treefile
+FAIL_at_least_one.treefile
+PASS_at_least_one.treefile
+Unfiltered_all_Loci.treefile
+Gathering trees for simulation set_67890
+Gathered trees in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_filtered_sim_trees/set_67890:
+all_FAIL.treefile
+all_PASS.treefile
+blc_FAIL.treefile
+blc_PASS_clades_FAIL.treefile
+blc_PASS.treefile
+clades_FAIL.treefile
+clades_PASS_blc_FAIL.treefile
+clades_PASS.treefile
+FAIL_at_least_one.treefile
+PASS_at_least_one.treefile
+Unfiltered_all_Loci.treefile
+Gathering trees for simulation set_23456
+Gathered trees in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_filtered_sim_trees/set_23456:
+all_FAIL.treefile
+all_PASS.treefile
+blc_FAIL.treefile
+blc_PASS_clades_FAIL.treefile
+blc_PASS.treefile
+clades_FAIL.treefile
+clades_PASS_blc_FAIL.treefile
+clades_PASS.treefile
+FAIL_at_least_one.treefile
+PASS_at_least_one.treefile
+Unfiltered_all_Loci.treefile
+Gathering trees for simulation set_78901
+Gathered trees in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_filtered_sim_trees/set_78901:
+all_FAIL.treefile
+all_PASS.treefile
+blc_FAIL.treefile
+blc_PASS_clades_FAIL.treefile
+blc_PASS.treefile
+clades_FAIL.treefile
+clades_PASS_blc_FAIL.treefile
+clades_PASS.treefile
+FAIL_at_least_one.treefile
+PASS_at_least_one.treefile
+Unfiltered_all_Loci.treefile
+Gathering trees for simulation set_34567
+Gathered trees in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_filtered_sim_trees/set_34567:
+all_FAIL.treefile
+all_PASS.treefile
+blc_FAIL.treefile
+blc_PASS_clades_FAIL.treefile
+blc_PASS.treefile
+clades_FAIL.treefile
+clades_PASS_blc_FAIL.treefile
+clades_PASS.treefile
+FAIL_at_least_one.treefile
+PASS_at_least_one.treefile
+Unfiltered_all_Loci.treefile
+
+Git Commit Message
+feat(6.3): implement centralized tree gathering for comparative analysis
+Data Consolidation: Added 6.3_gather_trees.sh to harvest best-fit ML trees (.treefile) from disparate Step 4.0 (Unfiltered) and Step 6.2 (Subset Array) output directories.
+Seed-Based Organization: Structured the script to create seed-specific subdirectories within $out6_3, ensuring all 10 experimental trees per simulation set are co-located for downstream R analysis.
+Improved Robustness: Replaced redundant manual cp commands with a dynamic loop and added file-existence checks to provide clear warnings if specific IQ-TREE inferences are missing.
+Variable Alignment: Corrected internal variable scoping (shifting from $dir_name to $set_dir) to ensure full compatibility with the master variables.sh environment.
+Standardization: Normalized filenames during the copy process to simplify the argument string for the final compare_trees.R execution.
+
+6.4
+Notes:
+1. for the truth tree, Use the ultrametric tree from 1.1
+2. Compare that to all the trees infered in 4.0 and 6.2
+3. Compare using Robinson Folds Distance, Weighted Robinson Folds Distance, path distance, quartet distance, mean SH, mean UF, # resolved nodes
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano compare_trees.R
+#---------------------------------
+#!/usr/bin/env Rscript
+# Required libraries
+library(ape)
+library(phangorn)
+library(Quartet)
+
+# Capture arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) < 5) {
+  stop("Usage: Rscript compare_trees.R <truth_tree> <taxon_map> <output_csv> <test_tree1> <label1> ...")
+}
+
+truth_path <- args[1]
+map_path   <- args[2]
+out_csv    <- args[3]
+
+# 1. Load Truth Tree and Taxon Map
+truth_tree <- read.tree(truth_path)
+taxon_map  <- read.csv(map_path)
+
+# 2. Rename Truth Tree tips from numbers to names
+truth_tree$tip.label <- taxon_map$name[match(truth_tree$tip.label, taxon_map$number)]
+
+# 3. Setup Results dataframe (Updated with Support Columns)
+results <- data.frame(Dataset = character(),
+                      RF = numeric(),
+                      wRF = numeric(),
+                      Quartet_Dist = numeric(),
+                      Mean_SH = numeric(),
+                      Mean_UF = numeric(),
+                      Resolved_Nodes = numeric(),
+                      stringsAsFactors = FALSE)
+
+# 4. Iterate through test trees
+tree_args <- args[4:length(args)]
+for (i in seq(1, length(tree_args), by = 2)) {
+  tree_path <- tree_args[i]
+  label     <- tree_args[i+1]
+
+  if (file.exists(tree_path)) {
+    test_tree <- read.tree(tree_path)
+
+    # Ensure tip labels match exactly and are pruned to match truth
+    test_tree <- keep.tip(test_tree, truth_tree$tip.label)
+
+    # --- Metric 1: Standard RF ---
+    rf_val <- phangorn::RF.dist(truth_tree, test_tree)
+
+    # --- Metric 2: Weighted RF ---
+    wrf_val <- phangorn::wRF.dist(truth_tree, test_tree)
+
+    # --- Metric 3: Quartet Distance ---
+    q_status <- Quartet::QuartetStatus(truth_tree, test_tree)
+    quart_val <- q_status[,'N'] - q_status[,'s']
+
+    # --- Metric 4: Support Value Parsing (SH/UF) ---
+    # Extract labels, ignoring empty strings (often the root)
+    raw_supports <- test_tree$node.label[test_tree$node.label != ""]
+
+    if (length(raw_supports) > 0) {
+        # Split "98.5/100" into two columns
+        sup_matrix <- do.call(rbind, strsplit(raw_supports, "/"))
+        sh_vals <- as.numeric(sup_matrix[,1])
+        uf_vals <- as.numeric(sup_matrix[,2])
+
+        m_sh <- mean(sh_vals, na.rm = TRUE)
+        m_uf <- mean(uf_vals, na.rm = TRUE)
+
+        # Count nodes meeting both high-support thresholds
+        res_nodes <- sum(sh_vals >= 80 & uf_vals >= 95, na.rm = TRUE)
+    } else {
+        m_sh <- m_uf <- res_nodes <- NA
+    }
+
+    # Append to results
+    results <- rbind(results, data.frame(Dataset = label,
+                                         RF = rf_val,
+                                         wRF = wrf_val,
+                                         Quartet_Dist = quart_val,
+                                         Mean_SH = m_sh,
+                                         Mean_UF = m_uf,
+                                         Resolved_Nodes = res_nodes))
+
+    cat("Analyzed:", label, "| Mean UF:", round(m_uf, 1), "\n")
+  } else {
+    cat("Warning: File not found -", tree_path, "\n")
+  }
+}
+
+# 5. Write and Print Results
+write.csv(results, out_csv, row.names = FALSE)
+
+cat("\n==========================================================================================\n")
+cat("                                TREE COMPARISON & SUPPORT REPORT                           \n")
+cat("==========================================================================================\n")
+cat(sprintf("%-25s %-5s %-8s %-10s %-8s %-8s %-10s\n",
+            "Dataset", "RF", "wRF", "Quart_D", "Avg_SH", "Avg_UF", "Resolved"))
+cat("------------------------------------------------------------------------------------------\n")
+for(i in 1:nrow(results)){
+  cat(sprintf("%-25s %-5.0f %-8.3f %-10.0f %-8.1f %-8.1f %-10.0f\n",
+              results$Dataset[i],
+              results$RF[i],
+              results$wRF[i],
+              results$Quartet_Dist[i],
+              results$Mean_SH[i],
+              results$Mean_UF[i],
+              results$Resolved_Nodes[i]))
+}
+cat("==========================================================================================\n")
+cat("Note: Lower values indicate higher accuracy (closer to truth).\n")
+cat("Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.\n")
+cat("==========================================================================================\n")
+#---------------------------------
+
+nano 6.4_submit_subset_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=submit_jobs
+#SBATCH --ntasks=1
+#SBATCH --mem=100M
+#SBATCH -p uri-cpu
+#SBATCH --time=00:05:00
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+for random_seed in $seeds;
+  do
+  echo "Submitting compare trees job for random seed: $random_seed";
+  sbatch $CompTree $random_seed
+done
+#---------------------------------
+sbatch 6.4_submit_subset_trees.sh
+Submitted batch job 53890249
+
+sacct -j 53890249 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53890249          0:0   00:00:00
+53890249.ba+      0:0   00:00:00      5492K
+53890249.ex+      0:0   00:00:00
+
+Submitting compare trees job for random seed: 12345
+Submitted batch job 53890259
+Submitting compare trees job for random seed: 67890
+Submitted batch job 53890261
+Submitting compare trees job for random seed: 23456
+Submitted batch job 53890262
+Submitting compare trees job for random seed: 78901
+Submitted batch job 53890264
+Submitting compare trees job for random seed: 34567
+Submitted batch job 53890265
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano compare_trees.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="6.4_RF_compare"
+#SBATCH --time=01:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --mem=8G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+random_seed=$1
+echo "Random number seed = $random_seed"
+dir_name="set_$random_seed"
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# 1. Paths to Trees
+SimTrees="$out6_3/$dir_name/"
+ResultsCSV="Tree_Comparison_Report.csv"
+FinalOut="$out6_4/$dir_name"
+
+mkdir -p "$FinalOut"
+cd "$FinalOut"
+
+# --- 2. Safety Check for Required Files ---
+echo "--- Initializing Safety Checks ---"
+if [ ! -f "$Truth" ]; then echo "ERROR: Truth tree not found at $Truth"; exit 1; fi
+if [ ! -f "$Taxon_Map" ]; then echo "ERROR: Taxon map not found at $Taxon_Map"; exit 1; fi
+if [ ! -d "$SimTrees" ]; then echo "ERROR: Directory $SimTrees does not exist"; exit 1; fi
+
+# --- Environment ---
+module purge
+module load uri/main
+# Use the toolchain that R was built with (gfbf/2023a)
+module load R/4.3.2-gfbf-2023a
+
+# Maintain your library and library-path exports
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- 3. Dynamic Argument Builder (Bulletproof Version) ---
+CMD_ARGS=("$Truth" "$Taxon_Map" "$ResultsCSV")
+found_count=0
+
+# Define filenames
+FILES=(
+    "Unfiltered_all_Loci.treefile"
+    "all_PASS.treefile"
+    "all_FAIL.treefile"
+    "clades_PASS.treefile"
+    "clades_FAIL.treefile"
+    "blc_PASS.treefile"
+    "blc_FAIL.treefile"
+    "clades_PASS_blc_FAIL.treefile"
+    "blc_PASS_clades_FAIL.treefile"
+    "FAIL_at_least_one.treefile"
+    "PASS_at_least_one.treefile"
+)
+
+# Define labels in the EXACT same order
+LABELS=(
+    "Unfiltered_Baseline"
+    "Elite_all_PASS"
+    "Noisy_all_FAIL"
+    "clades_PASS"
+    "clades_FAIL"
+    "blc_PASS"
+    "blc_FAIL"
+    "clades_PASS_blc_FAIL"
+    "blc_PASS_clades_FAIL"
+    "FAIL_at_least_one"
+    "PASS_at_least_one"
+)
+
+# Iterate using an index
+for i in "${!FILES[@]}"; do
+    FILE="${FILES[$i]}"
+    LABEL="${LABELS[$i]}"
+    FULL_PATH="$SimTrees/$FILE"
+
+    if [ -f "$FULL_PATH" ]; then
+        echo "Adding to comparison: $LABEL"
+        CMD_ARGS+=("$FULL_PATH" "$LABEL")
+        ((found_count++))
+    else
+        echo "MISSING: $FILE"
+    fi
+done
+
+if [ "$found_count" -eq 0 ]; then
+    echo "FATAL ERROR: No trees found. Paths checked: $SimTrees"
+    exit 1
+fi
+
+# --- 4. Execute Comparison ---
+echo "--- Running R Comparison Script with $found_count trees ---"
+Rscript "$CompTreeR" "${CMD_ARGS[@]}"
+
+echo "6.4 Comparison complete."
+#---------------------------------
+
+Submitting compare trees job for random seed: 12345
+Submitted batch job 53890259
+sacct -j 53890259 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53890259          0:0   00:00:11
+53890259.ba+      0:0   00:00:11    242060K
+53890259.ex+      0:0   00:00:11
+Submitting compare trees job for random seed: 67890
+Submitted batch job 53890261
+sacct -j 53890261 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53890261          0:0   00:00:11
+53890261.ba+      0:0   00:00:11    243916K
+53890261.ex+      0:0   00:00:11
+Submitting compare trees job for random seed: 23456
+Submitted batch job 53890262
+sacct -j 53890262 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53890262          0:0   00:00:11
+53890262.ba+      0:0   00:00:11    242404K
+53890262.ex+      0:0   00:00:11
+Submitting compare trees job for random seed: 78901
+Submitted batch job 53890264
+sacct -j 53890264 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53890264          0:0   00:00:11
+53890264.ba+      0:0   00:00:11    242092K
+53890264.ex+      0:0   00:00:11
+Submitting compare trees job for random seed: 34567
+Submitted batch job 53890265
+sacct -j 53890265 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+53890265          0:0   00:00:11
+53890265.ba+      0:0   00:00:11    241732K
+53890265.ex+      0:0   00:00:11
+
+Git commit message:
+feat(6.4): finalize seed-based tree comparison pipeline and variable mapping
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/6_infer_and_compare_trees/
+
+nano 6.5_gather_results.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=gather_results
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:15:00
+#SBATCH --mem=1G
+
+# Source parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Define the results file location
+mkdir -p $out6_5
+ResultsCSV="$out6_5/Results_All_Seeds.csv"
+
+echo "Merging results from $out6_4 into $ResultsCSV"
+
+# 1. Create the results file with a header (Updated to "Simulation_Set")
+first_seed=$(echo $seeds | awk '{print $1}')
+header=$(head -n 1 "$out6_4/set_$first_seed/Tree_Comparison_Report.csv")
+echo "Simulation_Set,$header" > "$ResultsCSV"
+
+# 2. Loop through each seed and append the data
+for random_seed in $seeds; do
+    input_file="$out6_4/set_$random_seed/Tree_Comparison_Report.csv"
+
+    if [ -f "$input_file" ]; then
+        echo "Processing Seed: $random_seed"
+        # Prepend "Set_" followed by the seed number to every line
+        # sed "s/^/Set_$random_seed,/" inserts the string at the start of the line
+        tail -n +2 "$input_file" | sed "s/^/Set_$random_seed,/" >> "$ResultsCSV"
+    else
+        echo "Warning: No results found for seed $random_seed"
+    fi
+done
+
+echo "Done! results file created with $(wc -l < $ResultsCSV) lines."
+#---------------------------------
+sbatch 6.5_gather_results.sh
+Submitted batch job 55634167
+sacct -j 55634167 -o JobID,ExitCode,Elapsed,MaxRSS
+
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+55634167          0:0   00:00:00
+55634167.ba+      0:0   00:00:00      5564K
+55634167.ex+      0:0   00:00:00
+
+Merging results from /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.4_comparisons into /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.5_results/Results_All_Seeds.csv
+Processing Seed: 12345
+Processing Seed: 67890
+Processing Seed: 23456
+Processing Seed: 78901
+Processing Seed: 34567
+Done! results file created with 56 lines.
+
+Git commit message:
+feat(6.5): finalize results aggregation with categorical set labeling
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+2026.10.08
+
+Module 7: Filter_Empirical_by_Known_Clades
+Filter empirical loci for support for Established Clades
+
+mkdir -p /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+
+Note: Reusing generate_constraints.R for Step 7
+Single Script: Kept generate_constraints.R in the Step 3 folder instead of making a duplicate copy in Step 7.
+Handled in variables.sh: Stored the script path under the $GenConR variable so Step 7 can call it directly with empirical inputs and outputs.
+Why: Avoids copy-pasting code, keeps everything consistent, and ensures future bug fixes or updates apply to both simulation and empirical runs at the same time.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+nano 7.0_generate_emp_constraints.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=constraints
+#SBATCH --partition=uri-cpu
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input empirical alignments (from 0_data_prep):
+Alignments=$DATA
+
+# Output subdirectory for the constraint tree:
+out_dir="$out7_0"
+mkdir -p "$out_dir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# --- Execute ---
+Rscript $GenConR "$Alignments" "$out_dir" "$clades"
+
+# --- Audit & Confirmation ---
+echo "------------------------------------------------"
+echo "Post-Processing Audit:"
+expected_count=$(find "$Alignments" -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | wc -l)
+actual_count=$(find "$out_dir" -maxdepth 1 -name "*_constraint.newick" | wc -l)
+
+echo "Expected constraints: $expected_count"
+echo "Generated constraints: $actual_count"
+
+if [ "$expected_count" -eq "$actual_count" ]; then
+    echo "SUCCESS: All constraint files were generated correctly."
+else
+    echo "NOTICE: Count mismatch! Some loci may not have enough taxa to form a constraint."
+fi
+echo "------------------------------------------------"
+#---------------------------------
+sbatch 7.0_generate_emp_constraints.sh
+Submitted batch job 65435964
+sacct -j 65435964 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65435964          0:0   00:04:07
+65435964.ba+      0:0   00:04:07   1026012K
+65435964.ex+      0:0   00:04:07
+
+Generated 109799 constraint files.
+------------------------------------------------
+Post-Processing Audit:
+Expected constraints: 109799
+Generated constraints: 109799
+SUCCESS: All constraint files were generated correctly.
+------------------------------------------------
+
+Number of constraints generated:
+109799 (55x as many loci as simulations)
+
+2026.10.08
+
+7.1_iqtree_emp_likelihoods.sh
+- Adapted from 3.1 to process empirical alignments without simulation seed loops.
+- Replaced wildcard ls piping with posix-extended regex find to handle .fasta/.fas/.fa formats and prevent ARG_MAX errors.
+- Added file-existence check for locus constraints to safely handle missing taxa.
+- Adjusted SLURM resource allocation to 30 cpus-per-task and 16G memory to support GNU Parallel workloads.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+nano 7.1_iqtree_emp_likelihoods.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=iqtree_emp
+#SBATCH --partition=uri-cpu
+#SBATCH --time=7-00:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=30
+#SBATCH --mem=16G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script:
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source $vars
+echo "Variables sourced into current shell environment:"
+cat $vars
+
+# Input empirical alignments (from 0_data_prep):
+Alignments="$DATA"
+# Input constraint trees (generated by 7.0)
+Constraints="$out7_0"
+
+OutDir="$out7_1"
+mkdir -p "$OutDir"
+
+# --- Environment Setup ---
+module purge
+module load uri/main
+module load foss/2024a
+module load parallel/20240822
+
+# --- Command Factory Logic ---
+run_iqtree() {
+    locus_path="$1"
+    filename=$(basename "$locus_path")
+    locus_id="${filename%.*}"
+
+    # 1. Unconstrained Run
+    "$IQTREE" -s "$locus_path" -m GTR+G -pre "$OutDir/${locus_id}_uncon" -nt 1 -redo -quiet
+
+    # 2. Constrained Run (only if constraint exists)
+    const_file="$Constraints/${locus_id}_constraint.newick"
+    if [ -f "$const_file" ]; then
+        "$IQTREE" -s "$locus_path" -m GTR+G -g "$const_file" -pre "$OutDir/${locus_id}_con" -nt 1 -redo -quiet
+    fi
+
+    # Cleanup auxiliary files
+    rm -f "$OutDir/${locus_id}_"*".ckp.gz" "$OutDir/${locus_id}_"*".bionj" "$OutDir/${locus_id}_"*".mldist"
+}
+
+export -f run_iqtree
+export IQTREE OutDir Constraints
+
+# --- Execute with GNU Parallel ---
+find "$Alignments" -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | \
+    parallel --env IQTREE --env OutDir --env Constraints -j 30 --no-notice run_iqtree {}
+
+echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
+#---------------------------------
+sbatch 7.1_iqtree_emp_likelihoods.sh
+Submitted batch job 65436321
+sacct -j 65436321 -o JobID,ExitCode,Elapsed,MaxRSS
+
+#Track iqtree output files:
+target=$(( $(find /scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/01_SISRS_loci_filtered -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | wc -l) + $(find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.0_emp_constraint_trees -maxdepth 1 -name "*_constraint.newick" | wc -l) ))
+watch -n 5 "echo -n 'Completed .iqtree files: '; find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.1_emp_likelihoods/ -maxdepth 1 -name '*.iqtree' | wc -l; echo 'Target total:           $target'"
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+Submitted batch job 65334590
+sacct -j 65334590 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65334590          0:0 1-11:06:42
+65334590.ba+      0:0 1-11:06:42   5063204K
+65334590.ex+      0:0 1-11:06:42
