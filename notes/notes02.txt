@@ -3995,7 +3995,7 @@ all_PASS.treefile
 blc_FAIL.treefile
 blc_PASS_clades_FAIL.treefile
 blc_PASS.treefile
-clades_FAIL.treefileq
+clades_FAIL.treefile
 clades_PASS_blc_FAIL.treefile
 clades_PASS.treefile
 FAIL_at_least_one.treefile
@@ -4632,8 +4632,95 @@ echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
 sbatch 7.1_iqtree_emp_likelihoods.sh
 Submitted batch job 65334590
 sacct -j 65334590 -o JobID,ExitCode,Elapsed,MaxRSS
+sacct -j 65334590 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+65334590          0:0 1-11:06:42            
+65334590.ba+      0:0 1-11:06:42   5063204K 
+65334590.ex+      0:0 1-11:06:42    
 
+#Track iqtree output files:
+target=$(( $(find /scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/01_SISRS_loci_filtered -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | wc -l) + $(find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.0_emp_constraint_trees -maxdepth 1 -name "*_constraint.newick" | wc -l) ))
+watch -n 5 "echo -n 'Completed .iqtree files: '; find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.1_emp_likelihoods/ -maxdepth 1 -name '*.iqtree' | wc -l; echo 'Target total:           $target'"
 
+2026.10.08
 
+Resolving IQ-TREE Sequence-to-Tree Mismatch Errors in Step 7.1
+
+Issue:
+During execution of 7.1_iqtree_emp_likelihoods.sh, numerous constrained IQ-TREE runs aborted with errors such as:
+  ERROR: Alignment sequence [Taxon_Name] does not appear in the tree
+  ERROR: Tree taxa and alignment sequence do not match (see above)
+
+Root Cause:
+IQ-TREE 2 requires every taxon present in an input alignment to also be explicitly present in the constraint tree passed via -g. In generate_constraints.R, clades were filtered using:
+  valid_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+Because empirical loci exhibit missing data, some loci capture only a single representative from a defined group (e.g., only Didelphis_virginiana from Metatheria). The length > 1 filter discarded these singleton clades, omitting those taxa from the Newick constraint string entirely. When IQ-TREE encountered a taxon in the alignment that was omitted from the constraint tree, it halted execution.
+
+Solution:
+Updated generate_constraints.R to partition taxa into multi-taxon clades (length > 1) and singleton taxa (length == 1):
+  1. Multi-taxon clades are wrapped in parentheses ((Taxon1,Taxon2)) to strictly enforce monophyly.
+  2. Singleton taxa are preserved as unconstrained root-level leaves ((CladeA),(CladeB),SingletonTaxon);.
+This satisfies IQ-TREE's requirement that all alignment tips exist in the tree while allowing singletons to remain topologically unconstrained without crashing.
+
+Step 3 and subsequent steps would also need to be re-run because it appears constraints for some of the simulated loci also failed due to this bug.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano generate_constraints.R
+#---------------------------------
+library(ape)
+
+# Capture arguments from shell
+args <- commandArgs(trailingOnly = TRUE)
+ALN_DIR     <- args[1]
+OUTPUT_DIR  <- args[2]
+CLADE_FILE  <- args[3]
+
+dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
+
+# Load Clade Definitions (Group, Taxa)
+clade_df <- read.csv(CLADE_FILE, header = TRUE)
+all_clades <- split(clade_df$Taxa, clade_df$Group)
+
+# Process all alignments (.fas, .fa, or .fasta)
+loci_files <- list.files(ALN_DIR, pattern = "\\.fast?a?$")
+
+for (f in loci_files) {
+  locus_path <- file.path(ALN_DIR, f)
+  fasta <- read.FASTA(locus_path)
+  present_taxa <- names(fasta)
+
+  # Intersect defined clades with what is actually present in this locus
+  pruned_clades <- lapply(all_clades, function(x) intersect(x, present_taxa))
+  
+  # Multi-taxon clades that can be constrained
+  multi_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+  
+  # Singleton taxa (only 1 representative of the group present in this locus)
+  single_taxa <- unlist(pruned_clades[sapply(pruned_clades, length) == 1])
+
+  # A constraint is only meaningful if at least one multi-taxon clade exists
+  if (length(multi_clades) > 0) {
+    clade_strings <- sapply(multi_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
+    
+    # Combine multi-taxon constrained groups and any singleton tips
+    all_elements <- c(clade_strings, single_taxa)
+    final_constraint <- paste0("(", paste(all_elements, collapse = ","), ");")
+
+    out_name <- gsub("\\.fast?a?$", "_constraint.newick", f)
+    write(final_constraint, file = file.path(OUTPUT_DIR, out_name))
+  }
+}
+cat(paste("Generated", length(list.files(OUTPUT_DIR)), "constraint files.\n"))
+#---------------------------------
+
+git commit message:
+fix(generate_constraints.R): include singleton taxa to prevent IQ-TREE mismatch errors
+
+- Retain single-taxon clade representatives at root level in constraint trees
+- Enforces monophyly for groups with >=2 taxa while leaving singletons unconstrained
+- Resolves IQ-TREE fatal error: 'Alignment sequence does not appear in the tree'
+
+Stopping notes02.txt here and starting a re-run from step 3 onward with notes03.txt
 
 

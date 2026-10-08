@@ -20,16 +20,23 @@ for (f in loci_files) {
   fasta <- read.FASTA(locus_path)
   present_taxa <- names(fasta)
 
-  # Intersect defined clades with what is actually in this locus
+  # Intersect defined clades with what is actually present in this locus
   pruned_clades <- lapply(all_clades, function(x) intersect(x, present_taxa))
-  valid_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+  
+  # Multi-taxon clades that can be constrained
+  multi_clades <- pruned_clades[sapply(pruned_clades, length) > 1]
+  
+  # Singleton taxa (only 1 representative of the group present in this locus)
+  single_taxa <- unlist(pruned_clades[sapply(pruned_clades, length) == 1])
 
-  if (length(valid_clades) > 0) {
-    # Create the constraint string
-    clade_strings <- sapply(valid_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
-    final_constraint <- paste0("(", paste(clade_strings, collapse = ","), ");")
+  # A constraint is only meaningful if at least one multi-taxon clade exists
+  if (length(multi_clades) > 0) {
+    clade_strings <- sapply(multi_clades, function(x) paste0("(", paste(x, collapse = ","), ")"))
+    
+    # Combine multi-taxon constrained groups and any singleton tips
+    all_elements <- c(clade_strings, single_taxa)
+    final_constraint <- paste0("(", paste(all_elements, collapse = ","), ");")
 
-    # Strip .fas or .fasta cleanly using regex substitution and Save as locus_i_constraint.newick
     out_name <- gsub("\\.fast?a?$", "_constraint.newick", f)
     write(final_constraint, file = file.path(OUTPUT_DIR, out_name))
   }
