@@ -30,30 +30,67 @@ module load uri/main
 module load foss/2024a
 module load parallel/20240822
 
-# --- Command Factory Logic ---
+# --- Command Factory Function for GNU Parallel ---
 run_iqtree() {
     locus_path="$1"
     filename=$(basename "$locus_path")
     locus_id="${filename%.*}"
 
-    # 1. Unconstrained Run
-    "$IQTREE" -s "$locus_path" -m GTR+G -pre "$OutDir/${locus_id}_uncon" -nt 1 -redo -quiet
-
-    # 2. Constrained Run (only if constraint exists)
     const_file="$Constraints/${locus_id}_constraint.newick"
+
+    # Define runs to evaluate
+    run_types=("uncon")
     if [ -f "$const_file" ]; then
-        "$IQTREE" -s "$locus_path" -m GTR+G -g "$const_file" -pre "$OutDir/${locus_id}_con" -nt 1 -redo -quiet
+        run_types+=("con")
     fi
 
-    # Cleanup auxiliary files
-    rm -f "$OutDir/${locus_id}_"*".ckp.gz" "$OutDir/${locus_id}_"*".bionj" "$OutDir/${locus_id}_"*".mldist"
+    # Shared execution block for unconstrained and constrained inferences
+    for run_type in "${run_types[@]}"; do
+        out_prefix="$OutDir/${locus_id}_${run_type}"
+
+        # Resume logic: skip if non-empty report exists
+        if [ ! -s "${out_prefix}.iqtree" ]; then
+
+            # Dynamic argument configuration:
+            # - Unconstrained uses '-t BIONJ' to bypass RapidNJ missing-data crashes
+            # - Constrained uses '-g' (mutually exclusive with -t BIONJ in IQ-TREE)
+            extra_args=()
+            if [ "$run_type" = "uncon" ]; then
+                extra_args=("-t" "BIONJ")
+            elif [ "$run_type" = "con" ]; then
+                extra_args=("-g" "$const_file")
+            fi
+
+            "$IQTREE" -s "$locus_path" \
+                      -m GTR+G \
+                      "${extra_args[@]}" \
+                      -pre "$out_prefix" \
+                      -nt 1 \
+                      -redo \
+                      -quiet
+        fi
+    done
+
+    # Post-execution cleanup of intermediate scratch files
+    rm -f "$OutDir/${locus_id}_"*".ckp.gz" \
+          "$OutDir/${locus_id}_"*".bionj" \
+          "$OutDir/${locus_id}_"*".mldist"
 }
 
+# Export function and static paths directly into subshell environments
 export -f run_iqtree
 export IQTREE OutDir Constraints
 
-# --- Execute with GNU Parallel ---
+# ------------------------------------------------------------------------------
+# Parallel Execution
+# ------------------------------------------------------------------------------
+# Use 'find' with POSIX regex instead of 'ls' to handle ~110k files without ARG_MAX errors.
 find "$Alignments" -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | \
-    parallel --env IQTREE --env OutDir --env Constraints -j 30 --no-notice run_iqtree {}
+    parallel --env IQTREE \
+             --env OutDir \
+             --env Constraints \
+             -j 30 \
+             --no-notice \
+             run_iqtree {}
 
 echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
