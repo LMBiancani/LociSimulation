@@ -2293,51 +2293,51 @@ Submitting iqtree likelihood job for random seed: 12345
 Submitted batch job 65650932
 IQ-TREE inferences complete. Likelihoods saved in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.1_likelihoods/set_12345
 sacct -j 65650932 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65650932          0:0   00:38:12            
-65650932.ba+      0:0   00:38:12    466788K 
-65650932.ex+      0:0   00:38:12  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65650932          0:0   00:38:12
+65650932.ba+      0:0   00:38:12    466788K
+65650932.ex+      0:0   00:38:12
 
 Submitting iqtree likelihood job for random seed: 67890
 Submitted batch job 65650933
 IQ-TREE inferences complete. Likelihoods saved in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.1_likelihoods/set_67890
 sacct -j 65650933 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65650933          0:0   00:36:40            
-65650933.ba+      0:0   00:36:40    460948K 
-65650933.ex+      0:0   00:36:40    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65650933          0:0   00:36:40
+65650933.ba+      0:0   00:36:40    460948K
+65650933.ex+      0:0   00:36:40
 
 Submitting iqtree likelihood job for random seed: 23456
 Submitted batch job 65650934
 IQ-TREE inferences complete. Likelihoods saved in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.1_likelihoods/set_23456
 sacct -j 65650934 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65650934          0:0   00:20:34            
-65650934.ba+      0:0   00:20:34    480460K 
-65650934.ex+      0:0   00:20:34   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65650934          0:0   00:20:34
+65650934.ba+      0:0   00:20:34    480460K
+65650934.ex+      0:0   00:20:34
 
 Submitting iqtree likelihood job for random seed: 78901
 Submitted batch job 65650935
 IQ-TREE inferences complete. Likelihoods saved in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.1_likelihoods/set_78901
 sacct -j 65650935 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65650935          0:0   00:41:51            
-65650935.ba+      0:0   00:41:51    493404K 
-65650935.ex+      0:0   00:41:51  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65650935          0:0   00:41:51
+65650935.ba+      0:0   00:41:51    493404K
+65650935.ex+      0:0   00:41:51
 
 Submitting iqtree likelihood job for random seed: 34567
 Submitted batch job 65650936
 IQ-TREE inferences complete. Likelihoods saved in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.1_likelihoods/set_34567
 sacct -j 65650936 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65650936          0:0   00:21:28            
-65650936.ba+      0:0   00:21:28    452116K 
-65650936.ex+      0:0   00:21:28    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65650936          0:0   00:21:28
+65650936.ba+      0:0   00:21:28    452116K
+65650936.ex+      0:0   00:21:28
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano LRT_filter.R
@@ -2456,53 +2456,53 @@ done
 sbatch 3.2_LRT_filter.sh
 Submitted batch job 65670688
 sacct -j 65670688 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65670688          0:0   00:01:11            
-65670688.ba+      0:0   00:01:11    334372K 
-65670688.ex+      0:0   00:01:11       
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65670688          0:0   00:01:11
+65670688.ba+      0:0   00:01:11    334372K
+65670688.ex+      0:0   00:01:11
 
 Running Likelihood Ratio Test for Simulation set_12345
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
-Total loci processed: 2000 
-Loci failing backbone (p < 0.05): 1511 
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1511
 Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mam
-mals/3.2_lrt_results/set_12345/lrt_results.csv 
+mals/3.2_lrt_results/set_12345/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_67890
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
-Total loci processed: 2000 
-Loci failing backbone (p < 0.05): 1536 
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1536
 Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mam
-mals/3.2_lrt_results/set_67890/lrt_results.csv 
+mals/3.2_lrt_results/set_67890/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_23456
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
-Total loci processed: 2000 
-Loci failing backbone (p < 0.05): 1535 
-Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_23456/lrt_results.csv 
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1535
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_23456/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_78901
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
-Total loci processed: 2000 
-Loci failing backbone (p < 0.05): 1563 
-Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_78901/lrt_results.csv 
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1563
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_78901/lrt_results.csv
 
 Running Likelihood Ratio Test for Simulation set_34567
 Found 2000 loci to process...
 Extracting constrained likelihoods...
 --- Summary ---
-Total loci processed: 2000 
-Loci failing backbone (p < 0.05): 1493 
-Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_34567/lrt_results.csv 
+Total loci processed: 2000
+Loci failing backbone (p < 0.05): 1493
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.2_lrt_results/set_34567/lrt_results.csv
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano collect_filtered_loci.R
@@ -2598,56 +2598,56 @@ done
 sbatch 3.3_collect_filtered_loci.sh
 Submitted batch job 65671045
 sacct -j 65671045 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671045          0:0   00:01:01            
-65671045.ba+      0:0   00:01:01    845508K 
-65671045.ex+      0:0   00:01:01  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671045          0:0   00:01:01
+65671045.ba+      0:0   00:01:01    845508K
+65671045.ex+      0:0   00:01:01
 
 Collecting filtered loci for Simulation set_12345
-Threshold: 0.05 
-Loci to copy to PASS: 489 
-Loci to copy to FAIL: 1511 
+Threshold: 0.05
+Loci to copy to PASS: 489
+Loci to copy to FAIL: 1511
 Assembly complete.
-  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/pass_0.05 
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/pass_0.05
 489  loci passed.
-  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/fail_0.05 
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_12345/fail_0.05
 1511  loci failed.
 Collecting filtered loci for Simulation set_67890
-Threshold: 0.05 
-Loci to copy to PASS: 464 
-Loci to copy to FAIL: 1536 
+Threshold: 0.05
+Loci to copy to PASS: 464
+Loci to copy to FAIL: 1536
 Assembly complete.
-  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/pass_0.05 
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/pass_0.05
 464  loci passed.
-  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/fail_0.05 
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_67890/fail_0.05
 1536  loci failed.
 Collecting filtered loci for Simulation set_23456
-Threshold: 0.05 
-Loci to copy to PASS: 465 
-Loci to copy to FAIL: 1535 
+Threshold: 0.05
+Loci to copy to PASS: 465
+Loci to copy to FAIL: 1535
 Assembly complete.
-  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/pass_0.05 
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/pass_0.05
 465  loci passed.
-  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/fail_0.05 
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_23456/fail_0.05
 1535  loci failed.
 Collecting filtered loci for Simulation set_78901
-Threshold: 0.05 
-Loci to copy to PASS: 437 
-Loci to copy to FAIL: 1563 
+Threshold: 0.05
+Loci to copy to PASS: 437
+Loci to copy to FAIL: 1563
 Assembly complete.
-  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/pass_0.05 
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/pass_0.05
 437  loci passed.
-  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/fail_0.05 
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_78901/fail_0.05
 1563  loci failed.
 Collecting filtered loci for Simulation set_34567
-Threshold: 0.05 
-Loci to copy to PASS: 507 
-Loci to copy to FAIL: 1493 
+Threshold: 0.05
+Loci to copy to PASS: 507
+Loci to copy to FAIL: 1493
 Assembly complete.
-  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/pass_0.05 
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/pass_0.05
 507  loci passed.
-  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/fail_0.05 
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/3.3_loci_filtered_by_known_clades/set_34567/fail_0.05
 1493  loci failed.
 
 Starting Step 4: branch length correlation
@@ -3506,11 +3506,11 @@ done
 sbatch 6.1_submit_create_intersections.sh
 Submitted batch job 65671380
 sacct -j 65671380 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671380          0:0   00:00:02            
-65671380.ba+      0:0   00:00:02      5280K 
-65671380.ex+      0:0   00:00:02   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671380          0:0   00:00:02
+65671380.ba+      0:0   00:00:02      5280K
+65671380.ex+      0:0   00:00:02
 
 Submitting create intersections job for random seed: 12345
 Submitted batch job 65671388
@@ -3526,11 +3526,11 @@ Processing PASS_at_least_one: Copying 1954 loci...
 ------------------------------------------------
 Step 6.1 Complete. Intersection datasets are ready.
 sacct -j 65671388 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671388          0:0   00:00:19            
-65671388.ba+      0:0   00:00:19    292500K 
-65671388.ex+      0:0   00:00:19 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671388          0:0   00:00:19
+65671388.ba+      0:0   00:00:19    292500K
+65671388.ex+      0:0   00:00:19
 
 Submitting create intersections job for random seed: 67890
 Submitted batch job 65671389
@@ -3546,11 +3546,11 @@ Processing PASS_at_least_one: Copying 1959 loci...
 ------------------------------------------------
 Step 6.1 Complete. Intersection datasets are ready.
 sacct -j 65671389 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671389          0:0   00:00:19            
-65671389.ba+      0:0   00:00:19    287692K 
-65671389.ex+      0:0   00:00:19    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671389          0:0   00:00:19
+65671389.ba+      0:0   00:00:19    287692K
+65671389.ex+      0:0   00:00:19
 
 Submitting create intersections job for random seed: 23456
 Submitted batch job 65671390
@@ -3566,11 +3566,11 @@ Processing PASS_at_least_one: Copying 1961 loci...
 ------------------------------------------------
 Step 6.1 Complete. Intersection datasets are ready.
 sacct -j 65671390 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671390          0:0   00:00:19            
-65671390.ba+      0:0   00:00:19    295556K 
-65671390.ex+      0:0   00:00:19       
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671390          0:0   00:00:19
+65671390.ba+      0:0   00:00:19    295556K
+65671390.ex+      0:0   00:00:19
 
 Submitting create intersections job for random seed: 78901
 Submitted batch job 65671391
@@ -3585,11 +3585,11 @@ Processing FAIL_at_least_one: Copying 1664 loci...
 Processing PASS_at_least_one: Copying 1957 loci...
 ------------------------------------------------
 sacct -j 65671391 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671391          0:0   00:00:19            
-65671391.ba+      0:0   00:00:19    300056K 
-65671391.ex+      0:0   00:00:19 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671391          0:0   00:00:19
+65671391.ba+      0:0   00:00:19    300056K
+65671391.ex+      0:0   00:00:19
 
 Submitting create intersections job for random seed: 34567
 Submitted batch job 65671392
@@ -3605,11 +3605,11 @@ Processing PASS_at_least_one: Copying 1959 loci...
 ------------------------------------------------
 Step 6.1 Complete. Intersection datasets are ready.
 sacct -j 65671392 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671392          0:0   00:00:19            
-65671392.ba+      0:0   00:00:19    291744K 
-65671392.ex+      0:0   00:00:19    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671392          0:0   00:00:19
+65671392.ba+      0:0   00:00:19    291744K
+65671392.ex+      0:0   00:00:19
 
 Git Commit Message
 refactor(6.1): migrate to centralized variables and seed-based directory handling
@@ -3741,191 +3741,191 @@ done
 sbatch 6.2_submit_subset_trees.sh
 Submitted batch job 65671580
 sacct -j 65671580 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671580          0:0   00:00:02            
-65671580.ba+      0:0   00:00:02      5248K 
-65671580.ex+      0:0   00:00:02      
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671580          0:0   00:00:02
+65671580.ba+      0:0   00:00:02      5248K
+65671580.ex+      0:0   00:00:02
 
 Submitting subset trees array for random seed: 12345
 Submitted batch job 65671608
 sacct -j 65671608 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671608_0        0:0   00:12:07            
-65671608_0.+      0:0   00:12:07   3019148K 
-65671608_0.+      0:0   00:12:07            
-65671608_1        0:0   00:04:22            
-65671608_1.+      0:0   00:04:22    497848K 
-65671608_1.+      0:0   00:04:22            
-65671608_2        0:0   00:29:32            
-65671608_2.+      0:0   00:29:32   3866028K 
-65671608_2.+      0:0   00:29:32            
-65671608_3        0:0   02:07:36            
-65671608_3.+      0:0   02:07:36  11743856K 
-65671608_3.+      0:0   02:07:36            
-65671608_4        0:0   01:50:14            
-65671608_4.+      0:0   01:50:14  14249276K 
-65671608_4.+      0:0   01:50:14            
-65671608_5        0:0   00:11:47            
-65671608_5.+      0:0   00:11:47   1380284K 
-65671608_5.+      0:0   00:11:47            
-65671608_6        0:0   00:06:04            
-65671608_6.+      0:0   00:06:04   1096028K 
-65671608_6.+      0:0   00:06:04            
-65671608_7        0:0   00:48:57            
-65671608_7.+      0:0   00:48:57     11276M 
-65671608_7.+      0:0   00:48:57            
-65671608_8        0:0   01:03:07            
-65671608_8.+      0:0   01:03:07  12785408K 
-65671608_8.+      0:0   01:03:07            
-65671608_9        0:0   02:28:37            
-65671608_9.+      0:0   02:28:37  15133288K 
-65671608_9.+      0:0   02:28:37  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671608_0        0:0   00:12:07
+65671608_0.+      0:0   00:12:07   3019148K
+65671608_0.+      0:0   00:12:07
+65671608_1        0:0   00:04:22
+65671608_1.+      0:0   00:04:22    497848K
+65671608_1.+      0:0   00:04:22
+65671608_2        0:0   00:29:32
+65671608_2.+      0:0   00:29:32   3866028K
+65671608_2.+      0:0   00:29:32
+65671608_3        0:0   02:07:36
+65671608_3.+      0:0   02:07:36  11743856K
+65671608_3.+      0:0   02:07:36
+65671608_4        0:0   01:50:14
+65671608_4.+      0:0   01:50:14  14249276K
+65671608_4.+      0:0   01:50:14
+65671608_5        0:0   00:11:47
+65671608_5.+      0:0   00:11:47   1380284K
+65671608_5.+      0:0   00:11:47
+65671608_6        0:0   00:06:04
+65671608_6.+      0:0   00:06:04   1096028K
+65671608_6.+      0:0   00:06:04
+65671608_7        0:0   00:48:57
+65671608_7.+      0:0   00:48:57     11276M
+65671608_7.+      0:0   00:48:57
+65671608_8        0:0   01:03:07
+65671608_8.+      0:0   01:03:07  12785408K
+65671608_8.+      0:0   01:03:07
+65671608_9        0:0   02:28:37
+65671608_9.+      0:0   02:28:37  15133288K
+65671608_9.+      0:0   02:28:37
 
 Submitting subset trees array for random seed: 67890
 Submitted batch job 65671609
 sacct -j 65671609 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671609_0        0:0   00:11:17            
-65671609_0.+      0:0   00:11:17   2904484K 
-65671609_0.+      0:0   00:11:17            
-65671609_1        0:0   00:07:42            
-65671609_1.+      0:0   00:07:42    462160K 
-65671609_1.+      0:0   00:07:42            
-65671609_2        0:0   00:20:57            
-65671609_2.+      0:0   00:20:57   3819484K 
-65671609_2.+      0:0   00:20:57            
-65671609_3        0:0   01:40:31            
-65671609_3.+      0:0   01:40:31  11585468K 
-65671609_3.+      0:0   01:40:31            
-65671609_4        0:0   01:18:42            
-65671609_4.+      0:0   01:18:42  13958568K 
-65671609_4.+      0:0   01:18:42            
-65671609_5        0:0   00:08:37            
-65671609_5.+      0:0   00:08:37   1497904K 
-65671609_5.+      0:0   00:08:37            
-65671609_6        0:0   00:06:36            
-65671609_6.+      0:0   00:06:36   1083416K 
-65671609_6.+      0:0   00:06:36            
-65671609_7        0:0   01:35:20            
-65671609_7.+      0:0   01:35:20  11212292K 
-65671609_7.+      0:0   01:35:20            
-65671609_8        0:0   01:03:30            
-65671609_8.+      0:0   01:03:30  12557076K 
-65671609_8.+      0:0   01:03:30            
-65671609_9        0:0   02:08:18            
-65671609_9.+      0:0   02:08:18  14877828K 
-65671609_9.+      0:0   02:08:18   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671609_0        0:0   00:11:17
+65671609_0.+      0:0   00:11:17   2904484K
+65671609_0.+      0:0   00:11:17
+65671609_1        0:0   00:07:42
+65671609_1.+      0:0   00:07:42    462160K
+65671609_1.+      0:0   00:07:42
+65671609_2        0:0   00:20:57
+65671609_2.+      0:0   00:20:57   3819484K
+65671609_2.+      0:0   00:20:57
+65671609_3        0:0   01:40:31
+65671609_3.+      0:0   01:40:31  11585468K
+65671609_3.+      0:0   01:40:31
+65671609_4        0:0   01:18:42
+65671609_4.+      0:0   01:18:42  13958568K
+65671609_4.+      0:0   01:18:42
+65671609_5        0:0   00:08:37
+65671609_5.+      0:0   00:08:37   1497904K
+65671609_5.+      0:0   00:08:37
+65671609_6        0:0   00:06:36
+65671609_6.+      0:0   00:06:36   1083416K
+65671609_6.+      0:0   00:06:36
+65671609_7        0:0   01:35:20
+65671609_7.+      0:0   01:35:20  11212292K
+65671609_7.+      0:0   01:35:20
+65671609_8        0:0   01:03:30
+65671609_8.+      0:0   01:03:30  12557076K
+65671609_8.+      0:0   01:03:30
+65671609_9        0:0   02:08:18
+65671609_9.+      0:0   02:08:18  14877828K
+65671609_9.+      0:0   02:08:18
 
 Submitting subset trees array for random seed: 23456
 Submitted batch job 65671610
 sacct -j 65671610 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671610_0        0:0   00:12:23            
-65671610_0.+      0:0   00:12:23   2998224K 
-65671610_0.+      0:0   00:12:23            
-65671610_1        0:0   00:03:49            
-65671610_1.+      0:0   00:03:49    393380K 
-65671610_1.+      0:0   00:03:49            
-65671610_2        0:0   00:14:44            
-65671610_2.+      0:0   00:14:44   3929212K 
-65671610_2.+      0:0   00:14:44            
-65671610_3        0:0   02:01:02            
-65671610_3.+      0:0   02:01:02  11766768K 
-65671610_3.+      0:0   02:01:02            
-65671610_4        0:0   02:07:33            
-65671610_4.+      0:0   02:07:33  14258892K 
-65671610_4.+      0:0   02:07:33            
-65671610_5        0:0   00:07:51            
-65671610_5.+      0:0   00:07:51   1357932K 
-65671610_5.+      0:0   00:07:51            
-65671610_6        0:0   00:05:54            
-65671610_6.+      0:0   00:05:54   1089340K 
-65671610_6.+      0:0   00:05:54            
-65671610_7        0:0   01:44:10            
-65671610_7.+      0:0   01:44:10  11468028K 
-65671610_7.+      0:0   01:44:10            
-65671610_8        0:0   01:33:14            
-65671610_8.+      0:0   01:33:14  12640692K 
-65671610_8.+      0:0   01:33:14            
-65671610_9        0:0   01:30:39            
-65671610_9.+      0:0   01:30:39  15242076K 
-65671610_9.+      0:0   01:30:39   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671610_0        0:0   00:12:23
+65671610_0.+      0:0   00:12:23   2998224K
+65671610_0.+      0:0   00:12:23
+65671610_1        0:0   00:03:49
+65671610_1.+      0:0   00:03:49    393380K
+65671610_1.+      0:0   00:03:49
+65671610_2        0:0   00:14:44
+65671610_2.+      0:0   00:14:44   3929212K
+65671610_2.+      0:0   00:14:44
+65671610_3        0:0   02:01:02
+65671610_3.+      0:0   02:01:02  11766768K
+65671610_3.+      0:0   02:01:02
+65671610_4        0:0   02:07:33
+65671610_4.+      0:0   02:07:33  14258892K
+65671610_4.+      0:0   02:07:33
+65671610_5        0:0   00:07:51
+65671610_5.+      0:0   00:07:51   1357932K
+65671610_5.+      0:0   00:07:51
+65671610_6        0:0   00:05:54
+65671610_6.+      0:0   00:05:54   1089340K
+65671610_6.+      0:0   00:05:54
+65671610_7        0:0   01:44:10
+65671610_7.+      0:0   01:44:10  11468028K
+65671610_7.+      0:0   01:44:10
+65671610_8        0:0   01:33:14
+65671610_8.+      0:0   01:33:14  12640692K
+65671610_8.+      0:0   01:33:14
+65671610_9        0:0   01:30:39
+65671610_9.+      0:0   01:30:39  15242076K
+65671610_9.+      0:0   01:30:39
 
 Submitting subset trees array for random seed: 78901
 Submitted batch job 65671611
 sacct -j 65671611 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671611_0        0:0   00:16:14            
-65671611_0.+      0:0   00:16:14   2668108K 
-65671611_0.+      0:0   00:16:14            
-65671611_1        0:0   00:04:30            
-65671611_1.+      0:0   00:04:30    462100K 
-65671611_1.+      0:0   00:04:30            
-65671611_2        0:0   00:13:47            
-65671611_2.+      0:0   00:13:47   3654336K 
-65671611_2.+      0:0   00:13:47            
-65671611_3        0:0   01:37:16            
-65671611_3.+      0:0   01:37:16  12219324K 
-65671611_3.+      0:0   01:37:16            
-65671611_4        0:0   01:32:00            
-65671611_4.+      0:0   01:32:00  14534560K 
-65671611_4.+      0:0   01:32:00            
-65671611_5        0:0   00:09:04            
-65671611_5.+      0:0   00:09:04   1389772K 
-65671611_5.+      0:0   00:09:04            
-65671611_6        0:0   00:06:27            
-65671611_6.+      0:0   00:06:27   1088652K 
-65671611_6.+      0:0   00:06:27            
-65671611_7        0:0   01:37:25            
-65671611_7.+      0:0   01:37:25  11982196K 
-65671611_7.+      0:0   01:37:25            
-65671611_8        0:0   01:43:32            
-65671611_8.+      0:0   01:43:32  13068784K 
-65671611_8.+      0:0   01:43:32            
-65671611_9        0:0   01:32:47            
-65671611_9.+      0:0   01:32:47  15430540K 
-65671611_9.+      0:0   01:32:47   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671611_0        0:0   00:16:14
+65671611_0.+      0:0   00:16:14   2668108K
+65671611_0.+      0:0   00:16:14
+65671611_1        0:0   00:04:30
+65671611_1.+      0:0   00:04:30    462100K
+65671611_1.+      0:0   00:04:30
+65671611_2        0:0   00:13:47
+65671611_2.+      0:0   00:13:47   3654336K
+65671611_2.+      0:0   00:13:47
+65671611_3        0:0   01:37:16
+65671611_3.+      0:0   01:37:16  12219324K
+65671611_3.+      0:0   01:37:16
+65671611_4        0:0   01:32:00
+65671611_4.+      0:0   01:32:00  14534560K
+65671611_4.+      0:0   01:32:00
+65671611_5        0:0   00:09:04
+65671611_5.+      0:0   00:09:04   1389772K
+65671611_5.+      0:0   00:09:04
+65671611_6        0:0   00:06:27
+65671611_6.+      0:0   00:06:27   1088652K
+65671611_6.+      0:0   00:06:27
+65671611_7        0:0   01:37:25
+65671611_7.+      0:0   01:37:25  11982196K
+65671611_7.+      0:0   01:37:25
+65671611_8        0:0   01:43:32
+65671611_8.+      0:0   01:43:32  13068784K
+65671611_8.+      0:0   01:43:32
+65671611_9        0:0   01:32:47
+65671611_9.+      0:0   01:32:47  15430540K
+65671611_9.+      0:0   01:32:47
 
 Submitting subset trees array for random seed: 34567
 Submitted batch job 65671612
 sacct -j 65671612 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671612_0        0:0   00:12:24            
-65671612_0.+      0:0   00:12:24   3106836K 
-65671612_0.+      0:0   00:12:24            
-65671612_1        0:0   00:05:02            
-65671612_1.+      0:0   00:05:02    380960K 
-65671612_1.+      0:0   00:05:02            
-65671612_2        0:0   00:26:22            
-65671612_2.+      0:0   00:26:22   3967800K 
-65671612_2.+      0:0   00:26:22            
-65671612_3        0:0   00:57:20            
-65671612_3.+      0:0   00:57:20  11580364K 
-65671612_3.+      0:0   00:57:20            
-65671612_4        0:0   02:06:49            
-65671612_4.+      0:0   02:06:49  14041100K 
-65671612_4.+      0:0   02:06:49            
-65671612_5        0:0   00:09:08            
-65671612_5.+      0:0   00:09:08   1456868K 
-65671612_5.+      0:0   00:09:08            
-65671612_6        0:0   00:07:07            
-65671612_6.+      0:0   00:07:07   1077516K 
-65671612_6.+      0:0   00:07:07            
-65671612_7        0:0   00:57:18            
-65671612_7.+      0:0   00:57:18  11291312K 
-65671612_7.+      0:0   00:57:18            
-65671612_8        0:0   01:12:04            
-65671612_8.+      0:0   01:12:04  12445256K 
-65671612_8.+      0:0   01:12:04            
-65671612_9        0:0   02:19:01            
-65671612_9.+      0:0   02:19:01  15040352K 
-65671612_9.+      0:0   02:19:01  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671612_0        0:0   00:12:24
+65671612_0.+      0:0   00:12:24   3106836K
+65671612_0.+      0:0   00:12:24
+65671612_1        0:0   00:05:02
+65671612_1.+      0:0   00:05:02    380960K
+65671612_1.+      0:0   00:05:02
+65671612_2        0:0   00:26:22
+65671612_2.+      0:0   00:26:22   3967800K
+65671612_2.+      0:0   00:26:22
+65671612_3        0:0   00:57:20
+65671612_3.+      0:0   00:57:20  11580364K
+65671612_3.+      0:0   00:57:20
+65671612_4        0:0   02:06:49
+65671612_4.+      0:0   02:06:49  14041100K
+65671612_4.+      0:0   02:06:49
+65671612_5        0:0   00:09:08
+65671612_5.+      0:0   00:09:08   1456868K
+65671612_5.+      0:0   00:09:08
+65671612_6        0:0   00:07:07
+65671612_6.+      0:0   00:07:07   1077516K
+65671612_6.+      0:0   00:07:07
+65671612_7        0:0   00:57:18
+65671612_7.+      0:0   00:57:18  11291312K
+65671612_7.+      0:0   00:57:18
+65671612_8        0:0   01:12:04
+65671612_8.+      0:0   01:12:04  12445256K
+65671612_8.+      0:0   01:12:04
+65671612_9        0:0   02:19:01
+65671612_9.+      0:0   02:19:01  15040352K
+65671612_9.+      0:0   02:19:01
 
 Git Commit Message
 refactor(6.2): optimize subset inference with relative pathing and partitioned models
@@ -3989,11 +3989,11 @@ done
 sbatch 6.3_gather_trees.sh
 Submitted batch job 65717267
 sacct -j 65717267 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717267          0:0   00:00:04            
-65717267.ba+      0:0   00:00:04      5612K 
-65717267.ex+      0:0   00:00:04   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717267          0:0   00:00:04
+65717267.ba+      0:0   00:00:04      5612K
+65717267.ex+      0:0   00:00:04
 
 Gathering trees for simulation set_12345
 Gathered trees in /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/6.3_filtered_sim_trees/set_12345:
@@ -4328,161 +4328,161 @@ done
 sbatch 6.4_submit_subset_trees.sh
 Submitted batch job 65717421
 sacct -j 65717421 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717421          0:0   00:00:02            
-65717421.ba+      0:0   00:00:02      5268K 
-65717421.ex+      0:0   00:00:02   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717421          0:0   00:00:02
+65717421.ba+      0:0   00:00:02      5268K
+65717421.ex+      0:0   00:00:02
 
 Submitting compare trees job for random seed: 12345
 Submitted batch job 65717443
 ==========================================================================================
-                                TREE COMPARISON & SUPPORT REPORT                           
+                                TREE COMPARISON & SUPPORT REPORT
 ==========================================================================================
-Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved  
+Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved
 ------------------------------------------------------------------------------------------
-Unfiltered_Baseline       4     457093882.103 66207      100.0    99.6     33        
-Elite_all_PASS            0     457093953.680 66045      99.9     100.0    34        
-Noisy_all_FAIL            6     457093946.309 66269      92.3     95.2     27        
-clades_PASS               0     457093947.297 66045      100.0    100.0    34        
-clades_FAIL               6     457093848.484 66303      99.3     97.9     30        
-blc_PASS                  4     457093899.553 66207      100.0    99.8     34        
-blc_FAIL                  0     457093957.490 66045      99.3     99.4     33        
-clades_PASS_blc_FAIL      0     457093960.939 66045      99.1     99.5     33        
-blc_PASS_clades_FAIL      6     457093826.147 66303      98.4     98.8     32        
-FAIL_at_least_one         4     457093874.768 66207      98.7     99.0     32        
-PASS_at_least_one         4     457093886.277 66207      100.0    99.9     34        
+Unfiltered_Baseline       4     457093882.103 66207      100.0    99.6     33
+Elite_all_PASS            0     457093953.680 66045      99.9     100.0    34
+Noisy_all_FAIL            6     457093946.309 66269      92.3     95.2     27
+clades_PASS               0     457093947.297 66045      100.0    100.0    34
+clades_FAIL               6     457093848.484 66303      99.3     97.9     30
+blc_PASS                  4     457093899.553 66207      100.0    99.8     34
+blc_FAIL                  0     457093957.490 66045      99.3     99.4     33
+clades_PASS_blc_FAIL      0     457093960.939 66045      99.1     99.5     33
+blc_PASS_clades_FAIL      6     457093826.147 66303      98.4     98.8     32
+FAIL_at_least_one         4     457093874.768 66207      98.7     99.0     32
+PASS_at_least_one         4     457093886.277 66207      100.0    99.9     34
 ==========================================================================================
 Note: Lower values indicate higher accuracy (closer to truth).
 Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.
 ==========================================================================================
 6.4 Comparison complete.
 sacct -j 65717443 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717443          0:0   00:00:22            
-65717443.ba+      0:0   00:00:22    254008K 
-65717443.ex+      0:0   00:00:22 
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717443          0:0   00:00:22
+65717443.ba+      0:0   00:00:22    254008K
+65717443.ex+      0:0   00:00:22
 
 Submitting compare trees job for random seed: 67890
 Submitted batch job 65717444
 ==========================================================================================
-                                TREE COMPARISON & SUPPORT REPORT                           
+                                TREE COMPARISON & SUPPORT REPORT
 ==========================================================================================
-Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved  
+Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved
 ------------------------------------------------------------------------------------------
-Unfiltered_Baseline       4     457093899.211 66207      100.0    97.7     32        
-Elite_all_PASS            0     457093954.765 66045      99.9     99.9     34        
-Noisy_all_FAIL            6     457093948.472 66269      93.4     95.1     26        
-clades_PASS               0     457093955.587 66045      99.6     99.5     33        
-clades_FAIL               10    457093830.164 66468      99.8     99.3     33        
-blc_PASS                  8     457093884.110 66307      98.6     98.9     32        
-blc_FAIL                  2     457093957.262 66173      98.9     98.7     32        
-clades_PASS_blc_FAIL      2     457093960.482 66173      98.8     98.9     32        
-blc_PASS_clades_FAIL      10    457093869.243 66468      99.8     99.6     33        
-FAIL_at_least_one         10    457093862.238 66468      98.1     98.3     32        
-PASS_at_least_one         4     457093886.288 66207      100.0    96.9     32        
+Unfiltered_Baseline       4     457093899.211 66207      100.0    97.7     32
+Elite_all_PASS            0     457093954.765 66045      99.9     99.9     34
+Noisy_all_FAIL            6     457093948.472 66269      93.4     95.1     26
+clades_PASS               0     457093955.587 66045      99.6     99.5     33
+clades_FAIL               10    457093830.164 66468      99.8     99.3     33
+blc_PASS                  8     457093884.110 66307      98.6     98.9     32
+blc_FAIL                  2     457093957.262 66173      98.9     98.7     32
+clades_PASS_blc_FAIL      2     457093960.482 66173      98.8     98.9     32
+blc_PASS_clades_FAIL      10    457093869.243 66468      99.8     99.6     33
+FAIL_at_least_one         10    457093862.238 66468      98.1     98.3     32
+PASS_at_least_one         4     457093886.288 66207      100.0    96.9     32
 ==========================================================================================
 Note: Lower values indicate higher accuracy (closer to truth).
 Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.
 ==========================================================================================
 6.4 Comparison complete.
 sacct -j 65717444 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717444          0:0   00:00:22            
-65717444.ba+      0:0   00:00:22    251620K 
-65717444.ex+      0:0   00:00:22  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717444          0:0   00:00:22
+65717444.ba+      0:0   00:00:22    251620K
+65717444.ex+      0:0   00:00:22
 
 Submitting compare trees job for random seed: 23456
 Submitted batch job 65717445
 ==========================================================================================
-                                TREE COMPARISON & SUPPORT REPORT                           
+                                TREE COMPARISON & SUPPORT REPORT
 ==========================================================================================
-Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved  
+Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved
 ------------------------------------------------------------------------------------------
-Unfiltered_Baseline       2     457093853.982 66111      99.9     99.6     34        
-Elite_all_PASS            0     457093956.025 66045      99.9     100.0    34        
-Noisy_all_FAIL            12    457093952.537 66941      93.0     96.0     27        
-clades_PASS               0     457093955.318 66045      100.0    100.0    34        
-clades_FAIL               8     457093820.141 66310      99.8     98.8     31        
-blc_PASS                  4     457093847.359 66177      98.7     98.5     31        
-blc_FAIL                  0     457093958.311 66045      99.2     99.4     33        
-clades_PASS_blc_FAIL      0     457093961.863 66045      99.1     99.5     33        
-blc_PASS_clades_FAIL      8     457093812.983 66310      99.8     98.8     31        
-FAIL_at_least_one         8     457093837.734 66310      97.5     98.8     33        
-PASS_at_least_one         2     457093844.065 66111      99.3     99.2     31        
+Unfiltered_Baseline       2     457093853.982 66111      99.9     99.6     34
+Elite_all_PASS            0     457093956.025 66045      99.9     100.0    34
+Noisy_all_FAIL            12    457093952.537 66941      93.0     96.0     27
+clades_PASS               0     457093955.318 66045      100.0    100.0    34
+clades_FAIL               8     457093820.141 66310      99.8     98.8     31
+blc_PASS                  4     457093847.359 66177      98.7     98.5     31
+blc_FAIL                  0     457093958.311 66045      99.2     99.4     33
+clades_PASS_blc_FAIL      0     457093961.863 66045      99.1     99.5     33
+blc_PASS_clades_FAIL      8     457093812.983 66310      99.8     98.8     31
+FAIL_at_least_one         8     457093837.734 66310      97.5     98.8     33
+PASS_at_least_one         2     457093844.065 66111      99.3     99.2     31
 ==========================================================================================
 Note: Lower values indicate higher accuracy (closer to truth).
 Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.
 ==========================================================================================
 6.4 Comparison complete.
 sacct -j 65717445 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717445          0:0   00:00:22            
-65717445.ba+      0:0   00:00:22    250560K 
-65717445.ex+      0:0   00:00:22   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717445          0:0   00:00:22
+65717445.ba+      0:0   00:00:22    250560K
+65717445.ex+      0:0   00:00:22
 
 Submitting compare trees job for random seed: 78901
 Submitted batch job 65717446
 ==========================================================================================
-                                TREE COMPARISON & SUPPORT REPORT                           
+                                TREE COMPARISON & SUPPORT REPORT
 ==========================================================================================
-Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved  
+Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved
 ------------------------------------------------------------------------------------------
-Unfiltered_Baseline       2     457093852.018 66173      98.8     98.8     33        
-Elite_all_PASS            0     457093919.885 66045      97.9     98.8     32        
-Noisy_all_FAIL            20    457093952.567 70859      93.1     95.1     26        
-clades_PASS               0     457093941.842 66045      99.9     99.8     34        
-clades_FAIL               2     457093816.147 66173      97.9     98.6     32        
-blc_PASS                  2     457093830.100 66173      99.9     99.6     33        
-blc_FAIL                  0     457093958.881 66045      99.2     99.4     33        
-clades_PASS_blc_FAIL      0     457093962.008 66045      99.2     99.5     33        
-blc_PASS_clades_FAIL      4     457093806.552 66269      98.8     99.6     33        
-FAIL_at_least_one         2     457093843.597 66173      98.8     98.8     32        
-PASS_at_least_one         2     457093835.225 66173      98.5     98.9     33        
+Unfiltered_Baseline       2     457093852.018 66173      98.8     98.8     33
+Elite_all_PASS            0     457093919.885 66045      97.9     98.8     32
+Noisy_all_FAIL            20    457093952.567 70859      93.1     95.1     26
+clades_PASS               0     457093941.842 66045      99.9     99.8     34
+clades_FAIL               2     457093816.147 66173      97.9     98.6     32
+blc_PASS                  2     457093830.100 66173      99.9     99.6     33
+blc_FAIL                  0     457093958.881 66045      99.2     99.4     33
+clades_PASS_blc_FAIL      0     457093962.008 66045      99.2     99.5     33
+blc_PASS_clades_FAIL      4     457093806.552 66269      98.8     99.6     33
+FAIL_at_least_one         2     457093843.597 66173      98.8     98.8     32
+PASS_at_least_one         2     457093835.225 66173      98.5     98.9     33
 ==========================================================================================
 Note: Lower values indicate higher accuracy (closer to truth).
 Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.
 ==========================================================================================
 6.4 Comparison complete.
 sacct -j 65717446 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717446          0:0   00:00:18            
-65717446.ba+      0:0   00:00:18    271596K 
-65717446.ex+      0:0   00:00:18    
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717446          0:0   00:00:18
+65717446.ba+      0:0   00:00:18    271596K
+65717446.ex+      0:0   00:00:18
 
 Submitting compare trees job for random seed: 34567
 Submitted batch job 65717447
 ==========================================================================================
-                                TREE COMPARISON & SUPPORT REPORT                           
+                                TREE COMPARISON & SUPPORT REPORT
 ==========================================================================================
-Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved  
+Dataset                   RF    wRF      Quart_D    Avg_SH   Avg_UF   Resolved
 ------------------------------------------------------------------------------------------
-Unfiltered_Baseline       2     457093872.051 66169      99.9     98.6     31        
-Elite_all_PASS            0     457093955.282 66045      99.4     99.4     32        
-Noisy_all_FAIL            8     457093951.263 66339      90.4     93.7     25        
-clades_PASS               0     457093955.634 66045      99.7     99.7     33        
-clades_FAIL               6     457093817.008 66302      100.0    99.5     33        
-blc_PASS                  2     457093869.559 66169      100.0    96.1     32        
-blc_FAIL                  2     457093958.087 66173      97.4     98.5     32        
-clades_PASS_blc_FAIL      0     457093960.452 66045      96.5     98.4     32        
-blc_PASS_clades_FAIL      6     457093792.400 66302      99.9     98.9     32        
-FAIL_at_least_one         6     457093833.012 66302      100.0    96.5     31        
-PASS_at_least_one         2     457093857.815 66169      99.9     98.9     31        
+Unfiltered_Baseline       2     457093872.051 66169      99.9     98.6     31
+Elite_all_PASS            0     457093955.282 66045      99.4     99.4     32
+Noisy_all_FAIL            8     457093951.263 66339      90.4     93.7     25
+clades_PASS               0     457093955.634 66045      99.7     99.7     33
+clades_FAIL               6     457093817.008 66302      100.0    99.5     33
+blc_PASS                  2     457093869.559 66169      100.0    96.1     32
+blc_FAIL                  2     457093958.087 66173      97.4     98.5     32
+clades_PASS_blc_FAIL      0     457093960.452 66045      96.5     98.4     32
+blc_PASS_clades_FAIL      6     457093792.400 66302      99.9     98.9     32
+FAIL_at_least_one         6     457093833.012 66302      100.0    96.5     31
+PASS_at_least_one         2     457093857.815 66169      99.9     98.9     31
 ==========================================================================================
 Note: Lower values indicate higher accuracy (closer to truth).
 Resolved = Number of nodes with SH-aLRT >= 80 and UFBoot >= 95.
 ==========================================================================================
 6.4 Comparison complete.
 sacct -j 65717447 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717447          0:0   00:00:23            
-65717447.ba+      0:0   00:00:23    276376K 
-65717447.ex+      0:0   00:00:24  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717447          0:0   00:00:23
+65717447.ba+      0:0   00:00:23    276376K
+65717447.ex+      0:0   00:00:24
 
 Git commit message:
 feat(6.4): finalize seed-based tree comparison pipeline and variable mapping
@@ -4539,11 +4539,11 @@ Processing Seed: 78901
 Processing Seed: 34567
 Done! results file created with 56 lines.
 sacct -j 65717722 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65717722          0:0   00:00:01            
-65717722.ba+      0:0   00:00:01      5304K 
-65717722.ex+      0:0   00:00:01  
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65717722          0:0   00:00:01
+65717722.ba+      0:0   00:00:01      5304K
+65717722.ex+      0:0   00:00:01
 
 Git commit message:
 feat(6.5): finalize results aggregation with categorical set labeling
@@ -4621,11 +4621,11 @@ echo "------------------------------------------------"
 sbatch 7.0_generate_emp_constraints.sh
 Submitted batch job 65671732
 sacct -j 65671732 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS 
------------- -------- ---------- ---------- 
-65671732          0:0   00:05:48            
-65671732.ba+      0:0   00:05:48   1026060K 
-65671732.ex+      0:0   00:05:48   
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671732          0:0   00:05:48
+65671732.ba+      0:0   00:05:48   1026060K
+65671732.ex+      0:0   00:05:48
 
 Generated 109799 constraint files.
 ------------------------------------------------
@@ -4763,34 +4763,93 @@ echo "IQ-TREE inferences complete. Likelihoods saved in $OutDir"
 sbatch 7.1_iqtree_emp_likelihoods.sh
 Submitted batch job 65671928
 sacct -j 65671928 -o JobID,ExitCode,Elapsed,MaxRSS
-
-
+JobID        ExitCode    Elapsed     MaxRSS
+------------ -------- ---------- ----------
+65671928          0:0 1-15:34:35
+65671928.ba+      0:0 1-15:34:35   8945656K
+65671928.ex+      0:0 1-15:34:35
 
 #Track iqtree output files:
 target=$(( $(find /scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/01_SISRS_loci_filtered -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | wc -l) + $(find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.0_emp_constraint_trees -maxdepth 1 -name "*_constraint.newick" | wc -l) ))
 watch -n 5 "echo -n 'Completed .iqtree files: '; find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.1_emp_likelihoods/ -maxdepth 1 -name '*.iqtree' | wc -l; echo 'Target total:           $target'"
 
+2026.10.20
+
+Step 7.2 — Empirical Likelihood Ratio Test (LRT) Filtering
+
+• Objective:
+  Extract log-likelihoods from unconstrained and constrained empirical IQ-TREE runs (~109,799 loci) and calculate the Likelihood Ratio Test statistic (delta lnL) and p-value per locus to identify alignments supporting established mammalian clades.
+
+• Implementation:
+  - Reused LRT_filter.R from Step 3 via the centralized $LRTfilter variable to ensure identical statistical testing (df=1, chi-squared distribution) between simulated and empirical datasets.
+  - Adapted 7.2_emp_LRT_filter.sh to process the flat empirical directory ($out7_1) directly, omitting simulation seed loops.
+  - Scaled compute resources to 16 GB memory and 2 hours walltime to accommodate directory parsing and regex extraction across ~219k .iqtree report files.
+  - Outputs summary metrics to $out7_2/emp_lrt_results.csv.
+
+git commit message:
+feat(7.2): implement empirical LRT filtering script
+- Adapt LRT filtering workflow to parse empirical likelihood reports from 7.1
+- Reuse LRT_filter.R via $LRTfilter to maintain statistical parity with 3.2
+- Scale memory and runtime allocation for ~109k loci without seed looping
+
+Adapt step 3.2 for the empirical dataset: reuse the underlying R script (LRT_filter.R) directly from Step 3 via $LRTfilter, and write 7.2_emp_LRT_filter.sh to target $out7_1 and $out7_2 without simulation seed loops.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+nano 7.2_emp_LRT_filter.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=7.2_emp_LRT
+#SBATCH --partition=uri-cpu
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=16G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script
+
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+echo "Variables sourced into current shell environment:"
+cat "$vars"
+
+# Environment Setup
+
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# Input & Output Directories
+
+# Input directory containing ~109k _uncon.iqtree and _con.iqtree files (from Step 7.1):
+IQ_DIR="$out7_1"
+
+# Output directory for the aggregated empirical LRT CSV:
+OutDir="$out7_2"
+mkdir -p "$OutDir"
+
+OUT_FILE="$OutDir/emp_lrt_results.csv"
+
+# Execute LRT Extraction
+
+echo "Running Likelihood Ratio Test parsing on empirical loci in: $IQ_DIR"
+date
+
+Rscript "$LRTfilter" "$IQ_DIR" "$OUT_FILE"
+
+date
+echo "Empirical LRT filter complete. Output written to: $OUT_FILE"
+#---------------------------------
+sbatch 7.2_emp_LRT_filter.sh
+Submitted batch job ###
+sacct -j ### -o JobID,ExitCode,Elapsed,MaxRSS
 
 
-
-old:
-Submitted batch job 65436321
-sacct -j 65436321 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-65436321          0:0 1-11:05:12
-65436321.ba+      0:0 1-11:05:12   6492252K
-65436321.ex+      0:0 1-11:05:12
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-Submitted batch job 65334590
-sacct -j 65334590 -o JobID,ExitCode,Elapsed,MaxRSS
-JobID        ExitCode    Elapsed     MaxRSS
------------- -------- ---------- ----------
-65334590          0:0 1-11:06:42
-65334590.ba+      0:0 1-11:06:42   5063204K
-65334590.ex+      0:0 1-11:06:42
