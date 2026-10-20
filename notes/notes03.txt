@@ -4849,7 +4849,114 @@ date
 echo "Empirical LRT filter complete. Output written to: $OUT_FILE"
 #---------------------------------
 sbatch 7.2_emp_LRT_filter.sh
-Submitted batch job ###
-sacct -j ### -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 65894431
+
+Running Likelihood Ratio Test parsing on empirical loci in: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.1_emp_likelihoods
+Tue Oct 20 05:38:03 PM UTC 2026
+Found 109799 loci to process...
+Extracting constrained likelihoods...
+--- Summary ---
+Total loci processed: 109799 
+Loci failing backbone (p < 0.05): 88566 
+Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.2_emp_lrt_results/emp_lrt_results.csv 
+Tue Oct 20 05:44:33 PM UTC 2026
+Empirical LRT filter complete. Output written to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.2_emp_lrt_results/emp_lrt_results.csv
+
+sacct -j 65894431 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+65894431          0:0   00:06:48            
+65894431.ba+      0:0   00:06:48   1947824K 
+65894431.ex+      0:0   00:06:48  
+
+
+2026.10.20
+
+Step 7.3 — Empirical Filtered Loci Collection
+
+• Objective:
+  Segregate the ~109k empirical loci into passing (p >= 0.05) and failing (p < 0.05) subsets based on the Likelihood Ratio Test results from Step 7.2.
+
+• Implementation:
+  - Reused collect_filtered_loci.R via $CFL to maintain parity with Step 3.3.
+  - Adapted 7.3_collect_filtered_emp_loci.sh to consume the flat empirical outputs from $out7_2 and $DATA without multi-seed loops.
+  - Allocated 8 GB RAM and 1 hour walltime to handle file copies across ~109k FASTA alignments into $out7_3/pass_0.05 and $out7_3/fail_0.05.
+  - Added an automated post-processing audit reporting final pass/fail counts.
+
+git commit message:
+feat(7.3): add empirical locus collection and segregation script
+- Segregate empirical alignments into pass/fail subsets using Step 7.2 LRT p-values
+- Reuse collect_filtered_loci.R via $CFL to maintain pipeline consistency
+- Add automated audit to verify pass/fail file counts in $out7_3
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+nano 7.3_collect_filtered_emp_loci.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name=7.3_filter_emp
+#SBATCH --partition=uri-cpu
+#SBATCH --time=04:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=8G
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script
+
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+echo "Variables sourced into current shell environment:"
+cat "$vars"
+
+# Environment Setup
+
+module purge
+module load uri/main
+module load foss/2024a
+module load R/4.3.2-gfbf-2023a
+
+export GLIBCXX_PATH="/modules/uri_apps/software/GCCcore/13.3.0/lib64"
+export LD_LIBRARY_PATH=$GLIBCXX_PATH:$LD_LIBRARY_PATH
+export R_LIBS=~/R-packages
+
+# Input & Output Paths
+
+# Input LRT results CSV from Step 7.2:
+LRT_CSV="$out7_2/emp_lrt_results.csv"
+
+# Original empirical alignments directory:
+Alignments="$DATA"
+
+# Destination directory for partitioned pass/fail empirical alignments:
+FinalDir="$out7_3"
+mkdir -p "$FinalDir"
+
+P_THRESH="${Pvalue7_3:-0.05}"
+
+echo "Starting empirical locus collection at $(date)"
+echo "Input CSV:      $LRT_CSV"
+echo "Alignments:     $Alignments"
+echo "Destination:    $FinalDir"
+echo "Threshold:      p >= $P_THRESH"
+
+# Execute Partitioning
+
+# Reusing collect_filtered_loci.R directly from Step 3 via $CFL
+Rscript "$CFL" "$LRT_CSV" "$Alignments" "$FinalDir" "$P_THRESH"
+
+echo "Collection complete at $(date)"
+echo "------------------------------------------------"
+echo "Post-Processing Audit:"
+echo "Pass count: $(ls -1 "$FinalDir/pass_${P_THRESH}"/*.fas 2>/dev/null | wc -l)"
+echo "Fail count: $(ls -1 "$FinalDir/fail_${P_THRESH}"/*.fas 2>/dev/null | wc -l)"
+echo "------------------------------------------------"
+#---------------------------------
+sbatch 7.3_collect_filtered_emp_loci.sh
+Submitted batch job 65899221
+
+sacct -j 65899221 -o JobID,ExitCode,Elapsed,MaxRSS
 
 

@@ -281,10 +281,20 @@ out7_1="$Output/7.1_emp_likelihoods"
 # (IQTL): "$SCRIPTS/3_filter_by_known_clades/iqtree_likelihoods.sh"
 
 ## 7.2_emp_LRT_filter.sh
+
 # Path to script-specific output directory:
 out7_2="${Output}/7.2_emp_lrt_results"
 # Path to LRT_filter.R is specified above for 3.2_LRT_filter.sh and stored as LRTfilter:
 # (LRTfilter): "$SCRIPTS/3_filter_by_known_clades/LRT_filter.R"
+
+## 7.3_collect_filtered_emp_loci.sh
+
+# Path to script-specific output directory:
+out7_3="${Output}/7.3_emp_loci_filtered_by_known_clades"
+# p threshold:
+Pvalue7_3=0.05
+# Path to collect_filtered_loci.R is specified above for 3.3_collect_filtered_loci.sh and stored as CFL:
+# (CFL): "$SCRIPTS/3_filter_by_known_clades/collect_filtered_loci.R"
 
 set +a  # Stop automatically exporting
 ################################################
