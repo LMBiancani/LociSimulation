@@ -4854,6 +4854,8 @@ fix(3.3,7.3): resolve extension mismatches and audit glob overflows in locus col
 - Replace ls wildcard globs with POSIX-extended find in post-processing audits
   to prevent ARG_MAX buffer overflows on 100k+ file directories
 
+fix(3.3,7.3): silence file.copy stdout using invisible()
+
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano collect_filtered_loci.R
 #---------------------------------
@@ -4890,9 +4892,9 @@ move_files <- function(locus_list, destination) {
   valid_files  <- actual_files[!is.na(actual_files)]
 
   if (length(valid_files) > 0) {
-    file.copy(from = file.path(IN_DIR, valid_files),
-              to   = destination,
-              overwrite = TRUE)
+  invisible(file.copy(from = file.path(IN_DIR, valid_files),
+                    to   = destination,
+                    overwrite = TRUE))
   }
 }
 
@@ -4911,7 +4913,7 @@ nano 7.3_collect_filtered_emp_loci.sh
 #!/bin/bash
 #SBATCH --job-name=7.3_filter_emp
 #SBATCH --partition=uri-cpu
-#SBATCH --time=04:00:00
+#SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -4971,8 +4973,32 @@ echo "Fail count: $(find "$FinalDir/fail_${P_THRESH}" -maxdepth 1 -regextype pos
 echo "------------------------------------------------"
 #---------------------------------
 sbatch 7.3_collect_filtered_emp_loci.sh
-Submitted batch job 65926477
-sacct -j 65926477 -o JobID,ExitCode,Elapsed,MaxRSS
+Submitted batch job 65926740
+sacct -j 65926740 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+65926740          0:0   00:02:37            
+65926740.ba+      0:0   00:02:37   2418600K 
+65926740.ex+      0:0   00:02:37
+
+Starting empirical locus collection at Wed Oct 21 04:25:55 PM UTC 2026
+Input CSV:      /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.2_emp_lrt_results/emp_lrt_results.csv
+Alignments:     /scratch4/workspace/biancani_uri_edu-LociSimulation/mammal_loci/01_SISRS_loci_filtered
+Destination:    /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.3_emp_loci_filtered_by_known_clades
+Threshold:      p >= 0.05
+Threshold: 0.05 
+Loci to copy to PASS: 21233 
+Loci to copy to FAIL: 88566 
+Assembly complete.
+  Pass folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.3_emp_loci_filtered_by_known_clades/pass_0.05 
+  Fail folder: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/7.3_emp_loci_filtered_by_known_clades/fail_0.05 
+Collection complete at Wed Oct 21 04:28:14 PM UTC 2026
+------------------------------------------------
+Post-Processing Audit:
+Pass count: 21233
+Fail count: 88566
+------------------------------------------------
+
 
 
 

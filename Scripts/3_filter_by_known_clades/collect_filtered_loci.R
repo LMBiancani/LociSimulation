@@ -31,9 +31,9 @@ move_files <- function(locus_list, destination) {
   valid_files  <- actual_files[!is.na(actual_files)]
 
   if (length(valid_files) > 0) {
-    file.copy(from = file.path(IN_DIR, valid_files),
-              to   = destination,
-              overwrite = TRUE)
+  invisible(file.copy(from = file.path(IN_DIR, valid_files),
+                    to   = destination,
+                    overwrite = TRUE))
   }
 }
 

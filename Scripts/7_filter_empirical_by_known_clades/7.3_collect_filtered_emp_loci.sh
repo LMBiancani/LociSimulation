@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=7.3_filter_emp
 #SBATCH --partition=uri-cpu
-#SBATCH --time=04:00:00
+#SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
