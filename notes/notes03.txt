@@ -2507,52 +2507,7 @@ Results saved to: /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mam
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
 nano collect_filtered_loci.R
 #---------------------------------
-#!/usr/bin/env Rscript
-
-# --- Setup ---
-args <- commandArgs(trailingOnly = TRUE)
-LRT_CSV    <- args[1]
-IN_DIR     <- args[2]
-OUT_BASE   <- args[3] # Base output path
-P_THRESH   <- as.numeric(args[4])
-
-# Load results
-df <- read.csv(LRT_CSV)
-
-# Define paths for both groups using paste0 to keep the name clean
-PASS_DIR <- file.path(OUT_BASE, paste0("pass_", P_THRESH))
-FAIL_DIR <- file.path(OUT_BASE, paste0("fail_", P_THRESH))
-
-# Create directories
-if(!dir.exists(PASS_DIR)) dir.create(PASS_DIR, recursive = TRUE)
-if(!dir.exists(FAIL_DIR)) dir.create(FAIL_DIR, recursive = TRUE)
-
-# Categorize loci
-passing_loci <- df$Locus[df$p_value >= P_THRESH]
-failing_loci <- df$Locus[df$p_value <  P_THRESH]
-
-cat("Threshold:", P_THRESH, "\n")
-cat("Loci to copy to PASS:", length(passing_loci), "\n")
-cat("Loci to copy to FAIL:", length(failing_loci), "\n")
-
-# Function to copy files
-move_files <- function(locus_list, destination) {
-  for(locus in locus_list) {
-    file_name <- paste0(locus, ".fas")
-    file.copy(from = file.path(IN_DIR, file_name),
-              to   = destination)
-  }
-}
-
-# Execute copies
-move_files(passing_loci, PASS_DIR)
-move_files(failing_loci, FAIL_DIR)
-
-cat("Assembly complete.\n")
-cat("  Pass folder:", PASS_DIR, "\n")
-cat(length(passing_loci), " loci passed.\n")
-cat("  Fail folder:", FAIL_DIR, "\n")
-cat(length(failing_loci), " loci failed.\n")
+# UPDATED on 2026.10.21 - see below
 #---------------------------------
 
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
@@ -4889,6 +4844,67 @@ feat(7.3): add empirical locus collection and segregation script
 - Reuse collect_filtered_loci.R via $CFL to maintain pipeline consistency
 - Add automated audit to verify pass/fail file counts in $out7_3
 
+2026.10.21
+
+fix(3.3,7.3): resolve extension mismatches and audit glob overflows in locus collection
+- Update collect_filtered_loci.R to map filenames dynamically via regex lookup
+  instead of hardcoding .fas, supporting .fas, .fa, and .fasta formats
+- Replace vectorized single-file transfers with validated path lists to fix
+  file.copy failures on empirical loci
+- Replace ls wildcard globs with POSIX-extended find in post-processing audits
+  to prevent ARG_MAX buffer overflows on 100k+ file directories
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/3_filter_by_known_clades
+nano collect_filtered_loci.R
+#---------------------------------
+#!/usr/bin/env Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+LRT_CSV    <- args[1]
+IN_DIR     <- args[2]
+OUT_BASE   <- args[3]
+P_THRESH   <- as.numeric(args[4])
+
+df <- read.csv(LRT_CSV)
+
+PASS_DIR <- file.path(OUT_BASE, paste0("pass_", P_THRESH))
+FAIL_DIR <- file.path(OUT_BASE, paste0("fail_", P_THRESH))
+
+if (!dir.exists(PASS_DIR)) dir.create(PASS_DIR, recursive = TRUE)
+if (!dir.exists(FAIL_DIR)) dir.create(FAIL_DIR, recursive = TRUE)
+
+# Index available alignment files in the source directory to handle any extension (.fas, .fasta, .fa)
+available_files <- list.files(IN_DIR, pattern = "\\.fast?a?$", full.names = FALSE)
+names_no_ext <- sub("\\.fast?a?$", "", available_files)
+lookup_map <- setNames(available_files, names_no_ext)
+
+passing_loci <- df$Locus[df$p_value >= P_THRESH]
+failing_loci <- df$Locus[df$p_value <  P_THRESH]
+
+cat("Threshold:", P_THRESH, "\n")
+cat("Loci to copy to PASS:", length(passing_loci), "\n")
+cat("Loci to copy to FAIL:", length(failing_loci), "\n")
+
+move_files <- function(locus_list, destination) {
+  actual_files <- lookup_map[locus_list]
+  valid_files  <- actual_files[!is.na(actual_files)]
+
+  if (length(valid_files) > 0) {
+    file.copy(from = file.path(IN_DIR, valid_files),
+              to   = destination,
+              overwrite = TRUE)
+  }
+}
+
+move_files(passing_loci, PASS_DIR)
+move_files(failing_loci, FAIL_DIR)
+
+cat("Assembly complete.\n")
+cat("  Pass folder:", PASS_DIR, "\n")
+cat("  Fail folder:", FAIL_DIR, "\n")
+#---------------------------------
+
+
 cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
 nano 7.3_collect_filtered_emp_loci.sh
 #---------------------------------
@@ -4950,13 +4966,13 @@ Rscript "$CFL" "$LRT_CSV" "$Alignments" "$FinalDir" "$P_THRESH"
 echo "Collection complete at $(date)"
 echo "------------------------------------------------"
 echo "Post-Processing Audit:"
-echo "Pass count: $(ls -1 "$FinalDir/pass_${P_THRESH}"/*.fas 2>/dev/null | wc -l)"
-echo "Fail count: $(ls -1 "$FinalDir/fail_${P_THRESH}"/*.fas 2>/dev/null | wc -l)"
+echo "Pass count: $(find "$FinalDir/pass_${P_THRESH}" -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | wc -l)"
+echo "Fail count: $(find "$FinalDir/fail_${P_THRESH}" -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | wc -l)"
 echo "------------------------------------------------"
 #---------------------------------
 sbatch 7.3_collect_filtered_emp_loci.sh
-Submitted batch job 65899221
+Submitted batch job 65926477
+sacct -j 65926477 -o JobID,ExitCode,Elapsed,MaxRSS
 
-sacct -j 65899221 -o JobID,ExitCode,Elapsed,MaxRSS
 
 
