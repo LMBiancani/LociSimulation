@@ -4999,6 +4999,120 @@ Pass count: 21233
 Fail count: 88566
 ------------------------------------------------
 
+2026.10.21
 
+Step 7.4 — Empirical Tree Inference on Known-Clades Passing Loci (n=21,233)
 
+• Objective:
+  Construct a partitioned Maximum Likelihood empirical species tree using the 21,233 loci that passed the known-clades likelihood ratio test in Step 7.3.
+
+• Methods:
+  - Adapted the 6.2 subset inference workflow for empirical scale.
+  - Sourced alignments from $out7_3/pass_0.05.
+  - Handled concatenation via run_amas.py using relative pathing (realpath --relative-to) to prevent ARG_MAX buffer overflows across 21k files.
+  - Implemented the 2-phase IQ-TREE inference protocol:
+    1. Guide tree generation via -m GTR+G -fast.
+    2. Proportional partition search (-spp partitions.txt) with ModelFinder Plus (-m MFP -mset GTR -cmax 8), 1,000 UFBoot (-bb 1000), and 1,000 SH-aLRT (-alrt 1000).
+  - Configured SLURM allocations: 24 cores, 128 GB memory, 96-hour walltime on uri-cpu (AVX512).
+
+git commit message:
+feat(7.4): add tree inference script for empirical clades-passing loci
+- Implement 7.4_infer_emp_clades_pass_tree.sh targeting 21,233 passing loci
+- Use relative pathing in AMAS wrapper to prevent ARG_MAX shell errors
+- Implement two-phase IQ-TREE inference with GTR-restricted MFP and dual support
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/7_filter_empirical_by_known_clades
+nano 7.4_emp_filtered_tree.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="7.4_emp_tree"
+#SBATCH --time=96:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=115G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script
+
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+echo "Variables sourced into current shell environment:"
+cat "$vars"
+
+# Output directory:
+WorkDir="$out7_4"
+FinalTree="$WorkDir/emp_filtered_tree.treefile"
+
+# Check if target tree already exists
+if [ -f "$FinalTree" ]; then
+    echo "Final tree already exists at: $FinalTree"
+    echo "Exiting to avoid overwriting."
+    exit 0
+fi
+
+# Validation: Verify input directory contains files
+if [ ! -d "$in7_4" ]; then
+    echo "ERROR: Input directory $in7_4 not found."
+    exit 1
+fi
+
+mkdir -p "$WorkDir"
+cd "$WorkDir" || exit 1
+
+# Environment Setup
+
+module purge
+module load uri/main Python/3.7.4-GCCcore-8.3.0
+
+echo "Starting AMAS concatenation for empirical passing loci at $(date)"
+echo "Input alignments directory: $in7_4"
+echo "Working directory: $WorkDir"
+
+# 1. Run AMAS Concatenation
+
+# Calculate relative path to prevent ARG_MAX buffer overflows
+REL_IN=$(realpath --relative-to="." "$in7_4")
+
+python3 "$run_amas" "$REL_IN" "${SLURM_CPUS_PER_TASK}" "${AMAS}" > amas_concat.log 2>&1
+
+if [ ! -f "concatenated.fasta" ] || [ ! -f "partitions.txt" ]; then
+    echo "ERROR: AMAS failed to create concatenated.fasta or partitions.txt in $WorkDir"
+    cat amas_concat.log
+    exit 1
+fi
+
+echo "Concatenation complete at $(date). Clean partitions created."
+
+# 2. Run IQ-TREE Inferences
+
+# Phase 1: Fast starting tree generation
+echo "Phase 1: Inferring starting guide tree..."
+"$IQTREE" -nt AUTO -ntmax "${SLURM_CPUS_PER_TASK}" \
+          -s "concatenated.fasta" \
+          -pre StartTree \
+          -m GTR+G -fast
+
+if [ ! -f "StartTree.treefile" ]; then
+    echo "ERROR: Phase 1 failed. StartTree.treefile was not created."
+    exit 1
+fi
+
+# Phase 2: Full partitioned analysis using guide tree
+echo "Phase 2: Running partitioned inference with MFP and support metrics..."
+"$IQTREE" -nt AUTO -ntmax "${SLURM_CPUS_PER_TASK}" \
+          -s "concatenated.fasta" \
+          -spp "partitions.txt" \
+          -pre emp_filtered_tree \
+          -t StartTree.treefile \
+          -m MFP -mset GTR -cmax 8 \
+          -bb 1000 -alrt 1000
+
+echo "Step 7.4 complete at $(date). Final tree saved to: $FinalTree"
+#---------------------------------
+sbatch 7.4_emp_filtered_tree.sh
+Submitted batch job 65928272
 

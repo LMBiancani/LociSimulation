@@ -296,5 +296,18 @@ Pvalue7_3=0.05
 # Path to collect_filtered_loci.R is specified above for 3.3_collect_filtered_loci.sh and stored as CFL:
 # (CFL): "$SCRIPTS/3_filter_by_known_clades/collect_filtered_loci.R"
 
+## 7.4_emp_filtered_tree.sh
+
+# Path to script-specific output directory:
+out7_4="$Output/7.4_emp_filtered_tree"
+# Path to input (passing loci from 7.3):
+in7_4="$out7_3/pass_$Pvalue7_3"
+# Path to run_amas.py is specified above for 0.0_amas_concat.sh as run_amas:
+# (run_amas): "$SCRIPTS/0_data_prep/run_amas.py"
+# Path to AMAS executable is specified above for 0.0_amas_concat.sh as AMAS:
+# (AMAS): "/project/pi_rsschwartz_uri_edu/Biancani/Software/AMAS/amas/AMAS.py"
+# Path to IQTREE executable is specified above for 0.1_iqtree_empirical.sh as IQTREE:
+# (IQTREE): "/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
+
 set +a  # Stop automatically exporting
 ################################################
