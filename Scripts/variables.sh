@@ -315,7 +315,6 @@ in7_4="$out7_3/pass_$Pvalue7_3"
 
 # Path to script-specific output directory:
 out8_0="$Output/8.0_emp_scf_analysis"
-
 # Input alignments for sCF calculation:
 # Unfiltered alignment (109,799 loci concatenated from 0.0):
 Aln_Unfiltered="$out0_0/concatenated.fasta"
@@ -327,6 +326,31 @@ Aln_Filtered="$out7_4/concatenated.fasta"
 Tree_Unfiltered="$out0_1/inferenceEmpirical.treefile"
 # Filtered empirical tree (from 7.4):
 Tree_Filtered="$out7_4/emp_filtered_tree.treefile"
+
+## 9. Empirical Tree Inference - Weighted ASTRAL
+
+## 9.0_emp_gtree_ufboot.sh 
+
+# Path to script-specific output directory:
+out9_0="$Output/9.0_emp_gtrees_ufboot"
+# Path to empircial data is specified above for 0_data_prep as DATA:
+# (DATA): "$WORK/mammal_loci/01_SISRS_loci_filtered"
+# Directory containing input gene trees (unconstrained gene trees from 7.1):
+in9_0_gtrees="$out7_1"
+
+
+## 9.1_emp_wastral_unfiltered.sh
+
+# Path to script-specific output directory:
+out9_1="$Output/9.1_emp_unfiltered_wastral"
+
+## 9.2_emp_wastral_filtered.sh
+
+# Path to script-specific output directory:
+out9_2="$Output/9.2_emp_filtered_wastral"
+# Input directory of passing loci (from Step 7.3) to identify filtered locus names:
+in9_2_pass="$out7_3/pass_$Pvalue7_3"
+
 
 set +a  # Stop automatically exporting
 ################################################

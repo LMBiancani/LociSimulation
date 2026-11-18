@@ -5126,7 +5126,6 @@ JobID        ExitCode    Elapsed     MaxRSS
 
 Git Commit Message:
 feat(8.0): add empirical sCF calculation for filtered and unfiltered trees
-
 - Implement 8.0_calculate_emp_scf.sh using IQ-TREE fixed-topology mode (-te) and 100-quartet sampling (--scf 100)
 - Evaluate site concordance factors on both unfiltered (0.1) and clades-passing (7.4) empirical trees
 
@@ -5217,4 +5216,355 @@ JobID        ExitCode    Elapsed     MaxRSS
 66979094          0:0   00:01:52            
 66979094.ba+      0:0   00:01:52   7931228K 
 66979094.ex+      0:0   00:01:52   
+
+Step 9: Empirical Tree Inference - Weighted ASTRAL
+
+Git Commit Message:
+Add Step 9 scripts for empirical Weighted ASTRAL species tree inference
+- Add 9.0_emp_gtree_ufboot_array.sh to infer de novo GTR+G ML gene trees
+  with 1,000 UFBoot replicates across all 109,799 loci via SLURM array
+  and GNU Parallel (with flock-safe indexing and resume support)
+- Add 9.1_emp_wastral_unfiltered.sh and 9.2_emp_wastral_filtered.sh to
+  infer hybrid-weighted ASTRAL species trees (aster v1.25.3.8) for the
+  unfiltered (109,799) and filtered (21,233) gene tree sets
+
+/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts
+mkdir 9_emp_wastral
+
+# 9.0_emp_gtree_ufboot_array.sh
+Infers de novo Maximum Likelihood (GTR+G) gene trees and calculates 1,000 Ultrafast Bootstrap replicates (-bb 1000)
+across all 109,799 empirical alignments ($DATA) in IQ-TREE 2, outputting UFBoot-annotated .treefile files to $out9_0
+for downstream Weighted ASTRAL (hybrid mode) species tree inference.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/9_emp_wastral
+nano 9.0_emp_gtree_ufboot_array.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="9.0_ufboot"
+#SBATCH --partition=uri-cpu,cpu,cpu-preempt
+#SBATCH --time=08:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=8G
+#SBATCH --array=1-20
+#SBATCH --requeue
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+
+Alignments="$DATA"
+OutDir="$out9_0"
+mkdir -p "$OutDir"
+
+module purge
+module load uri/main
+module load foss/2024a
+module load parallel/20240822
+
+# Thread-safe master alignment list creation (whichever task starts first builds it)
+LOCUS_LIST="$OutDir/all_alignments.txt"
+flock -x "${LOCUS_LIST}.lock" bash -c "
+    if [ ! -s \"$LOCUS_LIST\" ]; then
+        find \"$Alignments\" -maxdepth 1 -regextype posix-extended -regex '.*\.(fas|fa|fasta)$' | sort > \"${LOCUS_LIST}.tmp\"
+        mv \"${LOCUS_LIST}.tmp\" \"$LOCUS_LIST\"
+    fi
+"
+
+TOTAL_FILES=$(wc -l < "$LOCUS_LIST")
+NUM_CHUNKS=20
+CHUNK_SIZE=$(( (TOTAL_FILES + NUM_CHUNKS - 1) / NUM_CHUNKS ))
+START_LINE=$(( (SLURM_ARRAY_TASK_ID - 1) * CHUNK_SIZE + 1 ))
+END_LINE=$(( SLURM_ARRAY_TASK_ID * CHUNK_SIZE ))
+
+calc_ufboot() {
+    locus_path="$1"
+    filename=$(basename "$locus_path")
+    locus_id="${filename%.*}"
+
+    out_prefix="$OutDir/${locus_id}"
+    final_tree="${out_prefix}.treefile"
+
+    # Resume logic: skip if non-empty bootstrap-annotated treefile already exists
+    if [ -s "$final_tree" ]; then
+        return 0
+    fi
+
+    "$IQTREE" -s "$locus_path" \
+              -m GTR+G \
+              -bb 1000 \
+              -pre "$out_prefix" \
+              -nt 1 \
+              -redo \
+              -quiet
+
+    # Clean up auxiliary files to conserve scratch inodes
+    rm -f "${out_prefix}.ckp.gz" \
+          "${out_prefix}.bionj" \
+          "${out_prefix}.mldist" \
+          "${out_prefix}.ufboot" \
+          "${out_prefix}.contree" \
+          "${out_prefix}.splits.nex" \
+          "${out_prefix}.iqtree" \
+          "${out_prefix}.log"
+}
+
+export -f calc_ufboot
+export IQTREE OutDir
+
+echo "Task $SLURM_ARRAY_TASK_ID processing lines $START_LINE to $END_LINE at $(date)"
+
+sed -n "${START_LINE},${END_LINE}p" "$LOCUS_LIST" | \
+    parallel --env IQTREE \
+             --env OutDir \
+             -j "${SLURM_CPUS_PER_TASK}" \
+             --no-notice \
+             calc_ufboot {}
+
+echo "Task $SLURM_ARRAY_TASK_ID complete at $(date)."
+#---------------------------------
+sbatch 9.0_emp_gtree_ufboot_array.sh
+Submitted batch job 1952981
+
+
+### Verify completion & clean up temporary index files:
+find /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/9.0_emp_gtrees_ufboot -maxdepth 1 -name "*.treefile" | wc -l
+# 
+rm -f /scratch4/workspace/biancani_uri_edu-LociSimulation/output/mammals/9.0_emp_gtrees_ufboot/all_alignments.txt*
+# 
+
+Create aster Conda Environment:
+# 1. Create the Conda dirs in /work and reload conda/latest so Conda registers them
+mkdir -p /work/pi_rsschwartz_uri_edu/$USER/.conda/{envs,pkgs}
+module purge
+module load uri/main
+module load conda/latest
+
+# 2. Create the 'aster' environment from Bioconda
+conda create -y -n aster -c conda-forge -c bioconda aster
+
+Channels:
+ - conda-forge
+ - bioconda
+Platform: linux-64
+Collecting package metadata (repodata.json): done
+Solving environment: done
+
+
+==> WARNING: A newer version of conda exists. <==
+    current version: 24.7.1
+    latest version: 26.10.0
+
+Please update conda by running
+
+    $ conda update -n base -c conda-forge conda
+
+
+## Package Plan ##
+
+  environment location: /work/pi_rsschwartz_uri_edu/biancani_uri_edu/.conda/envs/aster
+
+  added / updated specs:
+    - aster
+
+
+The following packages will be downloaded:
+
+    package                    |            build
+    ---------------------------|-----------------
+    _openmp_mutex-4.5          |           20_gnu          28 KB  conda-forge
+    aster-1.25                 |       hc52dbad_1         753 KB  bioconda
+    libgcc-16.2.0              |       ha9f2e26_7         1.0 MB  conda-forge
+    libgomp-16.2.0             |       he0feb66_7         626 KB  conda-forge
+    libstdcxx-16.2.0           |       h934c35e_7         6.3 MB  conda-forge
+    ------------------------------------------------------------
+                                           Total:         8.7 MB
+
+The following NEW packages will be INSTALLED:
+
+  _openmp_mutex      conda-forge/linux-64::_openmp_mutex-4.5-20_gnu 
+  aster              bioconda/linux-64::aster-1.25-hc52dbad_1 
+  libgcc             conda-forge/linux-64::libgcc-16.2.0-ha9f2e26_7 
+  libgomp            conda-forge/linux-64::libgomp-16.2.0-he0feb66_7 
+  libstdcxx          conda-forge/linux-64::libstdcxx-16.2.0-h934c35e_7 
+
+
+
+Downloading and Extracting Packages:
+                                                                                
+Preparing transaction: done                                                     
+Verifying transaction: done                                                     
+Executing transaction: done                                                     
+#                                                                               
+# To activate this environment, use
+#
+#     $ conda activate aster
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
+
+# 3. Verify wastral and check its --support defaults
+eval "$(conda shell.bash hook)"
+conda activate aster
+which wastral
+wastral --help | grep -A 6 -i support
+
+/work/pi_rsschwartz_uri_edu/biancani_uri_edu/.conda/envs/aster/bin/wastral
+
+Weighted ASTRAL (all versions included) 
+ *** You may use --mode to switch from hybrid weighting to other weighting schemes. ***
+Version: v1.25.3.8
+wastral [ --ARG_NAME ARG_VALUE ... ] input_file
+Abbr	Arg	Type	Default	Description
+-C	--scoring	Preset		Scoring the full species tree file after `-c` without exploring other topologies (`-r 1 -s 0`)
+-B	--bayes	Preset		Probability (abayes) support value mode (`-x 1 -n 0.333 -d 0.333`)
+-h	--help	Preset		Printing the help message
+-S	--bootstrap	Preset		Bootstrap support value mode (default mode, `-x 100 -n 0 -d 0`)
+-L	--lrt	Preset		Likelihood (alrt) support value mode (`-x 1 -n 0 -d 0`)
+-R	--moreround	Preset		More rounds of placements and subsampling (`-r 16 -s 16`)
+-t	--thread	Integer	1	Number of threads
+-o	--output	String	<standard output>	File name for the output species tree
+
+Advanced options:
+-u	--support	Integer	1	Output support option (0: no branch or support, 1: length and support only, 2: detailed, 3: freqQuad.csv)
+-l	--lambda	Float	0.5	Rate lambda of Yule process under which the species tree is modeled
+-v	--verbose	Integer	2	Level of logging (1: minimum, 2: normal)
+-s	--subsample	Integer	4	Number of rounds of subsampling per exploration step
+-r	--round	Integer	4	Number of initial rounds of placements
+-a	--mapping	String		A list of gene name to taxon name maps, each line contains one gene name followed by one taxon name separated by a space or tab
+-n	--min	Float	-1	Min possible support value in weight scale (auto-detect by default)
+-x	--max	Float	-1	Max possible support value in weight scale (auto-detect by default)
+-d	--default	Float	0	Default support value when weight not provided
+-i	--input	String	<last argument>	The input file
+-w	--downweightrepeat	Float	1	The number of trees sampled for each locus
+-c	--constraint	String		Newick file containing a binary species tree to place missing species on
+-g	--guide	String		Newick file containing binary trees as guide trees
+	--seed	Integer	233	Seed for pseudorandomness
+	--proportion	Float	0.25	Proportion of taxa in the subsample in naive algorithm
+	--root	String		Root at the given species
+	--treeweights	String		A file containing a list of gene tree weights, space/tab/new-line separated (default: uniform weights)
+	--mode	Integer	1	1: hybrid weighting, 2: support only, 3: length only, 4: unweighted
+
+Examples: 
+wastral -o output_file input_file
+wastral -i input_file -o output_file
+
+# 9.1_emp_wastral_unfiltered.sh
+Aggregates all 109,799 UFBoot-annotated gene trees into $out9_1 and infers the unfiltered Weighted ASTRAL species tree.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/9_emp_wastral
+nano 9.1_emp_wastral_unfiltered.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="9.1_wastral_all"
+#SBATCH --time=30:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=30G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+echo "Variables sourced into current shell environment:"
+cat "$vars"
+
+module purge
+module load uri/main
+module load conda/latest
+eval "$(conda shell.bash hook)"
+conda activate aster
+
+mkdir -p "$out9_1"
+cd "$out9_1" || exit 1
+
+UNFILTERED_TREES="$out9_1/unfiltered_all_gtrees_ufboot.tre"
+
+echo "Gathering all 109,799 UFBoot gene trees from $out9_0 at $(date)..."
+find "$out9_0" -maxdepth 1 -name "*.treefile" | sort | xargs cat > "$UNFILTERED_TREES"
+
+TREE_COUNT=$(wc -l < "$UNFILTERED_TREES")
+echo "Unfiltered gene tree count: $TREE_COUNT"
+if [ "$TREE_COUNT" -ne 109799 ]; then
+    echo "ERROR: Expected 109,799 gene trees, found $TREE_COUNT. Aborting."
+    exit 1
+fi
+
+echo "Running Weighted ASTRAL (hybrid mode) on UNFILTERED dataset at $(date)..."
+wastral -t "${SLURM_CPUS_PER_TASK}" \
+        -i "$UNFILTERED_TREES" \
+        -o "$out9_1/emp_unfiltered_wastral.tre" \
+        2> "$out9_1/unfiltered_wastral.log"
+
+echo "Step 9.1 complete at $(date). Output: $out9_1/emp_unfiltered_wastral.tre"
+#---------------------------------
+sbatch 9.1_emp_wastral_unfiltered.sh
+
+# 9.2_emp_wastral_filtered.sh
+Collects the 21,233 passing UFBoot-annotated gene trees into $out9_2 and infers the filtered Weighted ASTRAL species tree.
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/9_emp_wastral
+nano 9.2_emp_wastral_filtered.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="9.2_wastral_filt"
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=30G
+#SBATCH -p uri-cpu
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+echo "Variables sourced into current shell environment:"
+cat "$vars"
+
+module purge
+module load uri/main
+module load conda/latest
+eval "$(conda shell.bash hook)"
+conda activate aster
+
+mkdir -p "$out9_2"
+cd "$out9_2" || exit 1
+
+FILTERED_TREES="$out9_2/filtered_pass_gtrees_ufboot.tre"
+: > "$FILTERED_TREES"
+
+echo "Gathering 21,233 clades-passing UFBoot gene trees at $(date)..."
+find "$in9_2_pass" -maxdepth 1 -type f \( -name "*.fas" -o -name "*.fasta" -o -name "*.fa" \) | sort | while read -r PASS_ALN; do
+    BASE=$(basename "$PASS_ALN")
+    LOCUS="${BASE%.*}"
+    GTREE="$out9_0/${LOCUS}.treefile"
+    if [ -s "$GTREE" ]; then
+        cat "$GTREE" >> "$FILTERED_TREES"
+    else
+        echo "WARNING: Missing gene tree for passing locus $LOCUS"
+    fi
+done
+
+TREE_COUNT=$(wc -l < "$FILTERED_TREES")
+echo "Filtered gene tree count: $TREE_COUNT"
+if [ "$TREE_COUNT" -ne 21233 ]; then
+    echo "ERROR: Expected 21,233 gene trees, found $TREE_COUNT. Aborting."
+    exit 1
+fi
+
+echo "Running Weighted ASTRAL (hybrid mode) on FILTERED dataset at $(date)..."
+wastral -t "${SLURM_CPUS_PER_TASK}" \
+        -i "$FILTERED_TREES" \
+        -o "$out9_2/emp_filtered_wastral.tre" \
+        2> "$out9_2/filtered_wastral.log"
+
+echo "Step 9.2 complete at $(date). Output: $out9_2/emp_filtered_wastral.tre"
+#---------------------------------
 
