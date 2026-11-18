@@ -309,5 +309,24 @@ in7_4="$out7_3/pass_$Pvalue7_3"
 # Path to IQTREE executable is specified above for 0.1_iqtree_empirical.sh as IQTREE:
 # (IQTREE): "/project/pi_rsschwartz_uri_edu/Biancani/Software/iqtree-2.1.2-Linux/bin/iqtree2"
 
+## 8. Empirical Site Concordance Factor (sCF) Analysis
+
+## 8.1_empirical_scf.sh
+
+# Path to script-specific output directory:
+out8_0="$Output/8.0_emp_scf_analysis"
+
+# Input alignments for sCF calculation:
+# Unfiltered alignment (109,799 loci concatenated from 0.0):
+Aln_Unfiltered="$out0_0/concatenated.fasta"
+# Filtered alignment (21,233 passing loci concatenated from 7.4):
+Aln_Filtered="$out7_4/concatenated.fasta"
+
+# Input trees:
+# Unfiltered empirical tree (from 0.1):
+Tree_Unfiltered="$out0_1/inferenceEmpirical.treefile"
+# Filtered empirical tree (from 7.4):
+Tree_Filtered="$out7_4/emp_filtered_tree.treefile"
+
 set +a  # Stop automatically exporting
 ################################################

@@ -5115,4 +5115,106 @@ echo "Step 7.4 complete at $(date). Final tree saved to: $FinalTree"
 #---------------------------------
 sbatch 7.4_emp_filtered_tree.sh
 Submitted batch job 65928272
+sacct -j 65928272 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+65928272          0:0   07:04:07            
+65928272.ba+      0:0   07:04:07  29395744K 
+65928272.ex+      0:0   07:04:07   
+
+## Step 8. Empirical Site Concordance Factor (sCF) Analysis
+
+Git Commit Message:
+feat(8.0): add empirical sCF calculation for filtered and unfiltered trees
+
+- Implement 8.0_calculate_emp_scf.sh using IQ-TREE fixed-topology mode (-te) and 100-quartet sampling (--scf 100)
+- Evaluate site concordance factors on both unfiltered (0.1) and clades-passing (7.4) empirical trees
+
+mkdir -p /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/8_empirical_sCF
+
+cd /scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/8_empirical_sCF
+nano 8.1_empirical_scf.sh
+#---------------------------------
+#!/bin/bash
+#SBATCH --job-name="8.0_emp_scf"
+#SBATCH --time=12:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=58G
+#SBATCH -p uri-cpu
+#SBATCH --constraint=avx512
+#SBATCH --mail-user="biancani@uri.edu"
+#SBATCH --mail-type=ALL
+
+# Source master parameters script
+vars="/scratch4/workspace/biancani_uri_edu-LociSimulation/LociSimulation/Scripts/variables.sh"
+source "$vars"
+echo "Variables sourced into current shell environment:"
+cat "$vars"
+
+# Environment Setup
+module purge
+module load uri/main
+module load foss/2024a
+
+# Output working directory
+WorkDir="$out8_0"
+mkdir -p "$WorkDir"
+cd "$WorkDir" || exit 1
+
+echo "Starting Empirical sCF calculations at $(date)"
+echo "Working directory: $WorkDir"
+
+# 1. Unfiltered Dataset sCF Calculation
+echo "----------------------------------------------------------------"
+echo "1. Calculating sCF for UNFILTERED empirical tree (Step 0.1)"
+echo "Tree:      $Tree_Unfiltered"
+echo "Alignment: $Aln_Unfiltered"
+echo "----------------------------------------------------------------"
+
+if [[ ! -f "$Tree_Unfiltered" || ! -f "$Aln_Unfiltered" ]]; then
+    echo "ERROR: Unfiltered tree or alignment file not found!"
+    exit 1
+fi
+
+"$IQTREE" -te "$Tree_Unfiltered" \
+          -s "$Aln_Unfiltered" \
+          --scf 100 \
+          -nt "${SLURM_CPUS_PER_TASK}" \
+          --prefix "unfiltered_scf" \
+          -redo
+
+# ------------------------------------------------------------------------------
+# 2. Filtered Dataset sCF Calculation
+# ------------------------------------------------------------------------------
+echo "----------------------------------------------------------------"
+echo "2. Calculating sCF for FILTERED empirical tree (Step 7.4)"
+echo "Tree:      $Tree_Filtered"
+echo "Alignment: $Aln_Filtered"
+echo "----------------------------------------------------------------"
+
+if [[ ! -f "$Tree_Filtered" || ! -f "$Aln_Filtered" ]]; then
+    echo "ERROR: Filtered tree or alignment file not found!"
+    exit 1
+fi
+
+"$IQTREE" -te "$Tree_Filtered" \
+          -s "$Aln_Filtered" \
+          --scf 100 \
+          -nt "${SLURM_CPUS_PER_TASK}" \
+          --prefix "filtered_scf" \
+          -redo
+
+echo "Step 8.0 complete at $(date)."
+echo "Output files saved in: $WorkDir"
+#---------------------------------
+sbatch 8.1_empirical_scf.sh
+Submitted batch job 66979094
+sacct -j 66979094 -o JobID,ExitCode,Elapsed,MaxRSS
+JobID        ExitCode    Elapsed     MaxRSS 
+------------ -------- ---------- ---------- 
+66979094          0:0   00:01:52            
+66979094.ba+      0:0   00:01:52   7931228K 
+66979094.ex+      0:0   00:01:52   
 
